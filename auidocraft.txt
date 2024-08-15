@@ -1,0 +1,1 @@
+pip install audiocraft==1.2.0 --no-deps

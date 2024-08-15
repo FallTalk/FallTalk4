@@ -1,0 +1,19 @@
+conda install -y pytorch::faiss-cpu
+conda install -y conda-forge::ffmpeg
+conda install -c conda-forge 'ffmpeg<7'
+
+conda install -y conda-forge::pyinstaller
+conda install -y nvidia/label/cuda-12.1.0::cuda-toolkit=12.1
+conda install -y conda-forge mpi4py mpich
+conda install -y pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+
+conda install -y pytorch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 pytorch-cuda=12.1 -c pytorch -c nvidia
+
+conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+
+pip install torch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cu121
+pip install xformers==0.0.25.post1 --index-url https://download.pytorch.org/whl/cu121
+
+pip install torch==2.0.1 torchvision==0.17.1 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu181
+
+conda install -y pytorch==2.1.0 torchvision==0.17.2 torchaudio==2.1.0 pytorch-cuda=12.1 -c pytorch -c nvidia

@@ -1,0 +1,4 @@
+Elven Labs: <happy>: Good, day! Can I help you with anything, ma'am?
+GPT SoVITS: Good, day! Can I help you with anything, ma'am?
+
+Top P 1, Top k: 15, Temp 0.6

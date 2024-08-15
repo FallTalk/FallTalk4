@@ -1,0 +1,2 @@
+GPT SoVITS Top P 1, Top k: 15, Temp 0.5: You were right, Nick, Kellogg did have my son. But that wasn't all. He was working with the Institute. He. he, gave them Shaun.
+ElevenLabs: <sad>: You were right Nick. Kellogg did have my son. But that wasn't all. He was working with the Institute. He... he gave them Shaun.
