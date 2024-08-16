@@ -1,5 +1,0 @@
-GPT: You were right, Nick, Kellogg took my baby. But that, wasn't all. He was working with the Institute. He. he, gave them Shaun.
-
-Top P 1, Top k: 15, Temp 0.5
-
-ElevenLabs: <slow, sad>: You were right, Nick, Kellogg took my baby. But that wasn't all. He was working with the Institute. He... he... gave them Shaun.
