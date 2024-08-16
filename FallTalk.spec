@@ -32,6 +32,9 @@ re_datas = collect_data_files('re', include_py_files=True)
 torchaudio_datas = collect_data_files('torio', include_py_files=True)
 ffmpeg_datas  = collect_data_files('ffmpeg', include_py_files=True)
 phonemizer_datas = collect_data_files('phonemizer', include_py_files=True)
+config_datas = collect_data_files('config', include_py_files=True)
+triton_datas = collect_data_files('triton', include_py_files=True)
+
 
 def collect_module_data(module_path):
     data_files = []
@@ -87,6 +90,8 @@ a = Analysis(
     +torchaudio_datas
     +re_datas
     +phonemizer_datas
+    +config_datas
+    +triton_datas
     +tts_engines_datas_modules,
     hiddenimports=scipy_hiddenimports
     +fairseq_hiddenimports
