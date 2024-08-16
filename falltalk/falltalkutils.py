@@ -540,11 +540,15 @@ def voicecraft_inference(parent, output_file, text, selected_audio, panel, start
 
 
 def get_latest_release():
-    response = requests.get(config.RELEASE_URL)
-    if response.status_code == 200:
-        return response.json()['tag_name']
-    else:
-        logger.exception(f"Failed to fetch latest release: {response.status_code}")
+    try:
+        response = requests.get(config.RELEASE_URL)
+        if response.status_code == 200:
+            return response.json()['tag_name']
+        else:
+            logger.exception(f"Failed to fetch latest release: {response.status_code}")
+            return config.VERSION
+    except Exception as e:
+        logger.exception(f"Failed to fetch latest release: {e}")
         return config.VERSION
 
 
