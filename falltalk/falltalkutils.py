@@ -543,7 +543,7 @@ def get_latest_release():
     try:
         response = requests.get(config.RELEASE_URL)
         if response.status_code == 200:
-            return response.json()['tag_name']
+            return response.url.split('/')[-1]
         else:
             logger.exception(f"Failed to fetch latest release: {response.status_code}")
             return config.VERSION
