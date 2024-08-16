@@ -125,13 +125,16 @@ class ModelApp(FallTalkFluentWindow):
 
 
     def checkForRelease(self):
-        latest = falltalkutils.get_latest_release()
-        my_version = version.parse(config.VERSION)
-        latest_version = version.parse(latest)
-        if latest_version.base_version > my_version.base_version:
-            self.toolbar_1.addSeparator()
-            self.toolbar_1.addAction(self.update_action)
-            self.update_action.triggered.connect(lambda: webbrowser.open(config.RELEASE_URL))
+        try:
+            latest = falltalkutils.get_latest_release()
+            my_version = version.parse(config.VERSION)
+            latest_version = version.parse(latest)
+            if latest_version.base_version > my_version.base_version:
+                self.toolbar_1.addSeparator()
+                self.toolbar_1.addAction(self.update_action)
+                self.update_action.triggered.connect(lambda: webbrowser.open(config.RELEASE_URL))
+        except Exception as e:
+            falltalkutils.logger.exception(f"Failed to fetch latest release: {e}")
 
     def setupWindow(self):
         self.setWindowTitle(f'FallTalk - {config.VERSION}')
