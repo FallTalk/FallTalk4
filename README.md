@@ -148,3 +148,12 @@ If this gets enough traction and support here are some of the future features I 
 - [ ] Skyrim or Starfield support
 - [ ] Edge TTS
 - [ ] More TTS engines, Paler? Fish?
+
+## Credits
+- [AllTalk for XTTSv2, Deepspeed, Fairseq and starter code ](https://github.com/erew123/alltalk_tts)
+- [Applio for RVC training](https://github.com/IAHispano/Applio)
+- [VoiceCraft](https://github.com/jasonppy/VoiceCraft)
+- [GPT So-VITS](https://github.com/RVC-Boss/GPT-SoVITS)
+- [StyleTTS2](https://github.com/yl4579/StyleTTS2)
+- [Triton Builds](https://huggingface.co/madbuda/triton-windows-builds/tree/main)
+- [Oobabooga for Flash Attention](https://github.com/oobabooga/flash-attention/releases/download/v2.6.1/flash_attn-2.6.1+cu122torch2.2.2cxx11abiFALSE-cp310-cp310-win_amd64.whl)
