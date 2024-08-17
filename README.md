@@ -27,6 +27,7 @@ All the models and software have been trained from my personal computer. This is
 - [KO-FI](https://ko-fi.com/bryant21)
 - [GitHub](https://github.com/falltalk/falltalk4)
 - [Nexus Mods](https://www.nexusmods.com/fallout4/mods/86525)
+- [Hugging Face](https://huggingface.co/falltalk/falltalk4)
 
   
 # How to Use
