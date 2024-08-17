@@ -317,6 +317,24 @@ def find_fallout4_exe():
         return "fallout4.exe not found"
 
 
+class FileValidator(ConfigValidator):
+
+    def __init__(self, allowed_file_types=None):
+        if allowed_file_types is None:
+            allowed_file_types = ['csv', 'txt']
+        self.allowed_file_types = allowed_file_types
+
+
+    """ File validator """
+
+    def validate(self, value):
+        if os.path.exists(value) and os.path.isfile(value):
+            _, file_extension = os.path.splitext(value)
+            return file_extension in self.allowed_file_types
+
+        return False
+
+
 class PitchExtractionAlgorithm(Enum):
     """ Online song quality enumeration class """
     crepe = "crepe"
@@ -544,6 +562,7 @@ DISCLAIMER = """
 
        • Selling or licensing the synthesized speech content.
        • Incorporating the synthesized speech into any commercial product or service.
+       • Creating or distributing any pornographic or adult material.
 
     Compliance with Laws and Regulations: You agree to comply with all applicable laws, regulations, and ethical standards in your use of the FallTalk models. This includes, but is not limited to, laws concerning intellectual property, privacy, and consumer protection. We assume no responsibility for any illegal use of the codebase.
 """
