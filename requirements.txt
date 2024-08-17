@@ -72,7 +72,6 @@ pip-system-certs
 ./wheels/deepspeed-0.14.0+ce78a63-cp311-cp311-win_amd64.whl;
 ./wheels/flash_attn-2.6.1+cu122torch2.2.2cxx11abiFALSE-cp311-cp311-win_amd64.whl
 ./wheels/monotonic_align-1.2-cp311-cp311-win_amd64.whl
-./wheels/triton-2.1.0-cp311-cp311-win_amd64.whl
 torch==2.2.2
 torchvision==0.17.2
 torchaudio==2.2.2
