@@ -173,8 +173,8 @@ class ModelApp(FallTalkFluentWindow):
             sys.exit()
 
     def downloadModels(self):
-        title = 'Download Models'
-        content = """Would you like to download all the base models? This will be about 10 GBs and take a few minutes. They will be downloaded on demand as needed otherwise."""
+        title = 'Download Engines'
+        content = """Would you like to download all the engines? This will be about 10 GBs and take a few minutes. They will be downloaded on demand as needed otherwise."""
         w = Dialog(title, content, self)
         w.yesButton.setText(self.tr('Download'))
         w.cancelButton.setText(self.tr('No'))
