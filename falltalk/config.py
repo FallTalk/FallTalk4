@@ -410,7 +410,7 @@ class Config(QConfig):
     auto_play = ConfigItem("App", "auto_play", True, BoolValidator())
     first_start = ConfigItem('App', 'first_start', True, BoolValidator())
     api_only_mode = ConfigItem('App', 'api_only_mode', False, BoolValidator(), restart=True)
-    accepted_disclaimer = ConfigItem('App', 'accepted_disclaimer', False, BoolValidator())
+    accepted_disclaimer = ConfigItem('App', 'accepted_up1_disclaimer', False, BoolValidator())
 
     # XTTS
     speed = RangeConfigItem("XTTS", "speed", 100, RangeValidator(1, 200))
