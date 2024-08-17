@@ -49,16 +49,18 @@ def replace_numbers_with_words(sentence):
 def get_transcribe_state(segments):
     words_info = [word_info for segment in segments for word_info in segment["words"]]
     transcript = " ".join([segment["text"] for segment in segments])
-    transcript = transcript[1:] if transcript[0] == " " else transcript
-    return {
-        "segments": segments,
-        "transcript": transcript,
-        "words_info": words_info,
-        "transcript_with_start_time": " ".join([f"{word['start']} {word['word']}" for word in words_info]),
-        "transcript_with_end_time": " ".join([f"{word['word']} {word['end']}" for word in words_info]),
-        "word_bounds": [f"{word['start']} {word['word']} {word['end']}" for word in words_info]
-    }
-
+    if transcript is not None and len(transcript) > 0:
+        transcript = transcript[1:] if transcript[0] == " " else transcript
+        return {
+            "segments": segments,
+            "transcript": transcript,
+            "words_info": words_info,
+            "transcript_with_start_time": " ".join([f"{word['start']} {word['word']}" for word in words_info]),
+            "transcript_with_end_time": " ".join([f"{word['word']} {word['end']}" for word in words_info]),
+            "word_bounds": [f"{word['start']} {word['word']} {word['end']}" for word in words_info]
+        }
+    else:
+        return None
 
 class Whisper_Engine():
     def __init__(self):

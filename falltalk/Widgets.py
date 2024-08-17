@@ -359,8 +359,8 @@ class GenerationWidget(FallTalkWidget):
         )
         self.xwm_card = SwitchSettingCard(
             FIF.COMMAND_PROMPT,
-            self.tr('XWM'),
-            self.tr('Create XWM'),
+            self.tr('LIP/FUZ'),
+            self.tr('Create LIP/FUZ/XWM'),
             cfg.xwm_enabled,
         )
         self.rvc_enabled = SwitchSettingCard(
@@ -647,8 +647,8 @@ class RVCWidget(FallTalkWidget):
         )
         self.xwm_card = SwitchSettingCard(
             FIF.COMMAND_PROMPT,
-            self.tr('XWM'),
-            self.tr('Create XWM'),
+            self.tr('LIP/FUZ'),
+            self.tr('Create LIP/FUZ/XWM'),
             cfg.xwm_enabled,
         )
         self.gen_settings = QGroupBox()

@@ -116,7 +116,9 @@ Once you are happy with your references, go to the text to speech generation pag
 
 # Installing From Source:
 
-To get this to work on windows was not exactly easy, and I needed to make several modifications. Here is the basic idea to get you started
+To get this to work on windows was not exactly easy, and I needed to make several modifications. You will need to download precompiled wheels from huggingface.
+
+Here is the basic idea to get you started
 
 ```bash
 conda create --name falltalk python=3.11.8

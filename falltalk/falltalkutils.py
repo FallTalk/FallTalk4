@@ -10,12 +10,11 @@ import sys
 import uuid
 
 import PySide6
-import ffmpeg
 import huggingface_hub
 import numpy as np
 import requests
 import soundfile as sf
-from PySide6.QtCore import QMetaObject, QUrl, Qt, Q_ARG
+from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 from num2words import num2words
 
 import config
@@ -23,6 +22,60 @@ from falltalk.config import cfg, REPO
 
 logger = logging.getLogger('falltalk')
 
+
+def create_fuz_files(fuz_file, xwm_file, lip_file):
+    try:
+        fuz_path = './resource/apps/BmlFuzEncode.exe'
+        command = [fuz_path, fuz_file, xwm_file, lip_file]
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+        stdout, stderr = process.communicate()
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
+        logger.debug(f"fuz file created {fuz_file}")
+    except subprocess.CalledProcessError as e:
+        logger.exception("Unable to create fuz: %s", e.stderr)
+
+def create_lip_and_fuz(parent, input_file, sr=44100):
+    data, samplerate = sf.read(input_file)
+    length_in_ms = (len(data) / samplerate) * 1000
+    rs_wav = input_file.replace(".wav", "_44100.wav")
+    if length_in_ms > 500:
+        xwm_file = input_file.replace(".wav", ".xwm")
+        lip_file = input_file.replace(".wav", ".lip")
+        fuz_file = input_file.replace(".wav", ".fuz")
+        audio_data = load_audio(input_file, sr)
+        sf.write(rs_wav, audio_data, sr)
+        logger.debug(f"file resampled {rs_wav}")
+        create_xwm(rs_wav, xwm_file)
+        create_lip_files(parent, rs_wav, lip_file)
+        create_fuz_files(fuz_file, xwm_file, lip_file)
+        return lip_file, fuz_file
+    else:
+        logger.exception("Unable to create lip and fuz files: audio too short")
+
+
+def create_lip_files(parent, input_file, lip_file):
+    try:
+        resp = parent.transcription_engine.transcribe(input_file)
+        facefx_path = "./resource/apps/lipgen/FaceFXWrapper.exe"
+        facefx_cdf_path = "./resource/apps/lipgen/FonixData.cdf"
+        txt_file = input_file.replace(".wav", ".txt")
+
+        if resp['transcript'] is not None and len(resp['transcript']) > 0:
+            with open(txt_file, 'w') as file:
+                file.write(resp['transcript'])
+
+            command = [facefx_path, 'Fallout4', 'USEnglish', os.path.abspath(facefx_cdf_path), os.path.abspath(input_file), os.path.abspath(lip_file), resp['transcript']]
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            stdout, stderr = process.communicate()
+            if process.returncode != 0:
+                raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
+            logger.debug(f"lip file created {lip_file}")
+        else:
+            logger.exception("Unable to create lip files: not transcript generated")
+
+    except subprocess.CalledProcessError as e:
+        logger.exception("Unable to create lip files: %s", e.stderr)
 
 
 def create_xwm(input, output, encode=True):
@@ -37,14 +90,9 @@ def create_xwm(input, output, encode=True):
         stdout, stderr = process.communicate()
         if process.returncode != 0:
             raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
+        logger.debug(f"xwm processed {input} {output}")
     except subprocess.CalledProcessError as e:
         logger.exception("Conversion failed: %s", e.stderr)
-
-
-def export_xwm(file_name):
-    base = os.path.splitext(file_name)[0]
-    new_filename = base + ".xwm"
-    create_xwm(file_name, new_filename)
 
 
 def extract_fuz(file):
@@ -236,11 +284,20 @@ def load_xtts(parent):
         from tts_engines.xtts_engine import XTTS_Engine
         parent.tts_engine = XTTS_Engine()
         print("XTTS Loaded")
+        load_whisper(parent)
         QMetaObject.invokeMethod(parent, "afterXtts", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
         QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+
+
+
+def load_whisper(parent):
+    if parent.transcription_engine is None:
+        from tts_engines.whisper_engine import Whisper_Engine
+        parent.transcription_engine = Whisper_Engine()
+        print("WhisperX Loaded")
 
 
 def load_voicecraft(parent):
@@ -250,10 +307,8 @@ def load_voicecraft(parent):
         from tts_engines.voicecraft_engine import VoiceCraft_Engine
         from tts_engines.whisper_engine import Whisper_Engine
         parent.tts_engine = VoiceCraft_Engine()
-        if parent.transcription_engine is None:
-            from tts_engines.whisper_engine import Whisper_Engine
-            parent.transcription_engine = Whisper_Engine()
         print("VoiceCraft Loaded")
+        load_whisper(parent)
         QMetaObject.invokeMethod(parent, "afterVoiceCraft", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
         QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
@@ -268,10 +323,8 @@ def load_gpt_sovits(parent):
         from tts_engines.gpt_sovits_engine import GPT_SoVITS_Engine
         from tts_engines.whisper_engine import Whisper_Engine
         parent.tts_engine = GPT_SoVITS_Engine()
-        if parent.transcription_engine is None:
-            from tts_engines.whisper_engine import Whisper_Engine
-            parent.transcription_engine = Whisper_Engine()
         print("GPT_SoVITS Loaded")
+        load_whisper(parent)
         QMetaObject.invokeMethod(parent, "afterGPT_SoVITS", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
         QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
@@ -285,6 +338,7 @@ def load_rvc(parent):
         from tts_engines.rvc_engine import RVC_Engine
         parent.tts_engine = RVC_Engine()
         print("RVC Loaded")
+        load_whisper(parent)
         QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
         QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
@@ -300,6 +354,7 @@ def load_style_tts2(parent):
         from tts_engines.style_tts_engine import StyleTTS2_Engine
         parent.tts_engine = StyleTTS2_Engine()
         print("StyleTTS2 Loaded")
+        load_whisper(parent)
         QMetaObject.invokeMethod(parent, "afterStyleTTS2", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
         QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
@@ -473,7 +528,7 @@ def rvc_inference(parent, input_file, panel, api=False):
         if not api:
             QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, input_file))
             if cfg.get(cfg.xwm_enabled):
-                export_xwm(input_file)
+                create_lip_and_fuz(parent, input_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception("RVC inference failed")
@@ -487,7 +542,7 @@ def xtts_inference(parent, output_file, text, selected_audio, panel, api=False):
         if not api:
             QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, output_file))
             if cfg.get(cfg.xwm_enabled):
-                export_xwm(output_file)
+                create_lip_and_fuz(parent, output_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception("XTTSv2 inference failed")
@@ -502,7 +557,7 @@ def gpt_sovits_inference(parent, output_file, text, selected_audio, panel, trans
         if not api:
             QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, output_file))
             if cfg.get(cfg.xwm_enabled):
-                export_xwm(output_file)
+                create_lip_and_fuz(parent, output_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception("GPT_SoVITS inference failed")
@@ -516,7 +571,7 @@ def styletts2_inference(parent, output_file, text, selected_audio, panel, api=Fa
         if not api:
             QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, output_file))
             if cfg.get(cfg.xwm_enabled):
-                export_xwm(output_file)
+                create_lip_and_fuz(parent, output_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception("StyleTTS2 inference failed")
@@ -531,7 +586,7 @@ def voicecraft_inference(parent, output_file, text, selected_audio, panel, start
         if not api:
             QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, output_file))
             if cfg.get(cfg.xwm_enabled):
-                export_xwm(output_file)
+                create_lip_and_fuz(parent, output_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception("VoiceCraft inference failed")
@@ -590,3 +645,7 @@ def get_model_diff(old_json, new_json):
         return None
 
     return "\n \n".join(result)
+
+
+
+
