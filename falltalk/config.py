@@ -555,8 +555,6 @@ DISCLAIMER = """
        • Personal Use: Utilizing the FallTalk AI models for personal, non-commercial projects and activities that do not involve the distribution or sharing of synthesized speech content with others.
        • Research: Conducting academic or scientific research in the field of artificial intelligence, speech synthesis, or related disciplines.
        • Non-Commercial Mod Creation: Developing and distributing modifications (mods) for the game Fallout 4 that are available to the public free of charge.
-
-    Credit for Generated Audio: When using any generated audio in mods, you must provide clear and appropriate credit to FallTalk. This credit should be visible and easily accessible to end-users.
     
     Prohibited Use: You are expressly prohibited from using the FallTalk AI models for any commercial purposes, including but not limited to:
 
