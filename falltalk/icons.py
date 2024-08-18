@@ -55,6 +55,7 @@ class FallTalkIcons(FluentIconBase, Enum):
     VOICE = "voice"
     G = "g"
     FROG = "frog"
+    BULK = "bulk"
 
     def icon(self, theme=Theme.AUTO, color: QColor = None) -> QIcon:
         """ create a fluent icon

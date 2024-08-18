@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import uuid
+from datetime import datetime
 
 import PySide6
 import huggingface_hub
@@ -23,6 +24,16 @@ from falltalk.config import cfg, REPO
 logger = logging.getLogger('falltalk')
 
 
+def extra_audio_from_bsa(item, filename):
+    extract_bsa(item)
+    extract_fuz(os.path.abspath(f"temp/{filename}.fuz"))
+    create_xwm(os.path.abspath(f"temp/{filename}.xwm"), os.path.abspath(f"temp/{filename}.wav"), False)
+
+    os.path.exists(f"temp/{filename}.xwm") and os.remove(f"temp/{filename}.xwm")
+    os.path.exists(f"temp/{filename}.fuz") and os.remove(f"temp/{filename}.fuz")
+    os.path.exists(f"temp/{filename}.lip") and os.remove(f"temp/{filename}.lip")
+
+
 def create_fuz_files(fuz_file, xwm_file, lip_file):
     try:
         fuz_path = './resource/apps/BmlFuzEncode.exe'
@@ -34,6 +45,7 @@ def create_fuz_files(fuz_file, xwm_file, lip_file):
         logger.debug(f"fuz file created {fuz_file}")
     except subprocess.CalledProcessError as e:
         logger.exception("Unable to create fuz: %s", e.stderr)
+
 
 def create_lip_and_fuz(parent, input_file, sr=44100):
     data, samplerate = sf.read(input_file)
@@ -49,7 +61,10 @@ def create_lip_and_fuz(parent, input_file, sr=44100):
         create_xwm(rs_wav, xwm_file)
         create_lip_files(parent, rs_wav, lip_file)
         create_fuz_files(fuz_file, xwm_file, lip_file)
-        return lip_file, fuz_file
+        os.remove(xwm_file)
+        os.remove(lip_file)
+        os.remove(rs_wav)
+        return fuz_file
     else:
         logger.exception("Unable to create lip and fuz files: audio too short")
 
@@ -106,6 +121,7 @@ def extract_fuz(file):
             raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
     except subprocess.CalledProcessError as e:
         logger.exception("Unable to extract fuz: %s", e.stderr)
+
 
 def extract_bsa(item):
     fallout4_dir = cfg.get(cfg.fallout_4_directory)
@@ -195,6 +211,7 @@ def do_transcribe(parent, selected_audio, widget, api=False):
         if not api:
             widget.transcribe_state = resp
             QMetaObject.invokeMethod(parent, "after_transcribe", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(PySide6.QtCore.QObject, widget))
+        return resp
     except Exception as e:
         logger.exception("Transcription failed")
         if not api:
@@ -223,7 +240,6 @@ def load_model(parent, character=None, rvc=None, display_name=None, base_model=F
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Model"), Q_ARG(str, "An Error Occured while attempting to load the model. Please check your logs and report the issue if needed"))
 
 
-
 def download_rvc_models(character, rvc):
     if rvc:
         download_model_from_hub(character, rvc)
@@ -231,7 +247,7 @@ def download_rvc_models(character, rvc):
         download_model_from_hub(character, rvc)
 
 
-def download_models(parent, character, model, rvc):
+def download_models(parent, character, model, rvc, api=False):
     try:
         download_model_from_hub(character, model)
         download_rvc_models(character, rvc)
@@ -239,9 +255,8 @@ def download_models(parent, character, model, rvc):
             model['type'] = "ckpt"
             download_model_from_hub(character, model)
 
-
-
-        QMetaObject.invokeMethod(parent, "afterModelDownload", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+        if not api:
+            QMetaObject.invokeMethod(parent, "afterModelDownload", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception("Unable to download model")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Model"), Q_ARG(str, "An Error Occured while downloading the model from huggingface. Please check your logs and report the issue if needed"))
@@ -290,7 +305,6 @@ def load_xtts(parent):
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
-
 
 
 def load_whisper(parent):
@@ -476,10 +490,12 @@ def get_eleven_labs_voices():
     tts_voice_list = response.voices
     return [f"{v.name}" for v in tts_voice_list]
 
+
 def get_edge_tts_voices():
     import edge_tts
     tts_voice_list = asyncio.get_event_loop().run_until_complete(edge_tts.list_voices())
     return [f"{v['ShortName']}-{v['Gender']}" for v in tts_voice_list if v['ShortName'].startswith('en-')]
+
 
 def eleven_labs_inference(parent, text, output_file, voice, panel, api=False):
     from elevenlabs.core import ApiError
@@ -506,6 +522,7 @@ def eleven_labs_inference(parent, text, output_file, voice, panel, api=False):
         if not api:
             QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Call Eleven Labs"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
 
+
 def edge_tts_inference(parent, text, output_file, voice, panel, api=False):
     try:
         import edge_tts
@@ -526,7 +543,7 @@ def rvc_inference(parent, input_file, panel, api=False):
     try:
         parent.tts_engine.run_rvc(input_file)
         if not api:
-            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, input_file))
+            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel), Q_ARG(str, input_file))
             if cfg.get(cfg.xwm_enabled):
                 create_lip_and_fuz(parent, input_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
@@ -540,7 +557,7 @@ def xtts_inference(parent, output_file, text, selected_audio, panel, api=False):
     try:
         parent.tts_engine.generate_audio(text=text, voice=selected_audio, language="en", output_file=output_file)
         if not api:
-            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, output_file))
+            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel), Q_ARG(str, output_file))
             if cfg.get(cfg.xwm_enabled):
                 create_lip_and_fuz(parent, output_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
@@ -555,7 +572,7 @@ def gpt_sovits_inference(parent, output_file, text, selected_audio, panel, trans
         parent.tts_engine.generate_audio(text=text, voice=selected_audio, language="en", output_file=output_file,
                                          transcript=transcribe_state)
         if not api:
-            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, output_file))
+            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel), Q_ARG(str, output_file))
             if cfg.get(cfg.xwm_enabled):
                 create_lip_and_fuz(parent, output_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
@@ -569,7 +586,7 @@ def styletts2_inference(parent, output_file, text, selected_audio, panel, api=Fa
     try:
         parent.tts_engine.generate_audio(text=text, voice=selected_audio, language="en", output_file=output_file)
         if not api:
-            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, output_file))
+            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel), Q_ARG(str, output_file))
             if cfg.get(cfg.xwm_enabled):
                 create_lip_and_fuz(parent, output_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
@@ -584,7 +601,7 @@ def voicecraft_inference(parent, output_file, text, selected_audio, panel, start
         parent.tts_engine.generate_audio(text=text, voice=selected_audio, language="en", output_file=output_file,
                                          transcribe_state=transcribe_state, prompt_end_time=start_tts_time, edit_start_time=start_time, edit_end_time=end_time)
         if not api:
-            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel),  Q_ARG(str, output_file))
+            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel), Q_ARG(str, output_file))
             if cfg.get(cfg.xwm_enabled):
                 create_lip_and_fuz(parent, output_file)
             QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
@@ -592,6 +609,124 @@ def voicecraft_inference(parent, output_file, text, selected_audio, panel, start
         logger.exception("VoiceCraft inference failed")
         if not api:
             QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Generate Audio"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
+
+
+def bulk_inference(parent):
+    if parent.tts_engine.engine_name != 'VoiceCraft':
+        model = parent.bulk_generate_widget.bulk_table.model()
+        datas = model.getData()
+        count = 0
+        total = len(datas)
+
+        current_time = datetime.now()
+        time_stamp = current_time.strftime("%Y%m%d%H%M%S")
+        formatted_time_stamp = f"{time_stamp[:4]}_{time_stamp[4:6]}_{time_stamp[6:8]}_{time_stamp[8:10]}_{time_stamp[10:12]}_{time_stamp[12:14]}"
+        output_folder = f"bulk_outputs/{formatted_time_stamp}_{parent.tts_engine.engine_name}"
+        os.makedirs(output_folder, exist_ok=True)
+        last_character = None
+
+        for data in datas:
+            try:
+                file_name = data[0]
+                character = data[1]
+                text_or_file = data[2]
+                reference_voice = data[3]
+                reference_path = None
+
+                model = get_character_model(character, parent.models)
+                is_trained, has_rvc = get_trained_character(model, parent.tts_engine.engine_name)
+
+                if file_name is not None and file_name != "":
+                    if ".wav" not in file_name:
+                        file_name = file_name + ".wav"
+                else:
+                    unique_id = uuid.uuid4()
+                    file_name = f"{unique_id.hex[:10]}.wav"
+
+                output_file = f"{output_folder}/{file_name}"
+
+                if reference_voice is not None and os.path.exists(reference_voice):
+                    reference_path = reference_voice
+                elif reference_voice is not None:
+                    reference_path = get_reference(parent, character, reference_voice)
+
+                if last_character is None or last_character != character:
+                    if is_trained and not os.path.exists(os.path.join('models', character, parent.tts_engine.engine_name)):
+                        download_models(parent, character, model[parent.tts_engine.engine_name], model['RVC'] if has_rvc else None, True)
+                    elif has_rvc and not os.path.exists(os.path.join('models', character, 'RVC')):
+                        download_rvc_models(character, model['RVC'])
+
+                    if is_trained and character != parent.tts_engine.model_name:
+                        parent.tts_engine.setup(character, has_rvc, not is_trained)
+
+                    elif not is_trained and character != parent.tts_engine.model_name:
+                        parent.tts_engine.setup(character, has_rvc, True)
+
+                is_wav = os.path.exists(text_or_file)
+
+                if has_rvc and is_wav:
+                    data, samplerate = sf.read(text_or_file)
+                    sf.write(output_file, data, samplerate)
+                    rvc_inference(parent, output_file, None, True)
+                elif not is_wav and parent.tts_engine.engine_name == 'GPT_SoVITS':
+                    transcript = None
+                    if not is_trained and reference_path is not None:
+                        resp = do_transcribe(parent, os.path.abspath(reference_path), None, api=True)
+                        transcript = resp['transcript'] if resp is not None else None
+                    gpt_sovits_inference(parent, output_file, text_or_file, os.path.abspath(reference_path) if parent.tts_engine.is_base else [os.path.abspath(reference_path)], None, transcript, api=True)
+                elif not is_wav and parent.tts_engine.engine_name == 'XTTSv2':
+                    xtts_inference(parent, output_file, text_or_file, reference_path, None, api=True)
+                elif not is_wav and parent.tts_engine.engine_name == 'StyleTTS2':
+                    styletts2_inference(parent, output_file, text_or_file, reference_path, None, api=True)
+
+                if cfg.get(cfg.xwm_enabled):
+                    create_lip_and_fuz(parent, output_file)
+
+            except Exception as e:
+                logger.exception(f"bulk_inference failed for row {data}")
+
+            count += 1
+            QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Completed: {count}/{total}"))
+
+    QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+
+
+def get_reference(parent, character, reference):
+    character_model = get_character_models(character, parent.characters_data)
+    if character_model is not None:
+        for voice_file in character_model['voicefiles']:
+            if reference in voice_file['filename']:
+                filename = f"{voice_file['filename']}".replace('.fuz', '')
+                if not os.path.exists(f"temp/{filename}.wav"):
+                    voice_file['folder'] = character
+                    extra_audio_from_bsa(voice_file, filename)
+                return f"temp/{filename}.wav"
+
+
+def get_character_model(character, models):
+    for character_model in models["characters"]:
+        if character in character_model['name'] and character == character_model['name']:
+            return character_model
+
+
+def get_trained_character(character_model, engine_name):
+    rvc = False
+    trained = False
+    if "RVC" in character_model and character_model['RVC'] is not None:
+        rvc = True
+
+    if engine_name in character_model and character_model[engine_name] is not None:
+        trained = True
+
+    return trained, rvc
+
+
+def get_character_models(character, characters_data):
+    for character_model in characters_data:
+        if character in character_model['name'] and character == character_model['name']:
+            return character_model
+
+    return None
 
 
 def get_latest_release():
@@ -615,7 +750,6 @@ def get_model_diff(old_json, new_json):
 
         old_entries = {entry['name']: entry for entry in old_characters}
         new_entries = {entry['name']: entry for entry in new_characters}
-
 
         for name in new_entries:
             if name not in old_entries:
@@ -645,7 +779,3 @@ def get_model_diff(old_json, new_json):
         return None
 
     return "\n \n".join(result)
-
-
-
-

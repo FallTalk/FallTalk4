@@ -1,3 +1,4 @@
+import csv
 import os
 import re
 from typing import Union, List
@@ -7,16 +8,17 @@ import torch
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QModelIndex, QAbstractTableModel, QTimer, QUrl
 from PySide6.QtGui import QColor, QFont, QIcon
-from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QStackedWidget, QWidget, QHeaderView, QGroupBox, QAbstractItemView, QSpacerItem, QSizePolicy
+from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QStackedWidget, QWidget, QHeaderView, QGroupBox, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog
 from qfluentwidgets import FluentIcon as FIF, TextEdit, PushButton, SegmentedWidget, \
     SearchLineEdit, RangeSettingCard, PrimaryPushButton, SwitchSettingCard, \
-    ConfigItem, ConfigValidator, TableView, CheckBox, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, NavigationTreeWidget, BodyLabel, IconWidget, Theme, isDarkTheme
+    ConfigItem, ConfigValidator, TableView, CheckBox, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, NavigationTreeWidget, BodyLabel, IconWidget, Theme, isDarkTheme, \
+    FolderValidator, PushSettingCard, Dialog
 from qfluentwidgets.window.fluent_window import FluentWindowBase
 
 from audio_player import StandardAudioPlayerBar
 from audio_recorder import StandardAudioRecorderBar
 from falltalk import falltalkutils
-from falltalk.config import RangeSettingCardScaled, cfg, TextSettingCard, RadioSettingCard, ComboBoxSettingsCard, RvcComboBoxSettingsCard
+from falltalk.config import RangeSettingCardScaled, cfg, TextSettingCard, RadioSettingCard, ComboBoxSettingsCard, RvcComboBoxSettingsCard, FileValidator
 from falltalk.main_settings import FallTalkSettings
 from falltalk.rvc_settings import RVCSettings
 from falltalk.voicecraft_settings import VoiceCraftSettings
@@ -978,16 +980,43 @@ class VoiceCraftWidget(GenerationWidget):
 
 
 class TableModel(QAbstractTableModel):
+
+    def __init__(self, data, headers, parent=None):
+        super().__init__(parent)
+        self._data = data
+        self._headers = headers
     def rowCount(self, parent=None):
-        return 4  # Example with 4 rows
+        return len(self._data)
 
     def columnCount(self, parent=None):
-        return 3  # Example with 3 columns
+        return len(self._headers)
 
-    def data(self, index, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole:
-            return f"Item {index.row() + 1}, {index.column() + 1}"
+    def data(self, index, role=Qt.ItemDataRole):
+        if role == Qt.ItemDataRole.DisplayRole:
+            return self._data[index.row()][index.column()]
+
         return None
+
+    def getData(self):
+        return self._data
+
+    def full_data(self, row, column):
+        return self._data[row][column]
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
+            return self._headers[section]
+        return super().headerData(section, orientation, role)
+
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        if role == Qt.ItemDataRole.EditRole:
+            self._data[index.row()][index.column()] = value
+            self.dataChanged.emit(index, index, [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole])
+            return True
+        return False
+
+    def flags(self, index):
+        return Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
 
 class CharacterTableModel(QAbstractTableModel):
@@ -1298,6 +1327,156 @@ class CharactersWidget(FallTalkWidget):
             text=text,
             onClick=lambda: self.stackedWidget.setCurrentWidget(widget)
         )
+
+
+class BulkGenerationWidget(FallTalkWidget):
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent, text="Bulk Generation", vertical=True)
+        self.parent = parent
+        # Create a TabView instance
+        self.bulk_table = TableView()
+        self.bulk_table.setBorderVisible(True)
+        self.bulk_table.setBorderRadius(8)
+        self.bulk_table.setAlternatingRowColors(True)
+        self.bulk_table.setWordWrap(False)
+        self.bulk_table.verticalHeader().setVisible(False)
+        self.bulk_table.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked)
+
+        self.headers = ["filename",  "character", "text", "reference"]
+        model = TableModel([], self.headers)
+        self.bulk_table.setModel(model)
+        self.bulk_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.bulk_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.bulk_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.bulk_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+
+        self.addToFrame(self.bulk_table)
+
+        self.xwm_card = SwitchSettingCard(
+            FIF.COMMAND_PROMPT,
+            self.tr('LIP/FUZ'),
+            self.tr('Create LIP/FUZ/XWM'),
+            cfg.xwm_enabled,
+        )
+        self.rvc_enabled = SwitchSettingCard(
+            FIF.MEGAPHONE,
+            self.tr('RVC'),
+            self.tr('Use RVC Upscaler (Recommended)'),
+            cfg.rvc_enabled
+        )
+        self.gen_settings = QGroupBox()
+        self.gen_settings.setStyleSheet("border: none")
+        self.gen_settings_layout = QHBoxLayout()
+        self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.gen_settings_layout.addWidget(self.xwm_card, 2)
+        self.gen_settings_layout.addWidget(self.rvc_enabled, 2)
+
+        self.upload_file = ConfigItem("bulk", "upload_file", "Please Select a File", FileValidator())
+
+        self.upload_file_card = PushSettingCard(
+            self.tr('Select File'),
+            FIF.DOCUMENT,
+            self.tr("CSV or TXT file matching the table"),
+            self.upload_file.value,
+        )
+
+        self.started_card = PushSettingCard(
+            self.tr('Getting Started'),
+            FIF.QUESTION,
+            self.tr("Guide"),
+            self.tr("Required Fields and Schema"),
+        )
+
+        self.f_and_u = QGroupBox()
+        self.f_and_u.setStyleSheet("border: none")
+        self.f_and_u_layout = QHBoxLayout()
+        self.f_and_u_layout.setContentsMargins(0, 0, 0, 0)
+        self.f_and_u_layout.addWidget(self.upload_file_card, 3)
+        self.f_and_u_layout.addWidget(self.started_card, -1)
+        self.f_and_u.setLayout(self.f_and_u_layout)
+
+        self.upload_file_card.clicked.connect(self.__onOutputFolderCardClicked)
+        self.started_card.clicked.connect(self.__onShowGettingStarted)
+
+        self.addToFrame(self.f_and_u)
+
+        self.generate_button = PrimaryPushButton("Bulk Generate Audio")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.bulk_inference)
+
+        self.gen_settings.setLayout(self.gen_settings_layout)
+        self.addToFrame(self.gen_settings)
+        self.addToFrame(self.generate_button)
+
+        self.setEnabled(cfg.engine.value != 'VoiceCraft')
+
+
+    def __onShowGettingStarted(self):
+
+        title = 'Getting Started Guide'
+        content = """
+        The bulk file generation will use the currently loaded TTS engine, except voicecraft as its not suitable. 
+        
+        Recommendations are StyleTTS2 or GPT_SoVITS. RVC will run with each engine as needed, you do not need to set the engine to RVC. 
+        
+        Accepts a CSV file with no header. Fields must be int he following order:
+        
+        "filename",  "character", "text", "reference"
+        
+        fileName <optional>: The name of the output, will be randomly generated if blank
+            - accepted values: a0231s_1, a0231s_2.wav, or blank
+            
+        character <required>: The fallout4 game name of the character. 
+            - accepted values: playervoicemale01, robotsentrybot, etc
+            
+        text: <required>: The text you would like to regenerate.
+            - tts accepted value: text string,
+            - rvc accepted value: path of a file example: samples/sentrybot_falltalk_rvc.wav, C:/Audio/Sample.wav
+            
+        reference <required>: You are using a "TTS" engine. Not needed for RVC.
+            - tts accepted value: fuz file name: 00091381_1.fuz, 
+            
+        Each bulk run will be placed in the bulk_outputs folder in the main directory. 
+        
+        Once data is loaded in the table, you can edit each field as needed.
+        
+        """
+
+        w = Dialog(title, content, self)
+        if w.exec():
+            pass
+
+
+
+    def __onOutputFolderCardClicked(self):
+
+        allowed_file_types = "Text files (*.txt);;CSV files (*.csv)"
+        folder = QFileDialog.getOpenFileName(
+            self, self.tr("Choose CSV or Text File"), "./", allowed_file_types)
+        if not folder or folder[0] == "":
+            return
+
+        self.clear()
+        self.upload_file.value = folder[0]
+        self.upload_file_card.setContent(folder[0])
+
+        data = []
+        with open(self.upload_file.value, mode='r', encoding='utf-8') as file:
+            csv_reader = csv.DictReader(file, self.headers)
+            for row in csv_reader:
+                data.append([row['filename'], row['character'], row['text'], row['reference']])
+
+        model = TableModel(data, self.headers)
+        self.bulk_table.setModel(model)
+
+    def clear(self):
+        model = TableModel([], self.headers)
+        self.bulk_table.setModel(model)
+
+
+
 
 
 class CustomTableModel(QAbstractTableModel):

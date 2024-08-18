@@ -3,6 +3,8 @@
 logs/
 /models/
 output/
+bulk_outputs/
+
 references/
 temp/
 config/

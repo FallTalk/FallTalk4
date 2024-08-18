@@ -443,7 +443,7 @@ class GPT_SoVITS_Engine(tts_engine):
             t3 = ttime()
             pred_semantic = pred_semantic[:, -idx:].unsqueeze(0)
             refers = []
-            if (inp_refs):
+            if inp_refs and len(inp_refs) > 0:
                 for path in inp_refs:
                     try:
                         refer = get_spepc(self.hps, path).to(self.dtype).to(self.device)
@@ -451,7 +451,7 @@ class GPT_SoVITS_Engine(tts_engine):
                     except:
                         traceback.print_exc()
 
-            if len(refers) == 0:
+            if len(refers) == 0 and ref_wav_path:
                 refers = [get_spepc(self.hps, ref_wav_path).to(self.dtype).to(self.device)]
 
             audio = (self.vq_model.decode(pred_semantic, torch.LongTensor(phones2).to(self.device).unsqueeze(0), refers, speed=speed).detach().cpu().numpy()[0, 0])

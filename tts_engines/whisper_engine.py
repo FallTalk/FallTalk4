@@ -67,6 +67,7 @@ class Whisper_Engine():
         self.align_model = WhisperxAlignModel()
         self.transcribe_model = WhisperxModel("distil-large-v3", self.align_model)
 
+
     def transcribe(self, audio_path):
         segments = self.transcribe_model.transcribe(audio_path)
         return get_transcribe_state(segments)

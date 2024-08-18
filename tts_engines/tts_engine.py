@@ -37,6 +37,7 @@ class tts_engine(ABC):
         self.is_base = False
         torch.cuda.empty_cache()
 
+
     def setup(self, selected_model, rvc=False, base_model=False):
         print(f"setup {selected_model}")
         if selected_model is not None and not base_model:
@@ -49,10 +50,16 @@ class tts_engine(ABC):
         elif base_model:
             if self.model_name is not None and not self.is_base:
                 self.unload_model()
-            self.is_base = True
-            self.model_name = selected_model
-            self.load_base_model()
-            self.rvc_model = rvc
+
+            if self.model_name is None or self.model_name != selected_model:
+                self.is_base = True
+                self.model_name = selected_model
+                self.rvc_model = rvc
+                self.load_base_model()
+            else:
+                print("reusing model")
+
+
 
     def handle_lowvram_change(self):
         if torch.cuda.is_available():

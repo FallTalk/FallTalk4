@@ -410,7 +410,7 @@ class Config(QConfig):
     auto_play = ConfigItem("App", "auto_play", True, BoolValidator())
     first_start = ConfigItem('App', 'first_start', True, BoolValidator())
     api_only_mode = ConfigItem('App', 'api_only_mode', False, BoolValidator(), restart=True)
-    accepted_disclaimer = ConfigItem('App', 'accepted_up1_disclaimer', False, BoolValidator())
+    accepted_disclaimer = ConfigItem('App', 'accepts_disclaimer', False, BoolValidator())
 
     # XTTS
     speed = RangeConfigItem("XTTS", "speed", 100, RangeValidator(1, 200))
@@ -532,7 +532,7 @@ class Config(QConfig):
 
 YEAR = 2024
 AUTHOR = "Bryant21"
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"
@@ -546,21 +546,25 @@ cfg = Config()
 qconfig.load('config/config.json', cfg)
 
 DISCLAIMER = """
-    By accessing and using the FallTalk, you hereby agree to the following terms and conditions:
+This code and the accompanying FallTalk AI models are provided subject to the terms and conditions of the End User License Agreement (EULA) of Zenimax Media, Inc., the original rights holder of the Fallout franchise. By using this code or the FallTalk AI models, you agree to comply with the following permitted and prohibited uses, as well as all terms outlined in the Zenimax Media EULA.
 
-    Public Disclosure of AI Synthesis: You are obligated to clearly inform any and all end-users that the speech content they are interacting with has been synthesized using the FallTalk AI models. This disclosure should be made in a manner that is prominent and easily understandable.
+By accessing and using the FallTalk, you hereby agree to the following terms and conditions:
 
-    Permitted Use: You agree to use the FallTalk AI models exclusively for the following purposes:
+Public Disclosure of AI Synthesis: You are obligated to clearly inform any and all end-users that the speech content they are interacting with has been synthesized using the FallTalk AI models. This disclosure should be made in a manner that is prominent and easily understandable.
 
-       • Personal Use: Utilizing the FallTalk AI models for personal, non-commercial projects and activities that do not involve the distribution or sharing of synthesized speech content with others.
-       • Research: Conducting academic or scientific research in the field of artificial intelligence, speech synthesis, or related disciplines.
-       • Non-Commercial Mod Creation: Developing and distributing modifications (mods) for the game Fallout 4 that are available to the public free of charge.
-    
-    Prohibited Use: You are expressly prohibited from using the FallTalk AI models for any commercial purposes, including but not limited to:
+Permitted Use: You agree to use the FallTalk AI models exclusively for the following purposes:
 
-       • Selling or licensing the synthesized speech content.
-       • Incorporating the synthesized speech into any commercial product or service.
-       • Creating or distributing any pornographic or adult material.
+    • Personal Use: Utilizing the FallTalk AI models for personal, non-commercial projects and activities that do not involve the distribution or sharing of synthesized speech content with others.
+    • Research: Conducting academic or scientific research in the field of artificial intelligence, speech synthesis, or related disciplines.
+    • Non-Commercial Mod Creation: Developing and distributing modifications (mods) for the game Fallout 4 that are available to the public free of charge.
 
-    Compliance with Laws and Regulations: You agree to comply with all applicable laws, regulations, and ethical standards in your use of the FallTalk models. This includes, but is not limited to, laws concerning intellectual property, privacy, and consumer protection. We assume no responsibility for any illegal use of the codebase.
+Prohibited Use: You are expressly prohibited from using the FallTalk AI models for any commercial purposes, including but not limited to:
+
+    • Selling or licensing the synthesized speech content.
+    • Incorporating the synthesized speech into any commercial product or service.
+    • Creating or distributing any pornographic or adult material.
+
+Compliance with Laws and Regulations: You agree to comply with all applicable laws, regulations, and ethical standards in your use of the FallTalk models. This includes, but is not limited to, laws concerning intellectual property, privacy, and consumer protection. We assume no responsibility for any illegal use of the codebase.
+
+Acknowledgment of Rights Holder: Zenimax Media, Inc. is the original rights holder of the Fallout franchise and all related intellectual property. This code and the FallTalk AI models are provided for the specific purposes outlined above, and any use outside of these parameters may violate Zenimax Media's intellectual property rights.
 """

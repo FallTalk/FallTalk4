@@ -4,6 +4,8 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler
 
+from icons import FallTalkIcons
+
 # Configure the logger
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
@@ -71,7 +73,7 @@ from packaging import version
 import config
 import falltalkapi
 from falltalk import falltalkutils
-from falltalk.Widgets import SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, VoiceCraftWidget, FaqWidget, GPT_SoVITSWidget, StyleTTS2Widget, RVCWidget, FallTalkFluentWindow, FallTalkWidget
+from falltalk.Widgets import SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, VoiceCraftWidget, FaqWidget, GPT_SoVITSWidget, StyleTTS2Widget, RVCWidget, FallTalkFluentWindow, FallTalkWidget, BulkGenerationWidget
 from falltalk.config import cfg, DISCLAIMER, REPO
 
 
@@ -93,6 +95,7 @@ class ModelApp(FallTalkFluentWindow):
         self.pending_base = False
         self.characters_data = None
         self.models = None
+        self.pending_bulk = False
 
         falltalkutils.clean_folder("temp/")
 
@@ -293,11 +296,15 @@ class ModelApp(FallTalkFluentWindow):
         self.generate_widget.addToFrame(self.styletts2_widget)
         self.generate_widget.addToFrame(self.rvc_widget)
 
+        self.bulk_generate_widget = BulkGenerationWidget(parent=self)
+
         self.setting_widget = SettingsWidget(self)
 
         self.addSubInterface(self.characters_widget, FIF.PEOPLE, 'Character Models', NavigationItemPosition.SCROLL)
         self.addSubInterface(self.reference_widget, FIF.MIX_VOLUMES, 'Reference Audio', NavigationItemPosition.SCROLL)
         self.addSubInterface(self.generate_widget, FIF.ROBOT, 'Generate Voice', NavigationItemPosition.SCROLL)
+        self.addSubInterface(self.bulk_generate_widget, FallTalkIcons.BULK.icon(), 'Bulk Generation', NavigationItemPosition.SCROLL)
+
         self.addSubInterface(self.faq_widget, FIF.HELP, 'FAQ', NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.setting_widget, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
 
@@ -338,6 +345,10 @@ class ModelApp(FallTalkFluentWindow):
         self.stateTooltip.move(x, 10)
         self.stateTooltip.show()
 
+    @Slot(str)
+    def update_loader(self, content):
+        self.stateTooltip.setContent(content)
+
     def complete_loader(self):
         self.stateTooltip.setContent("Completed")
         self.stateTooltip.setState(True)
@@ -370,6 +381,7 @@ class ModelApp(FallTalkFluentWindow):
         self.styletts2_widget.setEnabled(False)
         self.rvc_widget.setVisible(False)
         self.rvc_widget.setEnabled(False)
+        self.bulk_generate_widget.setEnabled(False)
 
         self.character_label.setText(f"Please Load Model")
 
@@ -419,6 +431,7 @@ class ModelApp(FallTalkFluentWindow):
         parent.xtts_widget.setVisible(True)
         parent.xtts_widget.setEnabled(True)
         parent.xtts_widget.media_player.setVisible(True)
+        parent.bulk_widget.setEnabled(True)
 
     @Slot(PySide6.QtCore.QObject)
     def afterVoiceCraft(self, parent):
@@ -426,6 +439,8 @@ class ModelApp(FallTalkFluentWindow):
         parent.voicecraft_widget.setEnabled(True)
         parent.voicecraft_widget.setVisible(True)
         parent.voicecraft_widget.media_player.setVisible(True)
+        parent.bulk_widget.setEnabled(False)
+
 
     @Slot(PySide6.QtCore.QObject)
     def afterGPT_SoVITS(self, parent):
@@ -433,6 +448,8 @@ class ModelApp(FallTalkFluentWindow):
         parent.gpt_sovits_widget.setEnabled(True)
         parent.gpt_sovits_widget.setVisible(True)
         parent.gpt_sovits_widget.media_player.setVisible(True)
+        parent.bulk_widget.setEnabled(True)
+
 
     @Slot(PySide6.QtCore.QObject)
     def afterStyleTTS2(self, parent):
@@ -440,6 +457,7 @@ class ModelApp(FallTalkFluentWindow):
         parent.styletts2_widget.setEnabled(True)
         parent.styletts2_widget.setVisible(True)
         parent.styletts2_widget.media_player.setVisible(True)
+        parent.bulk_widget.setEnabled(True)
 
     @Slot(PySide6.QtCore.QObject)
     def afterRVC(self, parent):
@@ -447,6 +465,8 @@ class ModelApp(FallTalkFluentWindow):
         parent.rvc_widget.setEnabled(True)
         parent.rvc_widget.setVisible(True)
         parent.rvc_widget.media_player.setVisible(True)
+        parent.bulk_widget.setEnabled(True)
+
 
     @Slot(PySide6.QtCore.QObject)
     def afterModelLoader(self, parent):
@@ -485,11 +505,15 @@ class ModelApp(FallTalkFluentWindow):
 
     @Slot(PySide6.QtCore.QObject)
     def continueLoad(self, parent):
+        self.bulk_generate_widget.setEnabled(True)
         parent.load_models_config()
-        parent.stackedWidget.setCurrentWidget(parent.characters_widget)
-        if parent.pending_character and not parent.pending_base:
+        if parent.pending_bulk:
+            parent.bulk_inference()
+        elif parent.pending_character and not parent.pending_base:
+            parent.stackedWidget.setCurrentWidget(parent.characters_widget)
             parent.load_trained_model(parent.pending_character, parent.pending_model, parent.pending_rvc)
         else:
+            parent.stackedWidget.setCurrentWidget(parent.characters_widget)
             parent.load_base_model(parent.pending_character, parent.pending_rvc)
 
     def find_first_match_by_name(self, models, name):
@@ -615,6 +639,21 @@ class ModelApp(FallTalkFluentWindow):
             sentence += "."
 
         return sentence
+
+    def bulk_inference(self):
+        if self.tts_engine is None:
+            self.pending_bulk = True
+            self.onEngineChange(cfg.engine)
+        else:
+            self.pending_bulk = False
+
+            data = len(self.bulk_generate_widget.bulk_table.model().getData())
+            if data > 0:
+                self.showLoaderPopup(f"Generating Bulk Audio", f"Completed: 0/{data}")
+                tr = (threading.Thread(target=falltalkutils.bulk_inference, args={self}, daemon=True))
+                tr.start()
+            else:
+                self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select Load some Data")
 
     def generate_audio(self, recording_file=None):
         references = self.reference_widget.reference_audio
