@@ -1,5 +1,5 @@
 PySide6==6.7.2
-whisperx>=3.1.1
+
 faster-whisper==1.0.2
 huggingface_hub==0.23.4
 PySide6-Fluent-Widgets==1.6.0
@@ -11,9 +11,9 @@ hydra-core>=1.1
 hydra_colorlog
 julius
 num2words
-numpy<=1.26.4
+numpy==1.26.4
 sentencepiece
-transformers>=4.31.0
+transformers>=4.44.0
 xformers==v0.0.25.post1
 torchmetrics
 demucs
@@ -41,7 +41,6 @@ word2number
 librosa>=0.10.2.post1
 local_attention>=1.9.14
 pydub
-coqui-tts>=0.24.1
 setuptools
 wheel
 scipy
@@ -68,13 +67,16 @@ einops_exts
 edge-tts
 elevenlabs
 pip-system-certs
-./wheels/fairseq-0.12.4-cp311-cp311-win_amd64.whl;
-./wheels/deepspeed-0.14.0+ce78a63-cp311-cp311-win_amd64.whl;
-./wheels/flash_attn-2.6.1+cu122torch2.2.2cxx11abiFALSE-cp311-cp311-win_amd64.whl
-./wheels/monotonic_align-1.2-cp311-cp311-win_amd64.whl
+ctranslate2
 torch==2.2.2
 torchvision==0.17.2
 torchaudio==2.2.2
 nltk==3.8.1
 torchfcpe
 phonemizer
+diffusers
+unidecode
+torchlibrosa
+ftfy
+timm
+accelerate

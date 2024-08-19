@@ -1,6 +1,8 @@
 import csv
+import json
 import os
 import re
+import shutil
 from typing import Union, List
 
 import soundfile as sf
@@ -8,17 +10,17 @@ import torch
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QModelIndex, QAbstractTableModel, QTimer, QUrl
 from PySide6.QtGui import QColor, QFont, QIcon
-from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QStackedWidget, QWidget, QHeaderView, QGroupBox, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog
+from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QStackedWidget, QWidget, QHeaderView, QGroupBox, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog, QDialog
 from qfluentwidgets import FluentIcon as FIF, TextEdit, PushButton, SegmentedWidget, \
     SearchLineEdit, RangeSettingCard, PrimaryPushButton, SwitchSettingCard, \
     ConfigItem, ConfigValidator, TableView, CheckBox, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, NavigationTreeWidget, BodyLabel, IconWidget, Theme, isDarkTheme, \
-    FolderValidator, PushSettingCard, Dialog
+    FolderValidator, PushSettingCard, Dialog, MessageBoxBase, BoolValidator
 from qfluentwidgets.window.fluent_window import FluentWindowBase
 
 from audio_player import StandardAudioPlayerBar
 from audio_recorder import StandardAudioRecorderBar
 from falltalk import falltalkutils
-from falltalk.config import RangeSettingCardScaled, cfg, TextSettingCard, RadioSettingCard, ComboBoxSettingsCard, RvcComboBoxSettingsCard, FileValidator
+from falltalk.config import RangeSettingCardScaled, cfg, TextSettingCard, RadioSettingCard, ComboBoxSettingsCard, RvcComboBoxSettingsCard, FileValidator, CUSTOM_DISCLAIMER, CustomFolderValidator
 from falltalk.main_settings import FallTalkSettings
 from falltalk.rvc_settings import RVCSettings
 from falltalk.voicecraft_settings import VoiceCraftSettings
@@ -438,7 +440,6 @@ class RVCWidget(FallTalkWidget):
         self.media_recorder.setVisible(cfg.get(cfg.rvc_mode) == "Microphone")
         self.addToFrame(self.media_recorder)
 
-
         self.text_input = TextEdit()
         font = QFont()
         font.setPointSize(12)
@@ -465,7 +466,6 @@ class RVCWidget(FallTalkWidget):
         self.mode_card.optionChanged.connect(self.on_change)
 
         self.addToFrame(self.mode_card)
-
 
         # self.rvc_training_data_size_card = RangeSettingCard(
         #     cfg.rvc_training_data_size,
@@ -520,7 +520,6 @@ class RVCWidget(FallTalkWidget):
         #     self.tr("Pitch Adjustment"),
         #     self.tr("Set the pitch of the audio"),
         # )
-
 
         # self.pitch_hop = QGroupBox()
         # self.pitch_hop.setStyleSheet("border: none")
@@ -985,6 +984,7 @@ class TableModel(QAbstractTableModel):
         super().__init__(parent)
         self._data = data
         self._headers = headers
+
     def rowCount(self, parent=None):
         return len(self._data)
 
@@ -1047,11 +1047,123 @@ class CharacterTableModel(QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
 
+class CustomMessageBox(MessageBoxBase):
+    """ Custom message box """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.ckpt_file = ConfigItem("custom", "ckpt_file", "Please Select a 'ckpt' File", FileValidator(allowed_file_types=['.pth']))
+
+        self.ckpt_file_card = PushSettingCard(
+            self.tr('Select .ckpt File'),
+            FIF.DOCUMENT,
+            self.tr("Checkpoint File"),
+            self.ckpt_file.value,
+        )
+
+        self.pth_file = ConfigItem("custom", "pth_file", "Please Select a 'pth' File", FileValidator(allowed_file_types=['.pth']))
+
+        self.pth_file_card = PushSettingCard(
+            self.tr('Select .pth File'),
+            FIF.DOCUMENT,
+            self.tr("Path File"),
+            self.pth_file.value,
+        )
+
+        self.index_file = ConfigItem("custom", "index_file", "Please Select an 'index' File", FileValidator(allowed_file_types=['.index']))
+
+        self.index_file_card = PushSettingCard(
+            self.tr('Select .index File'),
+            FIF.DOCUMENT,
+            self.tr("Index file"),
+            self.index_file.value,
+        )
+
+        self.custom_name = ConfigItem("custom", "custom_name", None, ConfigValidator())
+
+        self.custom_name_card = TextSettingCard(
+            self.custom_name,
+            FIF.SAVE_AS,
+            self.tr('Name'),
+            self.tr('Name of Custom Model'),
+            placeholder="Required"
+        )
+
+        self.start_dir = "./"
+
+        # add widget to view layout
+        self.viewLayout.addWidget(self.custom_name_card)
+        self.viewLayout.addWidget(self.ckpt_file_card)
+        self.viewLayout.addWidget(self.index_file_card)
+        self.viewLayout.addWidget(self.pth_file_card)
+
+        self.index_file_card.setVisible(cfg.get(cfg.engine) == 'RVC')
+        self.ckpt_file_card.setVisible(cfg.get(cfg.engine) == 'GPT_SoVITS')
+
+        self.widget.setMinimumWidth(600)
+
+        self.yesButton.setDisabled(True)
+
+        self.pth_file_card.clicked.connect(self.__onPathCardClicked)
+        self.index_file_card.clicked.connect(self.__onIndexCardClicked)
+        self.ckpt_file_card.clicked.connect(self.__onCkptCardClicked)
+        self.custom_name_card.lineEdit.textChanged.connect(self.enableYesButton)
+        self.custom_name_card.lineEdit.textEdited.connect(self.enableYesButton)
+
+    def enableYesButton(self):
+        if self.custom_name.value and self.custom_name.value != '':
+            if cfg.get(cfg.engine) == 'RVC' and self.index_file.value != "Please Select an 'index' File" and self.pth_file.value != "Please Select a 'pth' File":
+                self.yesButton.setEnabled(True)
+            elif cfg.get(cfg.engine) == 'GPT_SoVITS' and self.ckpt_file.value != "Please Select a 'ckpt' File" and self.pth_file.value != "Please Select a 'pth' File":
+                self.yesButton.setEnabled(True)
+            elif self.pth_file.value != "Please Select a 'pth' File":
+                self.yesButton.setEnabled(True)
+            else:
+                self.yesButton.setEnabled(False)
+
+    def __onIndexCardClicked(self):
+        allowed_file_types = "Index File (*.index)"
+        folder = QFileDialog.getOpenFileName(
+            self, self.tr("Select Index File"), self.start_dir, allowed_file_types)
+        if not folder or folder[0] == "":
+            return
+
+        self.index_file.value = folder[0]
+        self.start_dir = os.path.dirname(folder[0])
+        self.index_file_card.setContent(folder[0])
+        self.enableYesButton()
+
+    def __onPathCardClicked(self):
+        allowed_file_types = "Path File (*.pth)"
+        folder = QFileDialog.getOpenFileName(
+            self, self.tr("Select Path File"), self.start_dir, allowed_file_types)
+        if not folder or folder[0] == "":
+            return
+
+        self.pth_file.value = folder[0]
+        self.start_dir = os.path.dirname(folder[0])
+        self.pth_file_card.setContent(folder[0])
+        self.enableYesButton()
+
+    def __onCkptCardClicked(self):
+        allowed_file_types = "Checkpoint File (*.ckpt)"
+        folder = QFileDialog.getOpenFileName(
+            self, self.tr("Select Checkpoint File"), self.start_dir, allowed_file_types)
+        if not folder or folder[0] == "":
+            return
+
+        self.ckpt_file.value = folder[0]
+        self.start_dir = os.path.dirname(folder[0])
+        self.ckpt_file_card.setContent(folder[0])
+        self.enableYesButton()
+
+
 class CharactersWidget(FallTalkWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent=parent, text="Character Models", vertical=True)
-
+        self.parent = parent
         # Create a TabView instance
         self.pivot = SegmentedWidget(self)
         self.stackedWidget = QStackedWidget(self)
@@ -1061,7 +1173,7 @@ class CharactersWidget(FallTalkWidget):
         self.trained_table.setAlternatingRowColors(True)
         self.trained_table.setWordWrap(False)
         self.trained_table.verticalHeader().setVisible(False)
-        headers = ["Load", "Name", "Directory", "Update", "Delete",  "RVC"]
+        headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
         model = CharacterTableModel([], headers)
         self.trained_table.setModel(model)
         self.trained_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -1092,6 +1204,39 @@ class CharactersWidget(FallTalkWidget):
         self.untrained_table.setColumnWidth(3, 40)
         self.untrained_table.setColumnWidth(0, 125)
 
+        self.custom_widget = QWidget()
+        self.custom_widget.setContentsMargins(0, 0, 0, 0)
+
+        self.custom_view = QVBoxLayout(self.custom_widget)
+        self.custom_view.setContentsMargins(0, 0, 0, 0)
+        self.custom_table = TableView()
+        self.custom_table.setBorderVisible(True)
+        self.custom_table.setBorderRadius(8)
+        self.custom_table.setAlternatingRowColors(True)
+        self.custom_table.verticalHeader().setVisible(False)
+        headers = ["Load", "Name", "Directory", "Delete", "RVC"]
+        model = CharacterTableModel([], headers)
+        self.custom_table.setModel(model)
+        self.custom_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.custom_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.custom_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.custom_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        self.custom_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.custom_table.setSortingEnabled(True)
+        self.custom_table.setColumnWidth(4, 40)
+        self.custom_table.setColumnWidth(0, 125)
+        self.custom_table.setColumnWidth(3, 125)
+
+        self.stackedWidget.currentChanged.connect(self.verify)
+
+        self.add_button = PushButton("Add")
+        self.add_button.setMaximumWidth(200)
+        self.add_button.clicked.connect(self.add_custom)
+        self.add_button.setIcon(FIF.ADD_TO)
+
+        self.custom_view.addWidget(self.custom_table)
+        self.custom_view.addWidget(self.add_button)
+
         self.filter_line_edit = SearchLineEdit()
         self.filter_line_edit.setPlaceholderText("Filter...")
         self.filter_line_edit.textChanged.connect(self.apply_filter)
@@ -1105,6 +1250,7 @@ class CharactersWidget(FallTalkWidget):
         # add items to pivot
         self.addSubInterface(self.trained_table, 'trained_table', 'Trained')
         self.addSubInterface(self.untrained_table, 'untrained_table', 'Untrained')
+        self.addSubInterface(self.custom_widget, 'custom_table', 'Custom')
 
         self.boxLayout.addWidget(self.pivot, 0, Qt.AlignmentFlag.AlignLeft)
         self.boxLayout.addWidget(self.stackedWidget)
@@ -1113,6 +1259,63 @@ class CharactersWidget(FallTalkWidget):
         # self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
         self.stackedWidget.setCurrentWidget(self.trained_table)
         self.pivot.setCurrentItem(self.trained_table.objectName())
+
+    def verify(self, obj):
+        if obj == 2 and not cfg.get(cfg.accepts_custom_disclaimer):
+            title = 'Disclaimer for Use for Custom Imports'
+            content = CUSTOM_DISCLAIMER
+            w = Dialog(title, content, self.parent)
+            w.yesButton.setText(self.tr('Agree'))
+            if w.exec():
+                cfg.set(cfg.accepts_custom_disclaimer, True)
+                w.destroy()
+
+    def add_custom(self):
+        if cfg.get(cfg.accepts_custom_disclaimer):
+            m = CustomMessageBox(self.parent)
+            if m.exec():
+                custom_dir = os.path.join("models", f"custom_{m.custom_name.value}", f"{cfg.get(cfg.engine)}")
+
+                if os.path.exists(custom_dir):
+                    shutil.rmtree(custom_dir)
+
+                os.makedirs(custom_dir, exist_ok=True)
+                custom_name = f"custom_{m.custom_name.value}"
+
+                if m.pth_file.value != "Please Select a 'pth' File":
+                    shutil.copy(m.index_file.value, os.path.join(custom_dir, f"{custom_name}_v1.pth"))
+
+                if m.ckpt_file.value != "Please Select a 'ckpt' File":
+                    shutil.copy(m.index_file.value, os.path.join(custom_dir, f"{custom_name}_v1.cpkt"))
+
+                if m.index_file.value != "Please Select an 'index' File":
+                    shutil.copy(m.index_file.value, os.path.join(custom_dir, f"{custom_name}_v1.index"))
+
+                custom_model = {
+                    'name': f"custom_{m.custom_name.value}",
+                    'display_name': m.custom_name,
+                    f"{cfg.get(cfg.engine)}": {
+                        "version": "1",
+                        "engine_version": "2" if cfg.get(cfg.engine) == 'RVC' or cfg.get(cfg.engine) == 'GPT_SoVITS' else '1',
+                        "engine": f"{cfg.get(cfg.engine)}",
+                        "type": "pth"
+                    }
+                }
+
+                if os.path.exists('config/custom_models.json'):
+                    with open('config/custom_models.json', 'r', encoding="utf-8") as file:
+                        custom_models = json.load(file)
+                else:
+                    custom_models = []
+
+                custom_models.append(custom_model)
+
+                with open('config/custom_models.json', 'w', encoding="utf-8") as file:
+                    json.dump(custom_models, file)
+
+                QTimer.singleShot(0, lambda: (
+                    self.parent.load_models_config()
+                ))
 
     def find_versions(self, directory_path, character_model_name, model_type):
         # Construct the pattern dynamically
@@ -1141,7 +1344,7 @@ class CharactersWidget(FallTalkWidget):
         headers = ["Load", "Name", "Directory", "RVC"]
         model = CharacterTableModel([], headers)
         self.untrained_table.setModel(model)
-        headers = ["Load", "Name", "Directory", "Update", "Delete",  "RVC"]
+        headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
         model = CharacterTableModel([], headers)
         self.trained_table.setModel(model)
 
@@ -1158,7 +1361,7 @@ class CharactersWidget(FallTalkWidget):
             i.append(cm)
             d.append(i)
 
-        headers = ["Load", "Name", "Directory", "Update", "Delete",  "RVC"]
+        headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
         table_model = CharacterTableModel(d, headers)
         self.trained_table.setModel(table_model)
 
@@ -1248,6 +1451,64 @@ class CharactersWidget(FallTalkWidget):
                 index = table_model.index(row, 0)
                 self.trained_table.setIndexWidget(index, widget)
 
+    def loadCustom(self, parent, custom_characters):
+        data = []
+        for row, cm in enumerate(custom_characters):
+            item = []
+            item.append(f'load')
+            item.append(cm["display_name"])
+            item.append(cm["display_name"] if cm["name"] is None else cm["name"])
+            item.append(f'delete')
+            item.append(f'rvc')
+            item.append(cm)
+            data.append(item)
+
+        headers = ["Load", "Name", "Directory", "Delete", "RVC"]
+        table_model = CharacterTableModel(data, headers)
+        self.custom_table.setModel(table_model)
+
+        for row in range(table_model.rowCount()):
+            character_model = table_model.full_data(row, 5)
+
+            if character_model['RVC']:
+                widget = QWidget()
+                icon_widget = IconWidget()
+                icon_widget.setFixedSize(20, 20)
+                icon_widget.setIcon(FIF.CHECKBOX)
+                rvc_layout = QHBoxLayout(widget)
+                rvc_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                rvc_layout.setContentsMargins(1, 1, 1, 1)
+                rvc_layout.addWidget(icon_widget)
+                index = table_model.index(row, 4)
+                self.custom_table.setIndexWidget(index, widget)
+
+            # Add Load Button for Untrained Characters
+            load_button = PushButton('Load')
+            load_button.setMinimumWidth(115)
+            load_button.setIcon(FIF.SEND)
+
+            widget = QWidget()
+            layout = QHBoxLayout(widget)
+            layout.addWidget(load_button)
+            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.setContentsMargins(1, 1, 1, 1)
+            load_button.clicked.connect(lambda _, rvc=character_model['RVC'], c=character_model, r=row: parent.load_base_model(c, rvc))
+            index = table_model.index(row, 0)
+            self.custom_table.setIndexWidget(index, widget)
+
+            delete_button = PushButton('Delete')
+            delete_button.setIcon(FallTalkStrokeIcons.DELETE.icon())
+            delete_button.setMinimumWidth(115)
+            delete_widget = QWidget()
+            delete_layout = QHBoxLayout(delete_widget)
+            delete_layout.addWidget(delete_button)
+            delete_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            delete_layout.setContentsMargins(1, 1, 1, 1)
+            delete_button.clicked.connect(
+                lambda _, dn=character_model["display_name"], c=character_model['name']: parent.delete_custom_model(c, dn))
+            index = table_model.index(row, 4)
+            self.custom_table.setIndexWidget(index, delete_widget)
+
     def loadUntrained(self, parent, untrained_characters):
         data = []
         for row, cm in enumerate(untrained_characters):
@@ -1329,6 +1590,145 @@ class CharactersWidget(FallTalkWidget):
         )
 
 
+class FXWidget(FallTalkWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent, text="Sound FX Generator", vertical=True)
+        self.parent = parent
+
+        self.text_input = TextEdit()
+        font = QFont()
+        font.setPointSize(12)
+        self.text_input.setFont(font)
+        self.addToFrame(self.text_input)
+
+        self.generate_button = PrimaryPushButton("Generate")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.generate_fx)
+
+        self.media_player = StandardAudioPlayerBar(self)
+        self.media_player.setVolume(100)
+
+        self.output_name = ConfigItem("TTS", "output_name", None, ConfigValidator())
+
+        self.autoplay = SwitchSettingCard(
+            FIF.PLAY,
+            self.tr('Autoplay'),
+            self.tr('Automatically Play Generated Audio'),
+            cfg.auto_play,
+        )
+        self.output_name_card = TextSettingCard(
+            self.output_name,
+            FIF.SAVE_AS,
+            self.tr('Output Name'),
+            self.tr('Name of Generated WAV file'),
+            placeholder="Random"
+        )
+
+        self.addToFrame(self.autoplay)
+        self.addToFrame(self.output_name_card)
+        self.addToFrame(self.generate_button)
+        self.addToFrame(self.media_player)
+
+class MusicWidget(FallTalkWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent, text="Music Generator", vertical=True)
+        self.parent = parent
+
+        self.text_input = TextEdit()
+        font = QFont()
+        font.setPointSize(12)
+        self.text_input.setFont(font)
+        self.addToFrame(self.text_input)
+
+        self.generate_button = PrimaryPushButton("Generate")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.generate_music)
+
+        self.media_player = StandardAudioPlayerBar(self)
+        self.media_player.setVolume(100)
+
+        self.output_name = ConfigItem("TTS", "output_name", None, ConfigValidator())
+
+        self.autoplay = SwitchSettingCard(
+            FIF.PLAY,
+            self.tr('Autoplay'),
+            self.tr('Automatically Play Generated Audio'),
+            cfg.auto_play,
+        )
+        self.output_name_card = TextSettingCard(
+            self.output_name,
+            FIF.SAVE_AS,
+            self.tr('Output Name'),
+            self.tr('Name of Generated WAV file'),
+            placeholder="Random"
+        )
+
+        self.addToFrame(self.autoplay)
+        self.addToFrame(self.output_name_card)
+        self.addToFrame(self.generate_button)
+        self.addToFrame(self.media_player)
+
+
+
+class UpscaleWidget(FallTalkWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent, text="Audio Upscaler", vertical=True)
+        self.parent = parent
+
+        self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.boxLayout.addItem(self.spacer)
+
+        self.upscale_dir = ConfigItem("upscale", "upscale_dir", None, CustomFolderValidator())
+
+        self.upscale_dir_card = PushSettingCard(
+            self.tr('Select Folder'),
+            FIF.FOLDER,
+            self.tr("Dir for Upscaling"),
+            self.upscale_dir.value,
+        )
+
+        self.upscale_dir_card.clicked.connect(self.__onFolderCardClicked)
+
+        self.generate_button = PrimaryPushButton("Upscale")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.upscale_folder)
+
+        self.include_subdir = SwitchSettingCard(
+            FIF.FOLDER_ADD,
+            self.tr('Sub Directories'),
+            self.tr('Include Sub Directories?'),
+            cfg.include_subdir,
+        )
+
+        self.replace_existing_card = SwitchSettingCard(
+            FallTalkIcons.REPLACE,
+            self.tr('Replace'),
+            self.tr('Replace all original WAV/XWM/FUZ?'),
+            cfg.replace_existing,
+        )
+
+        self.r_and_sub = QGroupBox()
+        self.r_and_sub.setStyleSheet("border: none")
+        self.r_and_sub_layout = QHBoxLayout()
+        self.r_and_sub_layout.setContentsMargins(0, 0, 0, 0)
+        self.r_and_sub_layout.addWidget(self.include_subdir, 3)
+        self.r_and_sub_layout.addWidget(self.replace_existing_card, 3)
+        self.r_and_sub.setLayout(self.r_and_sub_layout)
+
+        self.addToFrame(self.upscale_dir_card)
+        self.addToFrame(self.r_and_sub)
+        self.addToFrame(self.generate_button)
+
+    def __onFolderCardClicked(self):
+        """ download folder card clicked slot """
+        folder = QFileDialog.getExistingDirectory(
+            self, self.tr("Choose A Directory"), "./")
+        if not folder or folder == "":
+            return
+
+        self.upscale_dir.value = folder
+        self.upscale_dir_card.setContent(folder)
+
 class BulkGenerationWidget(FallTalkWidget):
 
     def __init__(self, parent=None):
@@ -1343,7 +1743,7 @@ class BulkGenerationWidget(FallTalkWidget):
         self.bulk_table.verticalHeader().setVisible(False)
         self.bulk_table.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked)
 
-        self.headers = ["filename",  "character", "text", "reference"]
+        self.headers = ["filename", "character", "text", "reference"]
         model = TableModel([], self.headers)
         self.bulk_table.setModel(model)
         self.bulk_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -1351,7 +1751,54 @@ class BulkGenerationWidget(FallTalkWidget):
         self.bulk_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.bulk_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
 
-        self.addToFrame(self.bulk_table)
+        # self.mode_card = RadioSettingCard(
+        #     cfg.bulk_mode,
+        #     FIF.DEVELOPER_TOOLS,
+        #     self.tr('Mode'),
+        #     self.tr('How do we perform bulk actions'),
+        #     texts=["csv", "RVC with folder"],
+        # )
+        #
+        # self.mode_card.optionChanged.connect(self.mode_changed)
+
+        self.rvc_dir = ConfigItem("bulk", "rvc_dir", None, CustomFolderValidator())
+
+        self.rvc_dir_card = PushSettingCard(
+            self.tr('Select Folder'),
+            FIF.FOLDER,
+            self.tr("Dir for RVC updates"),
+            self.rvc_dir.value,
+        )
+
+        self.rvc_dir_card.clicked.connect(self.__onFolderCardClicked)
+
+        self.include_subdir = SwitchSettingCard(
+            FIF.FOLDER_ADD,
+            self.tr('Sub Directories'),
+            self.tr('Include Sub Directories?'),
+            cfg.include_subdir,
+        )
+
+        self.replace_existing_card = SwitchSettingCard(
+            FallTalkStrokeIcons.REPLACE,
+            self.tr('Replace'),
+            self.tr('Replace all original WAV/XWM/FUZ?'),
+            cfg.replace_existing,
+        )
+
+        self.r_and_sub = QGroupBox()
+        self.r_and_sub.setStyleSheet("border: none")
+        self.r_and_sub_layout = QHBoxLayout()
+        self.r_and_sub_layout.setContentsMargins(0, 0, 0, 0)
+        self.r_and_sub_layout.addWidget(self.include_subdir, 3)
+        self.r_and_sub_layout.addWidget(self.replace_existing_card, 3)
+        self.r_and_sub.setLayout(self.r_and_sub_layout)
+
+        self.character_card = RvcComboBoxSettingsCard(
+            FIF.PEOPLE,
+            self.tr('Character'),
+            self.tr('Which Character to Use'))
+
 
         self.xwm_card = SwitchSettingCard(
             FIF.COMMAND_PROMPT,
@@ -1400,17 +1847,93 @@ class BulkGenerationWidget(FallTalkWidget):
         self.upload_file_card.clicked.connect(self.__onOutputFolderCardClicked)
         self.started_card.clicked.connect(self.__onShowGettingStarted)
 
-        self.addToFrame(self.f_and_u)
+        self.pivot = SegmentedWidget(self)
+        self.stackedWidget = QStackedWidget(self)
+
+        self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+
+        self.rvc_widget = QWidget()
+        self.rvc_widget.setContentsMargins(0, 0, 0, 0)
+        self.rvc_widget_view = QVBoxLayout(self.rvc_widget)
+        self.rvc_widget_view.setContentsMargins(0, 0, 0, 0)
+        self.rvc_widget_view.addItem(self.spacer)
+        self.rvc_widget_view.addWidget(self.rvc_dir_card)
+        self.rvc_widget_view.addWidget(self.character_card)
+        self.rvc_widget_view.addWidget(self.r_and_sub)
+
+        self.bulk_widget = QWidget()
+        self.bulk_widget.setContentsMargins(0, 0, 0, 0)
+        self.bulk_widget_view = QVBoxLayout(self.bulk_widget)
+        self.bulk_widget_view.setContentsMargins(0, 0, 0, 0)
+        self.bulk_widget_view.addWidget(self.bulk_table)
+        self.bulk_widget_view.addWidget(self.f_and_u)
+
+        self.addSubInterface(self.bulk_widget, 'bulk_widget', 'CSV')
+        self.addSubInterface(self.rvc_widget, 'custom_table', 'RVC')
+
+        # self.addToFrame(self.bulk_table)
+        # self.addToFrame(self.f_and_u)
+        # self.addToFrame(self.rvc_dir_card)
+        # self.addToFrame(self.r_and_sub)
+        # self.addToFrame(self.character_card)
 
         self.generate_button = PrimaryPushButton("Bulk Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.bulk_inference)
 
         self.gen_settings.setLayout(self.gen_settings_layout)
+
+        self.boxLayout.addWidget(self.pivot, 0, Qt.AlignmentFlag.AlignLeft)
+        self.boxLayout.addWidget(self.stackedWidget)
+        self.stackedWidget.currentChanged.connect(self.setup_character_card)
+        self.stackedWidget.setCurrentWidget(self.bulk_widget)
+
         self.addToFrame(self.gen_settings)
         self.addToFrame(self.generate_button)
 
         self.setEnabled(cfg.engine.value != 'VoiceCraft')
+
+
+    def addSubInterface(self, widget: QWidget, objectName, text):
+        widget.setObjectName(objectName)
+        self.stackedWidget.addWidget(widget)
+        self.pivot.addItem(
+            routeKey=objectName,
+            text=text,
+            onClick=lambda: self.stackedWidget.setCurrentWidget(widget)
+        )
+
+    def __onFolderCardClicked(self):
+        """ download folder card clicked slot """
+        folder = QFileDialog.getExistingDirectory(
+            self, self.tr("Choose A Directory"), "./")
+        if not folder or folder == "":
+            return
+
+        self.rvc_dir = folder
+        self.rvc_dir_card.setContent(folder)
+
+    def setup_character_card(self):
+        if self.stackedWidget.currentWidget() == self.rvc_widget:
+            if self.character_card.configItem.size() == 0:
+                self.populate_character_card()
+
+    def populate_character_card(self):
+            self.character_card.configItem.clear()
+            items = []
+            for key, value in self.parent.models.items():
+                if 'RVC' in value:
+                    items.append(key)
+
+            if self.parent.custom_models is not None:
+                for key, value in self.parent.custom_models.items():
+                    if 'RVC' in value:
+                        items.append(key)
+
+            items.sort()
+            self.character_card.configItem.addItems(items)
+            self.character_card.configItem.setCurrentIndex(0)
+
 
 
     def __onShowGettingStarted(self):
@@ -1448,8 +1971,6 @@ class BulkGenerationWidget(FallTalkWidget):
         if w.exec():
             pass
 
-
-
     def __onOutputFolderCardClicked(self):
 
         allowed_file_types = "Text files (*.txt);;CSV files (*.csv)"
@@ -1474,9 +1995,6 @@ class BulkGenerationWidget(FallTalkWidget):
     def clear(self):
         model = TableModel([], self.headers)
         self.bulk_table.setModel(model)
-
-
-
 
 
 class CustomTableModel(QAbstractTableModel):

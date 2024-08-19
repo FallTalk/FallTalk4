@@ -277,6 +277,48 @@ def download_model_from_hub(character, model):
         huggingface_hub.hf_hub_download(REPO, f"models/{filename.replace(os.sep, '/')}", local_dir=os.path.abspath(f"./"))
 
 
+
+def load_music_gen(parent, api=False):
+    try:
+        if parent.music_engine is None:
+            from tts_engines.audioldm2_engine import Audioldm2Engine
+            parent.music_engine = Audioldm2Engine(parent, "cvssp/audioldm2-music")
+            print("music engine Loaded")
+        if not api:
+            QMetaObject.invokeMethod(parent, "after_music_gen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+    except Exception as e:
+        logger.exception(f"Error: {e}")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Music Engine"), Q_ARG(str, "An Error Occured while loading the music engine. Please check your logs and report the issue if needed"))
+
+
+def load_fx_gen(parent, api=False):
+    try:
+        if parent.sound_fx_engine is None:
+            from tts_engines.audioldm2_engine import Audioldm2Engine
+            parent.sound_fx_engine = Audioldm2Engine(parent, "cvssp/audioldm2-large")
+            print("fx engine Loaded")
+        if not api:
+            QMetaObject.invokeMethod(parent, "after_fx_gen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+    except Exception as e:
+        logger.exception(f"Error: {e}")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load FX Engine"), Q_ARG(str, "An Error Occured while loading the fx engine. Please check your logs and report the issue if needed"))
+
+
+def load_upscaler(parent, api=False):
+    try:
+        if parent.upscale_engine is None:
+            from tts_engines.upscale_engine import UpscaleEngine
+            parent.upscale_engine = UpscaleEngine(parent)
+            print("Upscaler Loaded")
+        if not api:
+            QMetaObject.invokeMethod(parent, "after_upscale", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+    except Exception as e:
+        logger.exception(f"Error: {e}")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Upscaler"), Q_ARG(str, "An Error Occured while loading the upscaler. Please check your logs and report the issue if needed"))
+
+
+
+
 def download_file_from_web(url, local_path):
     if os.path.exists(local_path):
         return
@@ -346,15 +388,16 @@ def load_gpt_sovits(parent):
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
 
 
-def load_rvc(parent):
+def load_rvc(parent, api=False):
     try:
         downloadRVC(parent)
         from tts_engines.rvc_engine import RVC_Engine
         parent.tts_engine = RVC_Engine()
         print("RVC Loaded")
         load_whisper(parent)
-        QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-        QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+        if not api:
+            QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+            QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
@@ -611,6 +654,81 @@ def voicecraft_inference(parent, output_file, text, selected_audio, panel, start
             QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Generate Audio"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
 
 
+
+def get_bulk_folder(parent):
+    current_time = datetime.now()
+    time_stamp = current_time.strftime("%Y%m%d%H%M%S")
+    formatted_time_stamp = f"{time_stamp[:4]}_{time_stamp[4:6]}_{time_stamp[6:8]}_{time_stamp[8:10]}_{time_stamp[10:12]}_{time_stamp[12:14]}"
+    output_folder = f"bulk_outputs/{formatted_time_stamp}_{parent.tts_engine.engine_name}"
+    os.makedirs(output_folder, exist_ok=True)
+    return output_folder
+
+
+def bulk_rvc_inferent(parent, directory, character, include_subdir, replace):
+    wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
+    fuz_files = glob.glob(os.path.join(directory, '**', '*.fuz'), recursive=include_subdir)
+    xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
+    count = 0
+    output_folder = None
+    model = get_character_model(character, parent.models, parent.custom_models)
+    is_trained, has_rvc = get_trained_character(model, 'RVC')
+    engine_changed = False
+
+    files = set()
+
+    files.update(wav_files)
+
+    if is_trained:
+        if parent.tts_engine.engine_name != 'RVC':
+            engine_changed = True
+            load_rvc(parent, True)
+
+        if os.path.exists(os.path.join('models', character, 'RVC')):
+            download_rvc_models(character, model['RVC'])
+
+        parent.tts_engine.setup(character, has_rvc, not is_trained)
+
+        for xwm_file in xwm_files:
+            wav_file = xwm_file.replace(".xwm", ".wav")
+            create_xwm(xwm_file, wav_file, encode=False)
+            files.add(wav_file)
+
+        for fuz_file in fuz_files:
+            extract_fuz(fuz_file)
+            xwm_file = fuz_file.replace(".fuz", ".xwm")
+            wav_file = fuz_file.replace(".fuz", ".wav")
+            create_xwm(xwm_file, wav_file, encode=False)
+            files.add(wav_file)
+
+        total = len(files)
+
+        QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Starting...: {count}/{total}"))
+
+        for wav_file in files:
+
+            if not replace:
+                if output_folder is None:
+                    output_folder = get_bulk_folder(parent)
+                output_file = os.path.join(output_folder, os.path.basename(wav_file))
+            else:
+                output_file = wav_file
+
+            rvc_inference(parent, output_file, None, True)
+
+            if cfg.get(cfg.xwm_enabled):
+                create_lip_and_fuz(parent, output_file)
+
+            count += 1
+            QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Completed: {count}/{total}"))
+
+
+    if engine_changed:
+        QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+    else:
+        QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+
+
+
 def bulk_inference(parent):
     if parent.tts_engine.engine_name != 'VoiceCraft':
         model = parent.bulk_generate_widget.bulk_table.model()
@@ -618,11 +736,7 @@ def bulk_inference(parent):
         count = 0
         total = len(datas)
 
-        current_time = datetime.now()
-        time_stamp = current_time.strftime("%Y%m%d%H%M%S")
-        formatted_time_stamp = f"{time_stamp[:4]}_{time_stamp[4:6]}_{time_stamp[6:8]}_{time_stamp[8:10]}_{time_stamp[10:12]}_{time_stamp[12:14]}"
-        output_folder = f"bulk_outputs/{formatted_time_stamp}_{parent.tts_engine.engine_name}"
-        os.makedirs(output_folder, exist_ok=True)
+        output_folder = get_bulk_folder(parent)
         last_character = None
 
         for data in datas:
@@ -633,7 +747,7 @@ def bulk_inference(parent):
                 reference_voice = data[3]
                 reference_path = None
 
-                model = get_character_model(character, parent.models)
+                model = get_character_model(character, parent.models, parent.custom_models)
                 is_trained, has_rvc = get_trained_character(model, parent.tts_engine.engine_name)
 
                 if file_name is not None and file_name != "":
@@ -692,7 +806,7 @@ def bulk_inference(parent):
 
 
 def get_reference(parent, character, reference):
-    character_model = get_character_models(character, parent.characters_data)
+    character_model = parent.characters_data[character] if character in parent.characters_data else None
     if character_model is not None:
         for voice_file in character_model['voicefiles']:
             if reference in voice_file['filename']:
@@ -703,10 +817,11 @@ def get_reference(parent, character, reference):
                 return f"temp/{filename}.wav"
 
 
-def get_character_model(character, models):
-    for character_model in models["characters"]:
-        if character in character_model['name'] and character == character_model['name']:
-            return character_model
+def get_character_model(character, models, custom_models):
+    if character.startswith("custom_") and custom_models is not None:
+        return custom_models[character] if character in custom_models else None
+    else:
+        return models[character] if character in models else None
 
 
 def get_trained_character(character_model, engine_name):
@@ -779,3 +894,20 @@ def get_model_diff(old_json, new_json):
         return None
 
     return "\n \n".join(result)
+
+
+
+
+def seed_everything(seed):
+    import random, os
+    import numpy as np
+    import torch
+
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False

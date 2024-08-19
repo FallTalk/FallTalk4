@@ -18,6 +18,10 @@ class FallTalkStrokeIcons(FluentIconBase, Enum):
     VOICE_OVER = "voice-over"
     VOICE_SQUARE = "voice-square"
     FROG = "frog"
+    MUSIC = "music"
+    REPLACE = "replace"
+    ENHANCE = "enhance"
+
     def icon(self, theme=Theme.AUTO, color: QColor = None) -> QIcon:
         path = self.path(theme)
 
@@ -56,6 +60,9 @@ class FallTalkIcons(FluentIconBase, Enum):
     G = "g"
     FROG = "frog"
     BULK = "bulk"
+    REPLACE = "replace"
+    FX = "fx"
+    ENHANCE = "enhance"
 
     def icon(self, theme=Theme.AUTO, color: QColor = None) -> QIcon:
         """ create a fluent icon

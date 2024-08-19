@@ -1,7 +1,7 @@
 import torch
 from whisperx import load_model
 
-device = "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 if device == "cpu":
     compute_type = "int8"
@@ -10,7 +10,7 @@ else:
 model = load_model("distil-large-v3", device, language='en', compute_type=compute_type, asr_options={"suppress_numerals": True, "max_new_tokens": None, "clip_timestamps": None, "hallucination_silence_threshold": None})
 
 
-audio = "D:\\datasets_40000\\fallout4.esm\\playervoicemale01\\000673df_1.wav"
+audio = "D:\\datasets\\fallout4.esm\\playervoicemale01\\000673df_1.wav"
 
 resp = model.transcribe(audio)['segments']
 

@@ -33,6 +33,7 @@ torchaudio_datas = collect_data_files('torio', include_py_files=True)
 ffmpeg_datas  = collect_data_files('ffmpeg', include_py_files=True)
 phonemizer_datas = collect_data_files('phonemizer', include_py_files=True)
 config_datas = collect_data_files('config', include_py_files=True)
+audio_upscaler_datas = collect_data_files('audio_upscaler', include_py_files=True)
 
 
 def collect_module_data(module_path):
@@ -88,6 +89,7 @@ a = Analysis(
     +inflect_datas
     +torchaudio_datas
     +re_datas
+    +audio_upscaler_datas
     +phonemizer_datas
     +config_datas
     +tts_engines_datas_modules,
@@ -104,9 +106,7 @@ a = Analysis(
     +re_hiddenimports
     +phonemizer_hiddenimports
     +torchaudio_hiddenimports
-    +wordsegment_hiddenimports
-    +["nvrtc"]
-    +["cuda"],
+    +wordsegment_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

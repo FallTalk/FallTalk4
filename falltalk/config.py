@@ -1,6 +1,7 @@
 # coding:utf-8
 import os
 from enum import Enum
+from pathlib import Path
 from typing import Union
 
 import torch
@@ -16,9 +17,10 @@ from qfluentwidgets import (qconfig, QConfig, ConfigItem, OptionsConfigItem, Boo
 class Language(Enum):
     """ Language enumeration """
 
-    CHINESE_SIMPLIFIED = QLocale(QLocale.Chinese, QLocale.China)
-    CHINESE_TRADITIONAL = QLocale(QLocale.Chinese, QLocale.HongKong)
-    ENGLISH = QLocale(QLocale.English)
+    CHINESE_SIMPLIFIED = QLocale(QLocale.Language.Chinese, QLocale.Country.China)
+    CHINESE_TRADITIONAL = QLocale(QLocale.Language.Chinese, QLocale.Country.HongKong)
+    ENGLISH = QLocale(QLocale.Language.English)
+    SPANISH = QLocale(QLocale.Language.Spanish)
     AUTO = QLocale()
 
 
@@ -317,6 +319,20 @@ def find_fallout4_exe():
         return "fallout4.exe not found"
 
 
+class CustomFolderValidator(ConfigValidator):
+    """ Folder validator """
+
+    def validate(self, value):
+        return value is not None and os.path.exists(value)
+
+    def correct(self, value):
+        if value is not None:
+            path = Path(value)
+            path.mkdir(exist_ok=True, parents=True)
+            return str(path.absolute()).replace("\\", "/")
+        return "Please Select a Valid Folder"
+
+
 class FileValidator(ConfigValidator):
 
     def __init__(self, allowed_file_types=None):
@@ -411,6 +427,10 @@ class Config(QConfig):
     first_start = ConfigItem('App', 'first_start', True, BoolValidator())
     api_only_mode = ConfigItem('App', 'api_only_mode', False, BoolValidator(), restart=True)
     accepted_disclaimer = ConfigItem('App', 'accepts_disclaimer', False, BoolValidator())
+    accepts_custom_disclaimer = ConfigItem('App', 'accepts_custom_disclaimer', False, BoolValidator())
+
+    replace_existing = ConfigItem("bulk", "replace_existing", True, BoolValidator())
+    include_subdir = ConfigItem("bulk", "include_subdir", True, BoolValidator())
 
     # XTTS
     speed = RangeConfigItem("XTTS", "speed", 100, RangeValidator(1, 200))
@@ -532,7 +552,7 @@ class Config(QConfig):
 
 YEAR = 2024
 AUTHOR = "Bryant21"
-VERSION = '1.0.4'
+VERSION = '1.1.0'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"
@@ -566,5 +586,21 @@ Prohibited Use: You are expressly prohibited from using the FallTalk AI models f
 
 Compliance with Laws and Regulations: You agree to comply with all applicable laws, regulations, and ethical standards in your use of the FallTalk models. This includes, but is not limited to, laws concerning intellectual property, privacy, and consumer protection. We assume no responsibility for any illegal use of the codebase.
 
+Limitation of Liability: In no event shall the developers, contributors, or distributors of this modding tool be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this tool or the model(s), even if advised of the possibility of such damage.
+
 Acknowledgment of Rights Holder: Zenimax Media, Inc. is the original rights holder of the Fallout franchise and all related intellectual property. This code and the FallTalk AI models are provided for the specific purposes outlined above, and any use outside of these parameters may violate Zenimax Media's intellectual property rights.
+
+By clicking "Agree", you signify your acceptance of these terms and your commitment to abide by them. If you do not agree to these terms, you may not use this app.
+"""
+
+CUSTOM_DISCLAIMER = """
+By proceeding with the import of custom models for use in Fallout 4 modding, you hereby acknowledge and agree to the following terms:
+
+    •  No Infringement: You warrant that the use of the model(s) does not infringe upon the rights of any third party, including but not limited to privacy rights, publicity rights, and intellectual property rights.
+    
+    •  Indemnification: You agree to indemnify and hold harmless the developers, contributors, and distributors of this modding tool from any claims, damages, losses, or expenses (including attorney's fees) arising out of or in connection with your use of the model, including any claims that the model infringes upon the rights of any third party.
+   
+    •  Limitation of Liability: In no event shall the developers, contributors, or distributors of this modding tool be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this tool or the model(s), even if advised of the possibility of such damage.
+
+By clicking "Agree", you signify your acceptance of these terms and your commitment to abide by them. If you do not agree to these terms, you must not proceed with the import of the model(s).
 """

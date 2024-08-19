@@ -18,7 +18,6 @@ from falltalk import falltalkutils
 from falltalk.config import cfg
 from tts_engines.tts_engine import tts_engine
 
-
 def seed_everything(seed):
     if seed != -1:
         os.environ['PYTHONHASHSEED'] = str(seed)
