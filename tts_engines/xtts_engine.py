@@ -74,7 +74,7 @@ class XTTS_Engine(tts_engine):
         if streaming:
             common_args["stream_chunk_size"] = 20
 
-        falltalkutils.logger.debug("Starting...")
+        falltalkutils.logger.debug("Starting")
         # Call the appropriate function
         output = inference_func(**common_args)
         falltalkutils.logger.debug(f'Done')

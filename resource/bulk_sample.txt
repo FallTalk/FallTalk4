@@ -1,4 +1,4 @@
 a01244_1,robotironsides,This is a test of untrained bulk file generation,000a56ae_1.fuz
 ,robotprotectron,This is a no file name,001680a7_1.fuz
 a01244_3,robotsentrybot,This is a test of external wav reference,samples/sentrybot_falltalk_rvc.wav
-a0231s_1,robotsentrybot,samples/preston_another_settlement_rvc.wav
+a0231s_1,robotsentrybot,samples/preston_another_settlement_rvc.wav,,bulk_test/

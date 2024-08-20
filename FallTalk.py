@@ -8,12 +8,12 @@ from icons import FallTalkIcons, FallTalkStrokeIcons
 
 # Configure the logger
 root_logger = logging.getLogger()
-root_logger.setLevel(logging.DEBUG)
+root_logger.setLevel(logging.INFO)
 
 os.makedirs("logs", exist_ok=True)
 # Create a handler that writes log messages to a file, with rotation
-handler = RotatingFileHandler('logs/falltalk.log', maxBytes=10 * 1024 * 1024, backupCount=5, encoding='utf-8')
-handler.setLevel(logging.DEBUG)
+handler = RotatingFileHandler('logs/falltalk.log', maxBytes=5 * 1024 * 1024, backupCount=5, encoding='utf-8')
+handler.setLevel(logging.INFO)
 
 # Create a formatter and add it to the handler
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -60,20 +60,19 @@ import subprocess
 import threading
 import uuid
 import webbrowser
-from datetime import datetime
 
 import PySide6
 import huggingface_hub
 from PySide6.QtCore import Qt, QSize, Slot, QUrl, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
-from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Dialog, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, MessageBox
+from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Dialog, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, MessageBox, TextWrap
 from qfluentwidgets import Theme, NavigationItemPosition
 from packaging import version
 import config
 import falltalkapi
 from falltalk import falltalkutils
-from falltalk.Widgets import SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, VoiceCraftWidget, FaqWidget, GPT_SoVITSWidget, StyleTTS2Widget, RVCWidget, FallTalkFluentWindow, FallTalkWidget, BulkGenerationWidget, UpscaleWidget, MusicWidget, FXWidget
+from falltalk.Widgets import SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, VoiceCraftWidget, FaqWidget, GPT_SoVITSWidget, StyleTTS2Widget, RVCWidget, FallTalkFluentWindow, FallTalkWidget, BulkGenerationWidget, UpscaleWidget, MusicGenWidget, AudioGenWidget
 from falltalk.config import cfg, DISCLAIMER, REPO
 
 
@@ -159,7 +158,7 @@ class ModelApp(FallTalkFluentWindow):
     def verifyFallout(self):
         if cfg.get(cfg.fallout_4_directory_check):
             if cfg.get(cfg.fallout_4_directory) == "fallout4.exe not found":
-                w = Dialog(title="Fallout 4 Not Found", content="Fallout 4 was not found installed on your computer. Please go to settings and set the Fallout 4 install directory to get the full features of this app.", parent=self)
+                w = MessageBox(title="Fallout 4 Not Found", content="Fallout 4 was not found installed on your computer. Please go to settings and set the Fallout 4 install directory to get the full features of this app.", parent=self)
                 w.cancelButton.setText(self.tr("Do Not Remind Me Again"))
                 if w.exec():
                     pass
@@ -171,7 +170,15 @@ class ModelApp(FallTalkFluentWindow):
     def verify(self):
         title = 'Disclaimer for Use of for FallTalk'
         content = DISCLAIMER
-        w = Dialog(title, content, self)
+        w = MessageBox(title, content, self)
+        w.contentLabel.setMinimumHeight(675)
+        w.contentLabel.setMinimumWidth(1100)
+        w.contentLabel.setText(w.content)
+        w.contentLabel.setWordWrap(True)
+        w.widget.setFixedSize(
+            max(w.contentLabel.width(), w.titleLabel.width()) + 48,
+            w.contentLabel.y() + w.contentLabel.height() + 105
+        )
         w.yesButton.setText(self.tr('Agree'))
         if w.exec():
             cfg.set(cfg.accepted_disclaimer, True)
@@ -181,7 +188,7 @@ class ModelApp(FallTalkFluentWindow):
     def downloadModels(self):
         title = 'Download Engines'
         content = """Would you like to download all the engines? This will be about 10 GBs and take a few minutes. They will be downloaded on demand as needed otherwise."""
-        w = Dialog(title, content, self)
+        w = MessageBox(title, content, self)
         w.yesButton.setText(self.tr('Download'))
         w.cancelButton.setText(self.tr('No'))
         if w.exec():
@@ -256,7 +263,7 @@ class ModelApp(FallTalkFluentWindow):
             cfg.set(cfg.device, "cpu")
             self.gpu_action.setChecked(False)
             self.gpu2_action.setChecked(False)
-            self.onEngineChange(cfg.engine)
+            self.onDeviceChange()
         elif cfg.get(cfg.device) == "cpu":
             self.cpu_action.setChecked(True)
 
@@ -265,7 +272,7 @@ class ModelApp(FallTalkFluentWindow):
             cfg.set(cfg.device, "cuda")
             self.cpu_action.setChecked(False)
             self.gpu2_action.setChecked(False)
-            self.onEngineChange(cfg.engine)
+            self.onDeviceChange()
         elif cfg.get(cfg.device) == "cuda":
             self.gpu_action.setChecked(True)
 
@@ -274,7 +281,7 @@ class ModelApp(FallTalkFluentWindow):
             cfg.set(cfg.device, "cuda:1")
             self.gpu_action.setChecked(False)
             self.cpu_action.setChecked(False)
-            self.onEngineChange(cfg.engine)
+            self.onDeviceChange()
         elif cfg.get(cfg.device) == "cuda:1":
             self.gpu2_action.setChecked(True)
 
@@ -301,17 +308,18 @@ class ModelApp(FallTalkFluentWindow):
         self.bulk_generate_widget = BulkGenerationWidget(parent=self)
 
         self.upscale_widget = UpscaleWidget(parent=self)
-        self.music_widget = MusicWidget(parent=self)
-        self.fx_widget = FXWidget(parent=self)
+        self.music_widget = MusicGenWidget(parent=self)
+        self.fx_widget = AudioGenWidget(parent=self)
 
         self.setting_widget = SettingsWidget(self)
 
-        self.addSubInterface(self.characters_widget, FIF.PEOPLE, 'Character Models', NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.reference_widget, FIF.MIX_VOLUMES, 'Reference Audio', NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.generate_widget, FIF.ROBOT, 'Generate Voice', NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.bulk_generate_widget, FallTalkIcons.BULK.icon(), 'Bulk Generation', NavigationItemPosition.SCROLL)
-
-        self.addSubInterface(self.upscale_widget, FallTalkIcons.ENHANCE.icon(), 'Audio Upscaler', NavigationItemPosition.SCROLL)
+        self.addSubInterface(self.characters_widget, FIF.PEOPLE, 'Character Models', NavigationItemPosition.TOP)
+        self.addSubInterface(self.reference_widget, FIF.MIX_VOLUMES, 'Reference Audio', NavigationItemPosition.TOP)
+        self.addSubInterface(self.generate_widget, FIF.ROBOT, 'Generate Voice', NavigationItemPosition.TOP)
+        self.navigationInterface.addSeparator()
+        self.addSubInterface(self.bulk_generate_widget, FallTalkIcons.BULK.icon(), 'Bulk Generation', NavigationItemPosition.TOP)
+        self.addSubInterface(self.upscale_widget, FallTalkIcons.ENHANCE.icon(), 'Bulk Enhancement', NavigationItemPosition.TOP)
+        self.navigationInterface.addSeparator()
         self.addSubInterface(self.music_widget, FallTalkStrokeIcons.MUSIC.icon(), 'Music Generator', NavigationItemPosition.SCROLL)
         self.addSubInterface(self.fx_widget, FallTalkIcons.FX.icon(), 'Sound FX Generator', NavigationItemPosition.SCROLL)
 
@@ -349,6 +357,8 @@ class ModelApp(FallTalkFluentWindow):
     def showLoaderPopup(self, title, text):
         self.setEnabled(False)
         self.stateTooltip = StateToolTip(title, text, self)
+        self.stateTooltip.setMinimumWidth(350)
+        self.stateTooltip.closeButton.setVisible(False)
         label_size = self.stateTooltip.width()
         window_width = self.width()
         x = (window_width - label_size) // 2
@@ -365,9 +375,28 @@ class ModelApp(FallTalkFluentWindow):
         self.stateTooltip = None
         self.setEnabled(True)
 
-    def onDeviceChange(self):
+    def clean_engines(self):
         if self.transcription_engine is not None:
             self.transcription_engine.clean()
+            del self.transcription_engine
+            self.transcription_engine = None
+
+        if self.sound_fx_engine is not None:
+            self.sound_fx_engine.clean()
+            del self.sound_fx_engine
+            self.sound_fx_engine = None
+
+        if self.music_engine is not None:
+            self.music_engine.clean()
+            del self.music_engine
+            self.music_engine = None
+
+        print("Cache Cleaned")
+
+    def onDeviceChange(self):
+        falltalkutils.logger.debug(f'Device Changed {cfg.get(cfg.device)}')
+        tr = (threading.Thread(target=self.clean_engines, daemon=True))
+        tr.start()
 
         if self.tts_engine is not None:
             self.onEngineChange(cfg.get(cfg.engine))
@@ -538,7 +567,7 @@ class ModelApp(FallTalkFluentWindow):
 
         if os.path.exists('config/custom_models.json'):
             with open('config/custom_models.json', 'r', encoding="utf-8") as file:
-                self.custom_models = json.load(file)
+                self.custom_models = {model['name']: model for model in json.load(file)}
 
         trained_characters = []
         untrained_characters = []
@@ -569,7 +598,7 @@ class ModelApp(FallTalkFluentWindow):
             self.characters_widget.loadUntrained(self, untrained_characters)
 
         if self.custom_models is not None:
-            self.characters_widget.loadCustom(self, untrained_characters)
+            self.characters_widget.loadCustom(self, self.custom_models)
 
         self.bulk_generate_widget.populate_character_card()
 
@@ -613,13 +642,26 @@ class ModelApp(FallTalkFluentWindow):
     def get_output_file_name(self, file_name):
         if file_name is None or file_name == "" or file_name == "Random":
             unique_id = uuid.uuid4()
-            current_time = datetime.now()
-            time_stamp = current_time.strftime("%Y%m%d%H%M%S")
-            formatted_time_stamp = f"{time_stamp[:4]}_{time_stamp[4:6]}_{time_stamp[6:8]}_{time_stamp[8:10]}_{time_stamp[10:12]}_{time_stamp[12:14]}"
-            file_name = f"{formatted_time_stamp}_{self.tts_engine.model_name}_{self.tts_engine.engine_name}_{unique_id.hex[:10]}"
+            file_name = f"{falltalkutils.formatted_time_stamp()}_{self.tts_engine.model_name}_{self.tts_engine.engine_name}_{unique_id.hex[:10]}"
 
         path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), self.tts_engine.model_name, f"{file_name}.wav"))
         os.makedirs(os.path.join(cfg.get(cfg.output_dir), self.tts_engine.model_name), exist_ok=True)
+        return path
+
+    def get_music_file(self, file_name, wav=False):
+        if file_name is None or file_name == "" or file_name == "Random":
+            file_name = falltalkutils.formatted_time_stamp_uuid()
+
+        path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), "music", f"{file_name}.wav" if wav else f"{file_name}"))
+        os.makedirs(os.path.join(cfg.get(cfg.output_dir), "music"), exist_ok=True)
+        return path
+
+    def get_fx_file(self, file_name, wav=False):
+        if file_name is None or file_name == "" or file_name == "Random":
+            file_name = falltalkutils.formatted_time_stamp_uuid()
+
+        path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), "fx", f"{file_name}.wav" if wav else f"{file_name}"))
+        os.makedirs(os.path.join(cfg.get(cfg.output_dir), "fx"), exist_ok=True)
         return path
 
     def get_output_file(self, widget):
@@ -651,12 +693,13 @@ class ModelApp(FallTalkFluentWindow):
             tr = (threading.Thread(target=falltalkutils.load_fx_gen, args={self}, daemon=True))
             tr.start()
         else:
+            output_file = str(self.get_fx_file(self.fx_widget.output_name.value, True))
             text = self.fx_widget.text_input.toPlainText()
             if text is None or text == "":
                 self.showErrorPopup(self.fx_widget, self.fx_widget.generate_button, "Please Enter Valid Text")
             else:
                 self.showLoaderPopup("Generating Sound FX", "Please Wait")
-                tr = (threading.Thread(target=self.sound_fx_engine.generate, args=(text, f"temp/test.wav", self.fx_widget), daemon=True))
+                tr = (threading.Thread(target=self.sound_fx_engine.generate, args=(text, output_file, self.fx_widget, self.fx_widget.duration.value), daemon=True))
                 tr.start()
 
     @Slot(PySide6.QtCore.QObject)
@@ -670,12 +713,15 @@ class ModelApp(FallTalkFluentWindow):
             tr = (threading.Thread(target=falltalkutils.load_music_gen, args={self}, daemon=True))
             tr.start()
         else:
+            output_file = str(self.get_music_file(self.music_widget.output_name.value))
             text = self.music_widget.text_input.toPlainText()
             if text is None or text == "":
                 self.showErrorPopup(self.music_widget, self.music_widget.generate_button, "Please Enter Valid Text")
             else:
-                self.showLoaderPopup("Generating Sound Music", "Please Wait")
-                tr = (threading.Thread(target=self.music_engine.generate, args=(text, f"temp/test.wav", self.music_widget), daemon=True))
+                ref = self.music_widget.ref_file.value if self.music_widget.ref_file.value != "Please Select a File" else None
+
+                self.showLoaderPopup("Generating Music", "Please Wait")
+                tr = (threading.Thread(target=self.music_engine.generate, args=(text, output_file, self.music_widget, self.music_widget.audio_mode.value, self.music_widget.duration.value, ref), daemon=True))
                 tr.start()
 
     @Slot(PySide6.QtCore.QObject)
@@ -685,7 +731,7 @@ class ModelApp(FallTalkFluentWindow):
 
     def upscale_folder(self):
         if self.upscale_engine is None:
-            self.showLoaderPopup("Loading Upscaler", "Please Wait")
+            self.showLoaderPopup("Loading Enhancer", "Please Wait")
             tr = (threading.Thread(target=falltalkutils.load_upscaler, args={self}, daemon=True))
             tr.start()
         else:
@@ -693,12 +739,14 @@ class ModelApp(FallTalkFluentWindow):
             if up_dir is None or up_dir == "Please Select a Valid Folder":
                 self.showErrorPopup(self.upscale_widget, self.upscale_widget.generate_button, "Please Select a Valid Folder")
             else:
-                self.showLoaderPopup("Up Scaling", "Please Wait")
-                tr = (threading.Thread(target=self.upscale_engine.upscale_dir, args=(up_dir, cfg.get(cfg.replace_existing), cfg.get(cfg.include_subdir)), daemon=True))
+                self.showLoaderPopup("Enhancing", "Please Wait")
+                tr = (threading.Thread(target=self.upscale_engine.upscale_dir, args=(up_dir, cfg.get(cfg.replace_existing), cfg.get(cfg.include_subdir), self.upscale_widget.audio_mode.value, self.upscale_widget.sample_rate.value), daemon=True))
                 tr.start()
 
+
+
     def bulk_inference(self):
-        if self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.rvc_widget and (self.tts_engine is None or self.tts_engine.engine_name != 'RVC'):
+        if self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_rvc_widget and (self.tts_engine is None or self.tts_engine.engine_name != 'RVC'):
             self.pending_bulk = True
             cfg.set(cfg.engine, 'RVC')
             self.onEngineChange(cfg.engine)
@@ -707,8 +755,8 @@ class ModelApp(FallTalkFluentWindow):
             self.onEngineChange(cfg.engine)
         else:
             self.pending_bulk = False
-            if self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_widget:
-                data = len(self.bulk_generate_widget.bulk_table.model().getData())
+            if self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_csv_widget:
+                data = len(self.bulk_generate_widget.bulk_csv_widget.bulk_table.model().getData())
                 if data > 0:
                     self.showLoaderPopup(f"Generating Bulk Audio", f"Completed: 0/{data}")
                     tr = (threading.Thread(target=falltalkutils.bulk_inference, args={self}, daemon=True))
@@ -716,14 +764,14 @@ class ModelApp(FallTalkFluentWindow):
                 else:
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select Load some Data")
             else:
-                rvc_dir = self.bulk_generate_widget.rvc_dir.value
+                rvc_dir = self.bulk_generate_widget.bulk_rvc_widget.rvc_dir.value
                 if rvc_dir is None or rvc_dir == "Please Select a Valid Folder":
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select a Valid Folder")
-                elif self.bulk_generate_widget.character_card.configItem.value is None or self.bulk_generate_widget.character_card.configItem.value == '':
+                elif self.bulk_generate_widget.bulk_rvc_widget.character_card.configItem.text() is None or self.bulk_generate_widget.bulk_rvc_widget.character_card.configItem.text() == '':
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select a valid Character")
                 else:
                     self.showLoaderPopup(f"Generating Bulk RVC Audio", f"Gathering Files")
-                    tr = (threading.Thread(target=falltalkutils.bulk_rvc_inferent, args=(self, rvc_dir, self.bulk_generate_widget.character_card.configItem.value, cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing)), daemon=True))
+                    tr = (threading.Thread(target=falltalkutils.bulk_rvc_inference, args=(self, rvc_dir, self.bulk_generate_widget.bulk_rvc_widget.character_card.configItem.text(), cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing)), daemon=True))
                     tr.start()
 
     def generate_audio(self, recording_file=None):
@@ -857,6 +905,12 @@ class ModelApp(FallTalkFluentWindow):
             tr = (threading.Thread(target=falltalkutils.load_model, args=(self, character['name'], rvc, character['display_name'], base_model), daemon=True))
             tr.start()
 
+    def load_custom_model(self, character, model, rvc):
+        if cfg.get(cfg.engine) in model:
+            self.load_trained_model(character, model, rvc)
+        else:
+            self.load_base_model(character, model, rvc)
+
     def load_trained_model(self, character, model, rvc):
         if self.tts_engine is None and cfg.engine is not None:
             self.pending_character = character
@@ -911,7 +965,7 @@ class ModelApp(FallTalkFluentWindow):
         Are you sure you would like to delete all {model['engine']} files for {display_name}? 
         This action cannot be undone, but you can download the files again at a later date.
         """
-        w = Dialog(title, content, self)
+        w = MessageBox(title, content, self)
         w.yesButton.setText(self.tr('Yes'))
         if w.exec():
             shutil.rmtree(os.path.join("models", character, model['engine']))
@@ -923,10 +977,10 @@ class ModelApp(FallTalkFluentWindow):
         Are you sure you would like to delete all files for {display_name}? 
         This action cannot be undone, but you can download the files again at a later date.
         """
-        w = Dialog(title, content, self)
+        w = MessageBox(title, content, self)
         w.yesButton.setText(self.tr('Yes'))
         if w.exec():
-            shutil.rmtree(os.path.join("models", character, cfg.get(cfg.engine)))
+            shutil.rmtree(os.path.join("models", character))
             self.load_models_config()
 
 
@@ -937,6 +991,8 @@ def hide_console():
 
 
 if __name__ == '__main__':
+
+    falltalkutils.seed_everything(0)
 
     if cfg.get(cfg.dpiScale) != "Auto":
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"

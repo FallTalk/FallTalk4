@@ -43,12 +43,12 @@ class StyledSettingCard(SettingCard):
 
 class SpinSettingCard(StyledSettingCard):
 
-    def __init__(self, configItem: RangeConfigItem, icon: Union[str, QIcon, FluentIconBase], title, content, parent=None):
+    def __init__(self, configItem: RangeConfigItem, icon: Union[str, QIcon, FluentIconBase], title, content, parent=None, step=10):
         super().__init__(icon, title, content, parent)
         self.configItem = configItem
         sb = SpinBox()
         sb.setMinimumWidth(150)
-        sb.setSingleStep(10)
+        sb.setSingleStep(step)
         sb.setRange(*configItem.range)
         sb.setValue(configItem.value)
         self.hBoxLayout.addWidget(sb)
@@ -418,6 +418,7 @@ class Config(QConfig):
         "App", "custom_references", "references/", FolderValidator())
     output_dir = ConfigItem("App", "output_dir", "output/", FolderValidator())
     rvc_enabled = ConfigItem("App", "rvc_enabled", True, BoolValidator())
+    keep_only_fuz = ConfigItem("App", "keep_only_fuz", True, BoolValidator())
     xwm_enabled = ConfigItem("App", "xwm_enabled", False, BoolValidator())
     download_configs = ConfigItem(
         "App", "download_configs", True, BoolValidator())
