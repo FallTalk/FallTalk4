@@ -92,7 +92,7 @@ class UpscaleEngine:
             if replace:
                 output_file = wav_file
             else:
-                output_file = wav_file.replace(".wav", "_upscale.wav")
+                output_file = wav_file.replace(".wav", "_enhanced.wav")
 
             if self.demucs_model:
                 self.demucs_file(wav_file, output_file)
