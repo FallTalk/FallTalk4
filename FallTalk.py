@@ -699,7 +699,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.showErrorPopup(self.fx_widget, self.fx_widget.generate_button, "Please Enter Valid Text")
             else:
                 self.showLoaderPopup("Generating Sound FX", "Please Wait")
-                tr = (threading.Thread(target=self.sound_fx_engine.generate, args=(text, output_file, self.fx_widget, self.fx_widget.duration.value), daemon=True))
+                tr = (threading.Thread(target=self.sound_fx_engine.generate, args=(text, output_file, self.fx_widget, cfg.fx_duration.value), daemon=True))
                 tr.start()
 
     @Slot(PySide6.QtCore.QObject)
@@ -721,7 +721,7 @@ class ModelApp(FallTalkFluentWindow):
                 ref = self.music_widget.ref_file.value if self.music_widget.ref_file.value != "Please Select a File" else None
 
                 self.showLoaderPopup("Generating Music", "Please Wait")
-                tr = (threading.Thread(target=self.music_engine.generate, args=(text, output_file, self.music_widget, self.music_widget.audio_mode.value, self.music_widget.duration.value, ref), daemon=True))
+                tr = (threading.Thread(target=self.music_engine.generate, args=(text, output_file, self.music_widget, cfg.audio_mode.value, cfg.music_duration.value, ref), daemon=True))
                 tr.start()
 
     @Slot(PySide6.QtCore.QObject)
@@ -746,11 +746,11 @@ class ModelApp(FallTalkFluentWindow):
 
 
     def bulk_inference(self):
-        if self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_rvc_widget and (self.tts_engine is None or self.tts_engine.engine_name != 'RVC'):
-            self.pending_bulk = True
-            cfg.set(cfg.engine, 'RVC')
-            self.onEngineChange(cfg.engine)
-        elif self.tts_engine is None:
+        # if self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_rvc_widget and (self.tts_engine is None or self.tts_engine.engine_name != 'RVC'):
+        #     self.pending_bulk = True
+        #     cfg.set(cfg.engine, 'RVC')
+        #     self.onEngineChange(cfg.engine)
+        if self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_csv_widget and self.tts_engine is None:
             self.pending_bulk = True
             self.onEngineChange(cfg.engine)
         else:
@@ -763,7 +763,7 @@ class ModelApp(FallTalkFluentWindow):
                     tr.start()
                 else:
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select Load some Data")
-            else:
+            elif self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_rvc_widget:
                 rvc_dir = self.bulk_generate_widget.bulk_rvc_widget.rvc_dir.value
                 if rvc_dir is None or rvc_dir == "Please Select a Valid Folder":
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select a Valid Folder")
@@ -771,8 +771,18 @@ class ModelApp(FallTalkFluentWindow):
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select a valid Character")
                 else:
                     self.showLoaderPopup(f"Generating Bulk RVC Audio", f"Gathering Files")
-                    tr = (threading.Thread(target=falltalkutils.bulk_rvc_inference, args=(self, rvc_dir, self.bulk_generate_widget.bulk_rvc_widget.character_card.configItem.text(), cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing)), daemon=True))
+                    tr = (threading.Thread(target=falltalkutils.bulk_rvc_inference, args=(self, rvc_dir, self.bulk_generate_widget.bulk_rvc_widget.character_card.configItem.text(), cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads)), daemon=True))
                     tr.start()
+            elif self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_fuz_widget:
+                lip_dir = self.bulk_generate_widget.bulk_fuz_widget.lip_dir.value
+                if lip_dir is None or lip_dir == "Please Select a Valid Folder":
+                    self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select a Valid Folder")
+                else:
+                    self.showLoaderPopup(f"Generating Bulk FUZ Audio", f"Gathering Files")
+                    tr = (threading.Thread(target=falltalkutils.bulk_fuz, args=(self, lip_dir, cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads)), daemon=True))
+                    tr.start()
+
+
 
     def generate_audio(self, recording_file=None):
         references = self.reference_widget.reference_audio

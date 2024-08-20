@@ -1,5 +1,4 @@
 import glob
-import multiprocessing
 import os
 
 import PySide6
@@ -13,7 +12,6 @@ import falltalkutils
 from audio_upscaler.predict import Predictor
 from falltalk.config import cfg
 from demucs.apply import apply_model
-from demucs.hdemucs import HDemucs
 from demucs.pretrained import get_model
 from demucs.audio import AudioFile
 
@@ -94,12 +92,9 @@ class UpscaleEngine:
             else:
                 output_file = wav_file.replace(".wav", "_enhanced.wav")
 
-            if self.demucs_model:
-                self.demucs_file(wav_file, output_file)
-
             if self.p:
                 self.p.predict(
-                    wav_file if self.mode != 'both' else output_file,
+                    wav_file,
                     output_file,
                     sr=self.sr,
                     ddim_steps=ddim_steps,
@@ -108,6 +103,9 @@ class UpscaleEngine:
                 )
                 self.remove_silence_at_end(output_file)
 
+            if self.demucs_model:
+                self.demucs_file(wav_file if self.mode != 'both' else output_file, output_file)
+
         except Exception as e:
             falltalkutils.logger.exception(f"Error: {e}")
 
@@ -115,9 +113,6 @@ class UpscaleEngine:
         try:
             wav_file = xwm_file.replace(".xwm", ".wav")
             falltalkutils.create_xwm(xwm_file, wav_file, encode=False)
-
-            if self.demucs_model:
-                self.demucs_file(wav_file, wav_file)
 
             if self.p:
                 self.p.predict(
@@ -130,6 +125,8 @@ class UpscaleEngine:
                 )
                 self.remove_silence_at_end(wav_file)
 
+            if self.demucs_model:
+                self.demucs_file(wav_file, wav_file)
 
             if replace:
                 falltalkutils.create_xwm(wav_file, xwm_file, encode=True)
@@ -143,9 +140,6 @@ class UpscaleEngine:
             wav_file = fuz_file.replace(".fuz", ".wav")
             falltalkutils.create_xwm(xwm_file, wav_file, encode=False)
 
-            if self.demucs_model:
-                self.demucs_file(wav_file, wav_file)
-
             if self.p:
                 self.p.p.predict(
                     wav_file,
@@ -158,8 +152,11 @@ class UpscaleEngine:
 
                 self.remove_silence_at_end(wav_file)
 
+            if self.demucs_model:
+                self.demucs_file(wav_file, wav_file)
+
             if replace:
-                falltalkutils.create_lip_and_fuz(self.parent, wav_file)
+                falltalkutils.create_lip_and_fuz(self.parent, wav_file, True)
         except Exception as e:
             falltalkutils.logger.exception(f"Error: {e}")
 
@@ -221,7 +218,7 @@ class UpscaleEngine:
             audio = audio.unsqueeze(0)  # Add batch dimension
 
         # Apply the model to separate sources
-        sources = apply_model(self.demucs_model, audio.float(), device=cfg.get(cfg.device), num_workers=multiprocessing.cpu_count())
+        sources = apply_model(self.demucs_model, audio.float(), device=cfg.get(cfg.device), num_workers=os.cpu_count())
 
         # Extract the vocals from the sources (assuming vocals are the fourth source)
         vocals = sources[:, 3, :, :]  # Shape: (batch, channels, length)

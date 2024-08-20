@@ -1661,10 +1661,8 @@ Audio model is licensed under CC-By-NC license for non commercial use
             placeholder="Random"
         )
 
-        self.duration = RangeConfigItem("fx", "duration", 10, RangeValidator(5, 120))
-
         self.duration_card = SpinSettingCard(
-            self.duration,
+            cfg.fx_duration,
             FIF.STOP_WATCH,
             self.tr('Duration in Seconds'),
             self.tr('Max 120'),
@@ -1728,20 +1726,16 @@ Audio model is licensed under CC-By-NC license for non commercial use
             placeholder="Random"
         )
 
-        self.duration = RangeConfigItem("music", "duration", 30, RangeValidator(5, 120))
-
         self.duration_card = SpinSettingCard(
-            self.duration,
+            cfg.music_duration,
             FIF.STOP_WATCH,
             self.tr('Duration in Seconds'),
             self.tr('Max 120'),
             step=5
         )
 
-        self.audio_mode = OptionsConfigItem("audioGen", "mode", "mono", OptionsValidator(["mono", "stereo"]))
-
         self.mode_card = RadioSettingCard(
-            self.audio_mode,
+            cfg.audio_mode,
             FallTalkStrokeIcons.VOICE_SQUARE.icon(),
             self.tr('Mode'),
             self.tr('Which device Should we use? Changing Modes will cause loading in next generation'),
@@ -1807,7 +1801,7 @@ class UpscaleWidget(FallTalkWidget):
             self.audio_mode,
             FallTalkStrokeIcons.VOICE_SQUARE.icon(),
             self.tr('Mode'),
-            self.tr('How to enhance the audio'),
+            self.tr('How to enhance the audio. Upscale should only be used on audio that is 16000Hz or below. Denoise should be used for speech.'),
             texts=["Denoise", "Upscale", "Both"],
             parent=self
         )
@@ -1817,8 +1811,8 @@ class UpscaleWidget(FallTalkWidget):
         self.sample_rate_card = RadioSettingCard(
             self.sample_rate,
             FallTalkIcons.SINE.icon(),
-            self.tr('Sample Rate'),
-            self.tr('Fallout 4 Default is 44100'),
+            self.tr('Upscaler Sample Rate'),
+            self.tr('Fallout 4 Default is 44100Hz'),
             texts=['44100', '48000'],
             parent=self
         )
@@ -1856,7 +1850,7 @@ class UpscaleWidget(FallTalkWidget):
         self.mo_sampe.setStyleSheet("border: none")
         self.mo_sampe_layout = QHBoxLayout()
         self.mo_sampe_layout.setContentsMargins(0, 0, 0, 0)
-        self.mo_sampe_layout.addWidget(self.mode_card, 3)
+        self.mo_sampe_layout.addWidget(self.upscale_dir_card, 3)
         self.mo_sampe_layout.addWidget(self.sample_rate_card, 3)
         self.mo_sampe.setLayout(self.mo_sampe_layout)
 
@@ -1869,7 +1863,7 @@ class UpscaleWidget(FallTalkWidget):
         self.r_and_sub_layout.addWidget(self.replace_existing_card, 3)
         self.r_and_sub.setLayout(self.r_and_sub_layout)
 
-        self.addToFrame(self.upscale_dir_card)
+        self.addToFrame(self.mode_card)
         self.addToFrame(self.mo_sampe)
         self.addToFrame(self.r_and_sub)
         self.addToFrame(self.generate_button)
@@ -1885,10 +1879,99 @@ class UpscaleWidget(FallTalkWidget):
         self.upscale_dir_card.setContent(folder)
 
 
+class BulkLipFuzWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.lip_dir = ConfigItem("bulk", "lip_dir", None, CustomFolderValidator())
+
+        self.threads_card = SpinSettingCard(
+            cfg.threads,
+            FIF.STOP_WATCH,
+            self.tr('Threads for processing'),
+            self.tr('Experimental: Monitor GPU or CPU.'),
+            step=1
+        )
+
+        self.lip_dir_card = PushSettingCard(
+            self.tr('Select Folder'),
+            FIF.FOLDER,
+            self.tr("Directory for bulk LIP / FIZ"),
+            self.lip_dir.value,
+        )
+
+        self.include_subdir = SwitchSettingCard(
+            FIF.FOLDER_ADD,
+            self.tr('Sub Directories'),
+            self.tr('Include Sub Directories?'),
+            cfg.include_subdir,
+        )
+
+        # self.replace_existing_card = SwitchSettingCard(
+        #     FallTalkIcons.REPLACE.icon(),
+        #     self.tr('Replace'),
+        #     self.tr('Replace all original WAV, XWM'),
+        #     cfg.replace_existing,
+        # )
+
+        self.delete_leftovers = SwitchSettingCard(
+            FIF.DELETE,
+            self.tr('Keep Only FUZ'),
+            self.tr('Delete XMW, LIP, and WAV'),
+            cfg.keep_only_fuz
+        )
+
+        self.gen_settings = QGroupBox()
+        self.gen_settings.setStyleSheet("border: none")
+        self.gen_settings_layout = QHBoxLayout(self.gen_settings)
+        self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.gen_settings_layout.addWidget(self.lip_dir_card, 2)
+        self.gen_settings.setLayout(self.gen_settings_layout)
+
+        self.f_c_ = QGroupBox()
+        self.f_c_.setStyleSheet("border: none")
+        self.f_c__layout = QHBoxLayout(self.f_c_)
+        self.f_c__layout.setContentsMargins(0, 0, 0, 0)
+        self.f_c__layout.addWidget(self.include_subdir, 3)
+        self.f_c__layout.addWidget(self.delete_leftovers, 3)
+        self.f_c_.setLayout(self.f_c__layout)
+
+        self.setContentsMargins(0, 0, 0, 0)
+
+        self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.fuz_widget_view = QVBoxLayout(self)
+        self.fuz_widget_view.setContentsMargins(0, 0, 0, 0)
+        self.fuz_widget_view.addItem(self.spacer)
+        self.fuz_widget_view.addWidget(self.threads_card)
+        self.fuz_widget_view.addWidget(self.gen_settings)
+        self.fuz_widget_view.addWidget(self.f_c_)
+        # self.rvc_widget_view.addWidget(self.r_and_sub)
+
+        self.lip_dir_card.clicked.connect(self.__onFolderCardClicked)
+
+    def __onFolderCardClicked(self):
+        """ download folder card clicked slot """
+        folder = QFileDialog.getExistingDirectory(
+            self, self.tr("Choose A Directory"), "./")
+        if not folder or folder == "":
+            return
+
+        self.lip_dir.value = folder
+        self.lip_dir_card.setContent(folder)
+
+
+
 class BulkGenerationRVCWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.rvc_dir = ConfigItem("bulk", "rvc_dir", None, CustomFolderValidator())
+
+        self.threads_card = SpinSettingCard(
+            cfg.threads,
+            FIF.STOP_WATCH,
+            self.tr('Threads for processing'),
+            self.tr('Experimental: Monitor GPU and CPU.'),
+            step=1
+        )
 
         self.rvc_dir_card = PushSettingCard(
             self.tr('Select Folder'),
@@ -1962,6 +2045,7 @@ class BulkGenerationRVCWidget(QWidget):
         self.rvc_widget_view = QVBoxLayout(self)
         self.rvc_widget_view.setContentsMargins(0, 0, 0, 0)
         self.rvc_widget_view.addItem(self.spacer)
+        self.rvc_widget_view.addWidget(self.threads_card)
         self.rvc_widget_view.addWidget(self.gen_settings)
         self.rvc_widget_view.addWidget(self.f_c_)
         self.rvc_widget_view.addWidget(self.r_and_sub)
@@ -2072,12 +2156,14 @@ class BulkGenerationWidget(FallTalkWidget):
         # Create a TabView instance
         self.bulk_csv_widget = BulkGenerationTableWidget(self)
         self.bulk_rvc_widget = BulkGenerationRVCWidget(self)
+        self.bulk_fuz_widget = BulkLipFuzWidget(self)
 
         self.bulk_csv_widget.upload_file_card.clicked.connect(self.__onOutputFolderCardClicked)
         self.bulk_csv_widget.started_card.clicked.connect(self.__onShowGettingStarted)
 
         self.addSubInterface(self.bulk_csv_widget, 'bulk_csv_widget', 'CSV')
         self.addSubInterface(self.bulk_rvc_widget, 'bulk_rvc_widget', 'RVC')
+        self.addSubInterface(self.bulk_fuz_widget, 'bulk_fuz_widget', 'FUZ')
 
         self.generate_button = PrimaryPushButton("Bulk Generate Audio")
         self.generate_button.setIcon(FIF.SEND)

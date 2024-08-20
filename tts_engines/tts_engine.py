@@ -3,8 +3,9 @@ import os
 from abc import ABC, abstractmethod
 import torch
 
-from tts_engines.rvc.infer.infer import infer_pipeline, load_config, clean_up
+from tts_engines.rvc.infer.infer import RVCPipeline
 from falltalk.config import cfg
+
 
 class tts_engine(ABC):
     def __init__(self):
@@ -16,10 +17,11 @@ class tts_engine(ABC):
         self.rvc_model = False
         self.is_base = False
         self.device = cfg.get(cfg.device)
+        self.rvc_pipeline = None
 
     def get_model(self, engine, model_type):
         directory = os.path.join("models", self.model_name, engine)
-        model_files = glob.glob(os.path.join(directory, '*.'+model_type))
+        model_files = glob.glob(os.path.join(directory, '*.' + model_type))
         if not model_files:
             print("No model files found in the directory.")
         else:
@@ -37,13 +39,12 @@ class tts_engine(ABC):
         self.is_base = False
         torch.cuda.empty_cache()
 
-
     def setup(self, selected_model, rvc=False, base_model=False):
         print(f"setup {selected_model}")
+        self.rvc_model = rvc
         if selected_model is not None and not base_model:
             if self.model_name != selected_model:
                 self.unload_model()
-                self.rvc_model = rvc
                 self.model_name = selected_model
                 self.model_path = self.get_model(self.engine_name, self.model_type)
                 self.load_model()
@@ -54,11 +55,12 @@ class tts_engine(ABC):
             if self.model_name is None or self.model_name != selected_model:
                 self.is_base = True
                 self.model_name = selected_model
-                self.rvc_model = rvc
                 self.load_base_model()
             else:
                 print("reusing model")
 
+        if self.rvc_model and self.rvc_pipeline is None:
+            self.rvc_pipeline = RVCPipeline(cfg.get(cfg.device))
 
 
     def handle_lowvram_change(self):
@@ -93,8 +95,8 @@ class tts_engine(ABC):
         pass
 
     def clean(self):
-        clean_up()
-
+        if self.rvc_pipeline is not None:
+            self.rvc_pipeline.clean_up()
 
     @abstractmethod
     def unload_model(self):
@@ -102,8 +104,7 @@ class tts_engine(ABC):
         pass
 
     def run_rvc(self, input_tts_path):
-        print("Running RVC")
-        load_config(cfg.get(cfg.device))
+        print(f"Running RVC {input_tts_path}")
         f0up_key = cfg.get(cfg.rvc_pitch)
         filter_radius = cfg.get(cfg.rvc_filter_radius) / 100.0
         index_rate = cfg.get(cfg.rvc_index_influence) / 100.0
@@ -145,7 +146,7 @@ class tts_engine(ABC):
             index_size_print = "N/A"
         output_rvc_path = input_tts_path
         # Call the infer_pipeline function
-        infer_pipeline(f0up_key, filter_radius, index_rate, rms_mix_rate, protect, hop_length, f0method,
+        self.rvc_pipeline.infer_pipeline(f0up_key, filter_radius, index_rate, rms_mix_rate, protect, hop_length, f0method,
                        input_tts_path, output_rvc_path, pth_path, index_path, split_audio, f0autotune, embedder_model,
                        training_data_size, False)
         return

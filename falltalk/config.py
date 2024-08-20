@@ -430,8 +430,16 @@ class Config(QConfig):
     accepted_disclaimer = ConfigItem('App', 'accepts_disclaimer', False, BoolValidator())
     accepts_custom_disclaimer = ConfigItem('App', 'accepts_custom_disclaimer', False, BoolValidator())
 
+    #Bulk
     replace_existing = ConfigItem("bulk", "replace_existing", True, BoolValidator())
     include_subdir = ConfigItem("bulk", "include_subdir", True, BoolValidator())
+    threads = RangeConfigItem("bulk", "threads", 1, RangeValidator(1, 2))
+
+    #Audio
+    fx_duration = RangeConfigItem("fx", "duration", 10, RangeValidator(5, 120))
+    audio_mode = OptionsConfigItem("music", "mode", "mono", OptionsValidator(["mono", "stereo"]))
+    music_duration = RangeConfigItem("music", "duration", 30, RangeValidator(5, 120))
+
 
     # XTTS
     speed = RangeConfigItem("XTTS", "speed", 100, RangeValidator(1, 200))

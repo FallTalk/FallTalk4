@@ -8,10 +8,12 @@ import shutil
 import subprocess
 import sys
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 
 import PySide6
 import huggingface_hub
+import librosa
 import numpy as np
 import requests
 import soundfile as sf
@@ -30,9 +32,12 @@ def extra_audio_from_bsa(item, filename):
     extract_fuz(os.path.abspath(f"temp/{filename}.fuz"))
     create_xwm(os.path.abspath(f"temp/{filename}.xwm"), os.path.abspath(f"temp/{filename}.wav"), False)
 
-    os.path.exists(f"temp/{filename}.xwm") and os.remove(f"temp/{filename}.xwm")
-    os.path.exists(f"temp/{filename}.fuz") and os.remove(f"temp/{filename}.fuz")
-    os.path.exists(f"temp/{filename}.lip") and os.remove(f"temp/{filename}.lip")
+    if os.path.exists(f"temp/{filename}.xwm"):
+        os.remove(f"temp/{filename}.xwm")
+    if os.path.exists(f"temp/{filename}.fuz"):
+        os.remove(f"temp/{filename}.fuz")
+    if os.path.exists(f"temp/{filename}.lip"):
+        os.remove(f"temp/{filename}.lip")
 
 
 def create_fuz_files(fuz_file, xwm_file, lip_file):
@@ -48,31 +53,47 @@ def create_fuz_files(fuz_file, xwm_file, lip_file):
         logger.exception("Unable to create fuz: %s", e.stderr)
 
 
-def create_lip_and_fuz(parent, input_file, sr=44100):
-    data, samplerate = sf.read(input_file)
-    length_in_ms = (len(data) / samplerate) * 1000
-    rs_wav = input_file.replace(".wav", "_44100.wav")
-    if length_in_ms > 500:
-        xwm_file = input_file.replace(".wav", ".xwm")
-        lip_file = input_file.replace(".wav", ".lip")
-        fuz_file = input_file.replace(".wav", ".fuz")
-        audio_data = load_audio(input_file, sr)
-        sf.write(rs_wav, audio_data, sr)
-        logger.debug(f"file resampled {rs_wav}")
-        create_xwm(rs_wav, xwm_file)
-        create_lip_files(parent, rs_wav, lip_file)
-        create_fuz_files(fuz_file, xwm_file, lip_file)
+def create_lip_and_fuz(parent, input_file, sr=44100, api=False):
+    fuz_file = None
+    start = datetime.now()
+    try:
+        data, samplerate = sf.read(input_file)
+        length_in_ms = (len(data) / samplerate) * 1000
+        if length_in_ms > 500:
+            xwm_file = input_file.replace(".wav", ".xwm")
+            lip_file = input_file.replace(".wav", ".lip")
+            fuz_file = input_file.replace(".wav", ".fuz")
+            if samplerate != sr:
+                rs_wav = input_file.replace(".wav", "_44100.wav")
+                audio_data = librosa.resample(data, orig_sr=samplerate, target_sr=sr)
+                sf.write(rs_wav, audio_data, sr)
+                logger.debug(f"file resampled {rs_wav}")
+            elif not api:
+                rs_wav = input_file.replace(".wav", "_44100.wav")
+                sf.write(rs_wav, data, sr)
+                logger.debug(f"file copy {rs_wav}")
+            else:
+                rs_wav = None
+            create_xwm(rs_wav if rs_wav is not None else input_file, xwm_file)
+            create_lip_files(parent, rs_wav if rs_wav is not None else input_file, lip_file)
+            create_fuz_files(fuz_file, xwm_file, lip_file)
 
-        if cfg.get(cfg.keep_only_fuz):
-            os.remove(input_file)
-            os.remove(xwm_file)
-            os.remove(lip_file)
+            if cfg.get(cfg.keep_only_fuz):
+                if api:
+                    os.remove(input_file)
 
-        os.remove(rs_wav)
+                os.remove(xwm_file)
+                os.remove(lip_file)
 
-        return fuz_file
-    else:
-        logger.exception("Unable to create lip and fuz files: audio too short")
+            if rs_wav is not None and os.path.exists(rs_wav):
+                os.remove(rs_wav)
+
+        else:
+            logger.exception("Unable to create lip and fuz files: audio too short")
+    except Exception as e:
+        logger.exception("Unable to create lip and fuz file")
+    end = datetime.now()
+    return (end - start).total_seconds(), fuz_file
 
 
 def create_lip_files(parent, input_file, lip_file):
@@ -168,31 +189,39 @@ def combine_wav_files(input_files, target_rate=24500, silence_duration=0.5):
 
 
 def load_audio(file, sampling_rate):
-    try:
-        # Set the ffmpeg_path variable based on the operating system
-        if sys.platform == "win32":
-            ffmpeg_path = os.path.abspath(os.path.join("ffmpeg.exe"))
-        else:
-            ffmpeg_path = "ffmpeg"  # Default path for Linux and macOS
+    if ".wav" in file:
+        audio_data, sr = librosa.load(file, sr=sampling_rate)
 
-        print(f"f{ffmpeg_path}")
-        # Initialize the process variable
-        process = subprocess.Popen(
-            [ffmpeg_path, "-y", "-i", file, "-f", "f32le", "-acodec", "pcm_f32le", "-ac", "1", "-ar", str(sampling_rate), "pipe:1"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
+        if audio_data.dtype != np.float32:
+            audio_data = audio_data.astype(np.float32)
 
-        out, err = process.communicate()
-        if process.returncode != 0:
-            print(f"FFmpeg error: {err.decode('utf-8')}")  # Debug statement
-            raise RuntimeError(f"FFmpeg error: {err.decode('utf-8')}")
-        # print("Audio loaded successfully")  # Debug statement
-    except Exception as error:
-        print(f"Error loading audio: {error}")  # Debug statement
-        raise RuntimeError(f"Failed to load audio: {error}")
+        return audio_data
+    else:
+        try:
+            # Set the ffmpeg_path variable based on the operating system
+            if sys.platform == "win32":
+                ffmpeg_path = os.path.abspath(os.path.join("ffmpeg.exe"))
+            else:
+                ffmpeg_path = "ffmpeg"  # Default path for Linux and macOS
 
-    return np.frombuffer(out, np.float32).flatten()
+            print(f"f{ffmpeg_path}")
+            # Initialize the process variable
+            process = subprocess.Popen(
+                [ffmpeg_path, "-y", "-i", file, "-f", "f32le", "-acodec", "pcm_f32le", "-ac", "1", "-ar", str(sampling_rate), "pipe:1"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+
+            out, err = process.communicate()
+            if process.returncode != 0:
+                print(f"FFmpeg error: {err.decode('utf-8')}")  # Debug statement
+                raise RuntimeError(f"FFmpeg error: {err.decode('utf-8')}")
+            # print("Audio loaded successfully")  # Debug statement
+        except Exception as error:
+            print(f"Error loading audio: {error}")  # Debug statement
+            raise RuntimeError(f"Failed to load audio: {error}")
+
+        return np.frombuffer(out, np.float32).flatten()
 
 
 def clean_folder(folder_path):
@@ -665,6 +694,15 @@ def voicecraft_inference(parent, output_file, text, selected_audio, panel, start
             QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Generate Audio"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
 
 
+def update_progress(parent, total, time_total, count):
+    additional_data_points_needed = total - count
+    avg_duration = time_total / count
+    estimated_duration = (avg_duration * additional_data_points_needed)
+    td = timedelta(seconds=estimated_duration)
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Completed: {count}/{total}. Estimated Duration: {hours:02}:{minutes:02}:{seconds:02}"))
+
 def formatted_time_stamp():
     current_time = datetime.now()
     time_stamp = current_time.strftime("%Y%m%d%H%M%S")
@@ -676,13 +714,101 @@ def formatted_time_stamp_uuid():
     return f"{formatted_time_stamp()}_{unique_id.hex[:10]}"
 
 
-def get_bulk_folder(parent):
-    output_folder = f"bulk_outputs/{formatted_time_stamp()}_{parent.tts_engine.engine_name}"
+def get_bulk_folder(engine_name):
+    output_folder = f"bulk_outputs/{formatted_time_stamp()}_{engine_name}"
     os.makedirs(output_folder, exist_ok=True)
     return output_folder
 
 
-def bulk_rvc_inference(parent, directory, character, include_subdir, replace):
+def process_xwm_file(xwm_file, cfg, files):
+    wav_file = xwm_file.replace(".xwm", ".wav")
+    create_xwm(xwm_file, wav_file, encode=False)
+
+    if cfg.get(cfg.replace_existing):
+        if os.path.exists(xwm_file):
+            os.remove(xwm_file)
+
+    if os.path.exists(xwm_file.replace(".xwm", ".lip")):
+        os.remove(xwm_file.replace(".xwm", ".lip"))
+
+    files.add(wav_file)
+
+
+def process_fuz_file(fuz_file, cfg, files):
+    extract_fuz(fuz_file)
+    xwm_file = fuz_file.replace(".fuz", ".xwm")
+    wav_file = fuz_file.replace(".fuz", ".wav")
+    create_xwm(xwm_file, wav_file, encode=False)
+    files.add(wav_file)
+
+    if cfg.get(cfg.replace_existing):
+        if os.path.exists(fuz_file):
+            os.remove(fuz_file)
+
+    if os.path.exists(xwm_file):
+        os.remove(xwm_file)
+    if os.path.exists(xwm_file.replace(".xwm", ".lip")):
+        os.remove(xwm_file.replace(".xwm", ".lip"))
+
+
+def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent):
+    start = datetime.now()
+    try:
+        if not replace:
+            if output_folder is None:
+                output_folder = get_bulk_folder(parent)
+            output_file = os.path.join(output_folder, os.path.basename(wav_file))
+            shutil.copy(wav_file, output_file)
+        else:
+            output_file = wav_file
+
+        tts_engine.run_rvc(output_file)
+
+        if cfg.get(cfg.xwm_enabled):
+            create_lip_and_fuz(parent, output_file, 44100, True)
+    except Exception as e:
+        logger.exception("RVC inference failed")
+
+    end = datetime.now()
+    return (end - start).total_seconds()
+
+
+def bulk_fuz(parent, directory, include_subdir, threads=1):
+    wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
+    xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
+    count = 0
+    time_total = 0
+    files = set()
+    files.update(wav_files)
+    load_whisper(parent)
+    with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+        futures = []
+
+        for xwm_file in xwm_files:
+            futures.append(executor.submit(process_xwm_file, xwm_file, cfg, files))
+
+        for future in as_completed(futures):
+            future.result()
+
+    total = len(files)
+
+    with ThreadPoolExecutor(max_workers=threads) as executor:
+        futures = []
+        for idx, wav_file in enumerate(files):
+            future = executor.submit(create_lip_and_fuz, parent, wav_file, 44100, True)
+            futures.append(future)
+
+        for future in as_completed(futures):
+            time_taken, fuz_file = future.result()
+            time_total += time_taken
+            count += 1
+            update_progress(parent, total, time_total, count)
+
+    QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+
+
+
+def bulk_rvc_inference(parent, directory, character, include_subdir, replace, threads=1):
     wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
     fuz_files = glob.glob(os.path.join(directory, '**', '*.fuz'), recursive=include_subdir)
     xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
@@ -697,74 +823,50 @@ def bulk_rvc_inference(parent, directory, character, include_subdir, replace):
 
     files.update(wav_files)
 
+    load_whisper(parent)
+
     if is_trained:
-        if parent.tts_engine.engine_name != 'RVC':
-            engine_changed = True
-            load_rvc(parent, True)
+        # if parent.tts_engine.engine_name != 'RVC':
+        #     engine_changed = True
+        #     load_rvc(parent, True)
 
         if not os.path.exists(os.path.join('models', character, 'RVC')):
             download_rvc_models(character, model['RVC'])
 
-        parent.tts_engine.setup(character, has_rvc, not is_trained)
+        with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+            futures = []
 
+            for xwm_file in xwm_files:
+                futures.append(executor.submit(process_xwm_file, xwm_file, cfg, files))
 
-        for xwm_file in xwm_files:
-            wav_file = xwm_file.replace(".xwm", ".wav")
-            create_xwm(xwm_file, wav_file, encode=False)
+            for fuz_file in fuz_files:
+                futures.append(executor.submit(process_fuz_file, fuz_file, cfg, files))
 
-            if cfg.get(cfg.replace_existing):
-                os.path.exists(xwm_file) and os.remove(xwm_file)
-
-            os.path.exists(xwm_file.replace(".xwm", ".lip")) and os.remove(xwm_file.replace(".xwm", ".lip"))
-
-            files.add(wav_file)
-
-        for fuz_file in fuz_files:
-            extract_fuz(fuz_file)
-            xwm_file = fuz_file.replace(".fuz", ".xwm")
-            wav_file = fuz_file.replace(".fuz", ".wav")
-            create_xwm(xwm_file, wav_file, encode=False)
-            files.add(wav_file)
-
-            if cfg.get(cfg.replace_existing):
-                os.path.exists(fuz_file) and os.remove(fuz_file)
-
-            os.path.exists(xwm_file) and os.remove(xwm_file)
-            os.path.exists(xwm_file.replace(".xwm", ".lip")) and os.remove(xwm_file.replace(".xwm", ".lip"))
+            for future in as_completed(futures):
+                future.result()
 
         total = len(files)
 
-        QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Starting: {count}/{total}"))
+        tts_engines = []
+        QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Setting Up RVC Engines: {threads}"))
+        for i in range(threads):
+            from tts_engines.rvc_engine import RVC_Engine
+            tts_engine = RVC_Engine()
+            tts_engine.setup(character, has_rvc, not is_trained)
+            tts_engines.append(tts_engine)
 
-        for wav_file in files:
-            start = datetime.now()
-            try:
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            futures = []
+            for idx, wav_file in enumerate(files):
+                tts_engine = tts_engines[idx % threads]
+                future = executor.submit(process_rvc_file, tts_engine, wav_file, replace, output_folder, parent)
+                futures.append(future)
 
-                if not replace:
-                    if output_folder is None:
-                        output_folder = get_bulk_folder(parent)
-                    output_file = os.path.join(output_folder, os.path.basename(wav_file))
-                    shutil.copy(wav_file, output_file)
-                else:
-                    output_file = wav_file
-
-                rvc_inference(parent, output_file, None, True)
-
-                if cfg.get(cfg.xwm_enabled):
-                    create_lip_and_fuz(parent, output_file)
-            except Exception as e:
-                logger.exception("RVC inference failed")
-
-            count += 1
-            end = datetime.now()
-            time_total += (end - start).total_seconds()
-            additional_data_points_needed = total - count
-            avg_duration = time_total / count
-            estimated_duration = (avg_duration * additional_data_points_needed)
-            td = timedelta(seconds=estimated_duration)
-            hours, remainder = divmod(td.seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Completed: {count}/{total}. Estimated Duration: {hours:02}:{minutes:02}:{seconds:02}"))
+            for future in as_completed(futures):
+                time_taken = future.result()
+                time_total += time_taken
+                count += 1
+                update_progress(parent, total, time_total, count)
 
     if engine_changed:
         QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
@@ -780,7 +882,7 @@ def bulk_inference(parent):
         total = len(datas)
         time_total = 0
 
-        generic_output_folder = get_bulk_folder(parent)
+        generic_output_folder = get_bulk_folder(parent.tts_engine.engine_name)
         last_character = None
 
         for data in datas:
@@ -848,7 +950,7 @@ def bulk_inference(parent):
                     styletts2_inference(parent, output_file, text_or_file, reference_path, None, api=True)
 
                 if cfg.get(cfg.xwm_enabled):
-                    create_lip_and_fuz(parent, output_file)
+                    create_lip_and_fuz(parent, output_file, True)
 
             except Exception as e:
                 logger.exception(f"bulk_inference failed for row {data}")
@@ -856,13 +958,8 @@ def bulk_inference(parent):
             count += 1
             end = datetime.now()
             time_total += (end - start).total_seconds()
-            additional_data_points_needed = total - count
-            avg_duration = time_total / count
-            estimated_duration = (avg_duration * additional_data_points_needed)
-            td = timedelta(seconds=estimated_duration)
-            hours, remainder = divmod(td.seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Completed: {count}/{total}. Estimated Duration: {hours:02}:{minutes:02}:{seconds:02}"))
+            update_progress(parent, total, time_total, count)
+
 
     QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
 
