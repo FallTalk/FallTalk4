@@ -771,7 +771,7 @@ class ModelApp(FallTalkFluentWindow):
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select a valid Character")
                 else:
                     self.showLoaderPopup(f"Generating Bulk RVC Audio", f"Gathering Files")
-                    tr = (threading.Thread(target=falltalkutils.bulk_rvc_inference, args=(self, rvc_dir, self.bulk_generate_widget.bulk_rvc_widget.character_card.configItem.text(), cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads)), daemon=True))
+                    tr = (threading.Thread(target=falltalkutils.bulk_rvc_inference, args=(self, rvc_dir, self.bulk_generate_widget.bulk_rvc_widget.character_card.configItem.text(), cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads), cfg.get(cfg.use_existing_lip)), daemon=True))
                     tr.start()
             elif self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_fuz_widget:
                 lip_dir = self.bulk_generate_widget.bulk_fuz_widget.lip_dir.value

@@ -419,6 +419,8 @@ class Config(QConfig):
     output_dir = ConfigItem("App", "output_dir", "output/", FolderValidator())
     rvc_enabled = ConfigItem("App", "rvc_enabled", True, BoolValidator())
     keep_only_fuz = ConfigItem("App", "keep_only_fuz", True, BoolValidator())
+    use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
+
     xwm_enabled = ConfigItem("App", "xwm_enabled", False, BoolValidator())
     download_configs = ConfigItem(
         "App", "download_configs", True, BoolValidator())
@@ -561,7 +563,7 @@ class Config(QConfig):
 
 YEAR = 2024
 AUTHOR = "Bryant21"
-VERSION = '1.1.0'
+VERSION = '1.1.1'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"

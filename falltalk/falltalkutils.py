@@ -53,43 +53,44 @@ def create_fuz_files(fuz_file, xwm_file, lip_file):
         logger.exception("Unable to create fuz: %s", e.stderr)
 
 
-def create_lip_and_fuz(parent, input_file, sr=44100, api=False):
+def create_lip_and_fuz(parent, input_file, sr=44100, api=False, existing_lip=None):
     fuz_file = None
+    rs_wav = None
     start = datetime.now()
     try:
+        xwm_file = input_file.replace(".wav", ".xwm")
+        lip_file = existing_lip if existing_lip is not None else input_file.replace(".wav", ".lip")
+        fuz_file = input_file.replace(".wav", ".fuz")
+
         data, samplerate = sf.read(input_file)
         length_in_ms = (len(data) / samplerate) * 1000
-        if length_in_ms > 500:
-            xwm_file = input_file.replace(".wav", ".xwm")
-            lip_file = input_file.replace(".wav", ".lip")
-            fuz_file = input_file.replace(".wav", ".fuz")
-            if samplerate != sr:
-                rs_wav = input_file.replace(".wav", "_44100.wav")
-                audio_data = librosa.resample(data, orig_sr=samplerate, target_sr=sr)
-                sf.write(rs_wav, audio_data, sr)
-                logger.debug(f"file resampled {rs_wav}")
-            elif not api:
-                rs_wav = input_file.replace(".wav", "_44100.wav")
-                sf.write(rs_wav, data, sr)
-                logger.debug(f"file copy {rs_wav}")
-            else:
-                rs_wav = None
-            create_xwm(rs_wav if rs_wav is not None else input_file, xwm_file)
+        if samplerate != sr:
+            rs_wav = input_file.replace(".wav", "_44100.wav")
+            audio_data = librosa.resample(data, orig_sr=samplerate, target_sr=sr)
+            sf.write(rs_wav, audio_data, sr)
+            logger.debug(f"file resampled {rs_wav}")
+        elif not api:
+            rs_wav = input_file.replace(".wav", "_44100.wav")
+            sf.write(rs_wav, data, sr)
+            logger.debug(f"file copy {rs_wav}")
+
+        if existing_lip is None and length_in_ms > 500:
             create_lip_files(parent, rs_wav if rs_wav is not None else input_file, lip_file)
-            create_fuz_files(fuz_file, xwm_file, lip_file)
 
-            if cfg.get(cfg.keep_only_fuz):
-                if api:
-                    os.remove(input_file)
+        create_xwm(rs_wav if rs_wav is not None else input_file, xwm_file)
+        create_fuz_files(fuz_file, xwm_file, lip_file)
 
-                os.remove(xwm_file)
-                os.remove(lip_file)
+        if cfg.get(cfg.keep_only_fuz):
+            if api:
+                os.remove(input_file)
 
-            if rs_wav is not None and os.path.exists(rs_wav):
-                os.remove(rs_wav)
+            os.remove(xwm_file)
+            os.remove(lip_file)
 
-        else:
-            logger.exception("Unable to create lip and fuz files: audio too short")
+        if rs_wav is not None and os.path.exists(rs_wav):
+            os.remove(rs_wav)
+
+
     except Exception as e:
         logger.exception("Unable to create lip and fuz file")
     end = datetime.now()
@@ -720,7 +721,7 @@ def get_bulk_folder(engine_name):
     return output_folder
 
 
-def process_xwm_file(xwm_file, cfg, files):
+def process_xwm_file(xwm_file, cfg, files, use_existing_lip=False):
     wav_file = xwm_file.replace(".xwm", ".wav")
     create_xwm(xwm_file, wav_file, encode=False)
 
@@ -728,13 +729,13 @@ def process_xwm_file(xwm_file, cfg, files):
         if os.path.exists(xwm_file):
             os.remove(xwm_file)
 
-    if os.path.exists(xwm_file.replace(".xwm", ".lip")):
+    if not use_existing_lip and os.path.exists(xwm_file.replace(".xwm", ".lip")):
         os.remove(xwm_file.replace(".xwm", ".lip"))
 
     files.add(wav_file)
 
 
-def process_fuz_file(fuz_file, cfg, files):
+def process_fuz_file(fuz_file, cfg, files, use_existing_lip=False):
     extract_fuz(fuz_file)
     xwm_file = fuz_file.replace(".fuz", ".xwm")
     wav_file = fuz_file.replace(".fuz", ".wav")
@@ -747,25 +748,32 @@ def process_fuz_file(fuz_file, cfg, files):
 
     if os.path.exists(xwm_file):
         os.remove(xwm_file)
-    if os.path.exists(xwm_file.replace(".xwm", ".lip")):
+    if not use_existing_lip and os.path.exists(xwm_file.replace(".xwm", ".lip")):
         os.remove(xwm_file.replace(".xwm", ".lip"))
 
 
-def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent):
+def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent, use_existing_lip=False):
     start = datetime.now()
     try:
+        existing_lip = None
         if not replace:
-            if output_folder is None:
-                output_folder = get_bulk_folder(parent)
             output_file = os.path.join(output_folder, os.path.basename(wav_file))
             shutil.copy(wav_file, output_file)
+            if use_existing_lip and os.path.exists(wav_file.replace(".wav", ".lip")):
+                    existing_lip = os.path.join(output_folder, os.path.basename(wav_file.replace(".wav", ".lip")))
+                    shutil.copy(wav_file.replace(".wav", ".lip"), existing_lip)
+
+
         else:
             output_file = wav_file
+            if use_existing_lip and os.path.exists(wav_file.replace(".wav", ".lip")):
+                existing_lip = wav_file.replace(".wav", ".lip")
+
 
         tts_engine.run_rvc(output_file)
 
         if cfg.get(cfg.xwm_enabled):
-            create_lip_and_fuz(parent, output_file, 44100, True)
+            create_lip_and_fuz(parent, output_file, 44100, True, existing_lip)
     except Exception as e:
         logger.exception("RVC inference failed")
 
@@ -785,7 +793,7 @@ def bulk_fuz(parent, directory, include_subdir, threads=1):
         futures = []
 
         for xwm_file in xwm_files:
-            futures.append(executor.submit(process_xwm_file, xwm_file, cfg, files))
+            futures.append(executor.submit(process_xwm_file, xwm_file, cfg, files, False))
 
         for future in as_completed(futures):
             future.result()
@@ -795,7 +803,7 @@ def bulk_fuz(parent, directory, include_subdir, threads=1):
     with ThreadPoolExecutor(max_workers=threads) as executor:
         futures = []
         for idx, wav_file in enumerate(files):
-            future = executor.submit(create_lip_and_fuz, parent, wav_file, 44100, True)
+            future = executor.submit(create_lip_and_fuz, parent, wav_file, 44100, True, None)
             futures.append(future)
 
         for future in as_completed(futures):
@@ -808,7 +816,7 @@ def bulk_fuz(parent, directory, include_subdir, threads=1):
 
 
 
-def bulk_rvc_inference(parent, directory, character, include_subdir, replace, threads=1):
+def bulk_rvc_inference(parent, directory, character, include_subdir, replace, threads=1, use_existing_lip=True):
     wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
     fuz_files = glob.glob(os.path.join(directory, '**', '*.fuz'), recursive=include_subdir)
     xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
@@ -825,6 +833,10 @@ def bulk_rvc_inference(parent, directory, character, include_subdir, replace, th
 
     load_whisper(parent)
 
+    if output_folder is None and not replace:
+        output_folder = get_bulk_folder('RVC')
+        os.makedirs(output_folder, exist_ok=True)
+
     if is_trained:
         # if parent.tts_engine.engine_name != 'RVC':
         #     engine_changed = True
@@ -837,10 +849,10 @@ def bulk_rvc_inference(parent, directory, character, include_subdir, replace, th
             futures = []
 
             for xwm_file in xwm_files:
-                futures.append(executor.submit(process_xwm_file, xwm_file, cfg, files))
+                futures.append(executor.submit(process_xwm_file, xwm_file, cfg, files, use_existing_lip))
 
             for fuz_file in fuz_files:
-                futures.append(executor.submit(process_fuz_file, fuz_file, cfg, files))
+                futures.append(executor.submit(process_fuz_file, fuz_file, cfg, files, use_existing_lip))
 
             for future in as_completed(futures):
                 future.result()
@@ -859,7 +871,7 @@ def bulk_rvc_inference(parent, directory, character, include_subdir, replace, th
             futures = []
             for idx, wav_file in enumerate(files):
                 tts_engine = tts_engines[idx % threads]
-                future = executor.submit(process_rvc_file, tts_engine, wav_file, replace, output_folder, parent)
+                future = executor.submit(process_rvc_file, tts_engine, wav_file, replace, output_folder, parent, use_existing_lip)
                 futures.append(future)
 
             for future in as_completed(futures):
@@ -950,7 +962,7 @@ def bulk_inference(parent):
                     styletts2_inference(parent, output_file, text_or_file, reference_path, None, api=True)
 
                 if cfg.get(cfg.xwm_enabled):
-                    create_lip_and_fuz(parent, output_file, True)
+                    create_lip_and_fuz(parent, output_file, 44100, True)
 
             except Exception as e:
                 logger.exception(f"bulk_inference failed for row {data}")

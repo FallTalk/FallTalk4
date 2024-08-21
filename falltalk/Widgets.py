@@ -2022,6 +2022,13 @@ class BulkGenerationRVCWidget(QWidget):
             self.tr('Delete XMW, LIP, and WAV'),
             cfg.keep_only_fuz
         )
+
+        self.use_existing_lip = SwitchSettingCard(
+            FIF.SHARE,
+            self.tr('Use Existing LIP'),
+            self.tr('Use existing LIP if it exists or generate new'),
+            cfg.use_existing_lip
+        )
         
         self.gen_settings = QGroupBox()
         self.gen_settings.setStyleSheet("border: none")
@@ -2037,6 +2044,7 @@ class BulkGenerationRVCWidget(QWidget):
         self.f_c__layout.setContentsMargins(0, 0, 0, 0)
         self.f_c__layout.addWidget(self.xwm_card, 3)
         self.f_c__layout.addWidget(self.delete_leftovers, 3)
+        self.f_c__layout.addWidget(self.use_existing_lip, 3)
         self.f_c_.setLayout(self.f_c__layout)
 
         self.setContentsMargins(0, 0, 0, 0)
