@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QStackedWidget, 
 from qfluentwidgets import FluentIcon as FIF, TextEdit, PushButton, SegmentedWidget, \
     SearchLineEdit, RangeSettingCard, PrimaryPushButton, SwitchSettingCard, \
     ConfigItem, ConfigValidator, TableView, CheckBox, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, NavigationTreeWidget, BodyLabel, IconWidget, Theme, isDarkTheme, \
-    FolderValidator, PushSettingCard, Dialog, MessageBoxBase, BoolValidator, RangeConfigItem, RangeValidator, OptionsConfigItem, OptionsValidator, TextWrap
+    FolderValidator, PushSettingCard, Dialog, MessageBoxBase, BoolValidator, RangeConfigItem, RangeValidator, OptionsConfigItem, OptionsValidator, TextWrap, SystemTrayMenu
 from qfluentwidgets.components.dialog_box.dialog import Ui_MessageBox, MessageBox
 from qfluentwidgets.window.fluent_window import FluentWindowBase
 
@@ -74,6 +74,7 @@ class FallTalkFluentWindow(FluentWindowBase):
         self.cpu_action = Action(FallTalkIcons.CPU.icon(), self.tr('CPU'), checkable=True, checked=cfg.get(cfg.device) == 'cpu')
         self.gpu_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU'), checkable=True, checked=cfg.get(cfg.device) == 'cuda')
         self.gpu2_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU 2'), checkable=True, checked=cfg.get(cfg.device) == 'cuda:1')
+        self.clean_action = Action(FIF.BROOM, self.tr('Clean'))
 
         self.update_action = Action(FallTalkIcons.IMPORTANT.icon(color=cfg.get(cfg.themeColor)), self.tr('Update Available'))
         self.new_models_action = Action(FallTalkIcons.NEW.icon(color=cfg.get(cfg.themeColor)), self.tr('New Models Added'))
@@ -157,11 +158,13 @@ class FallTalkFluentWindow(FluentWindowBase):
                     self.cpu_action,
                     self.gpu_action,
                     self.gpu2_action,
+                    self.clean_action
                 ])
             else:
                 menu.addActions([
                     self.cpu_action,
                     self.gpu_action,
+                    self.clean_action
                 ])
         else:
             menu.addActions([
@@ -189,6 +192,7 @@ class FallTalkFluentWindow(FluentWindowBase):
             cfg.resetStyleTTS()
 
         cfg.resetRvc()
+        cfg.resetMusicAndFX()
 
     def createCommandBar(self):
         bar = CommandBar(self)
@@ -1661,6 +1665,15 @@ Audio model is licensed under CC-By-NC license for non commercial use
             placeholder="Random"
         )
 
+        self.parse_mode_card = RadioSettingCard(
+            cfg.parse_mode,
+            FIF.CUT,
+            self.tr('Generation Mode'),
+            self.tr('Split on commas to generate multiple layers.'),
+            texts=["Split on Comma", "Single Command"],
+            parent=self
+        )
+
         self.duration_card = SpinSettingCard(
             cfg.fx_duration,
             FIF.STOP_WATCH,
@@ -1669,9 +1682,32 @@ Audio model is licensed under CC-By-NC license for non commercial use
             step=5
         )
 
-        self.addToFrame(self.duration_card)
-        self.addToFrame(self.autoplay)
-        self.addToFrame(self.output_name_card)
+        self.temperature_card = RangeSettingCardScaled(
+            cfg.music_temperature,
+            FIF.FRIGID,
+            self.tr('Temperature'),
+            self.tr('Randomness, 1 = balanced, 0 = disabled'),
+        )
+
+        self.a_d_ = QGroupBox()
+        self.a_d_.setStyleSheet("border: none")
+        self.a_d__layout = QHBoxLayout()
+        self.a_d__layout.setContentsMargins(0, 0, 0, 0)
+        self.a_d__layout.addWidget(self.autoplay, 3)
+        self.a_d__layout.addWidget(self.duration_card, 3)
+        self.a_d_.setLayout(self.a_d__layout)
+
+        self.r_and_sub = QGroupBox()
+        self.r_and_sub.setStyleSheet("border: none")
+        self.r_and_sub_layout = QHBoxLayout()
+        self.r_and_sub_layout.setContentsMargins(0, 0, 0, 0)
+        self.r_and_sub_layout.addWidget(self.output_name_card, 3)
+        self.r_and_sub_layout.addWidget(self.temperature_card, 3)
+        self.r_and_sub.setLayout(self.r_and_sub_layout)
+
+        self.addToFrame(self.parse_mode_card)
+        self.addToFrame(self.r_and_sub)
+        self.addToFrame(self.a_d_)
         self.addToFrame(self.generate_button)
         self.addToFrame(self.media_player)
 
@@ -1696,7 +1732,7 @@ Violins and synths that inspire awe at the finiteness of life and the universe.
 
 An 80s driving pop song with heavy drums and synth pads in the background
 
-a light and cheerly EDM track, with syncopated drums, aery pads, and strong emotions bpm: 130
+a light and cheerily EDM track, with syncopated drums, aery pads, and strong emotions bpm: 130
 
 3/4 105bpm piano only baroque
 
@@ -1718,6 +1754,21 @@ Audio model is licensed under CC-By-NC license for non commercial use
             self.tr('Automatically Play Generated Audio'),
             cfg.auto_play,
         )
+
+        self.temperature_card = RangeSettingCardScaled(
+            cfg.music_temperature,
+            FIF.FRIGID,
+            self.tr('Temperature'),
+            self.tr('Randomness, 1 = balanced, 0 = disabled'),
+        )
+
+        self.extend_stride_card = RangeSettingCard(
+            cfg.extend_stride,
+            FIF.SKIP_FORWARD,
+            self.tr('Extended Strike'),
+            self.tr('Higher Number = Faster, Lower = Better Quality'),
+        )
+
         self.output_name_card = TextSettingCard(
             self.output_name,
             FIF.SAVE_AS,
@@ -1730,16 +1781,25 @@ Audio model is licensed under CC-By-NC license for non commercial use
             cfg.music_duration,
             FIF.STOP_WATCH,
             self.tr('Duration in Seconds'),
-            self.tr('Max 120'),
+            self.tr('Max 300'),
             step=5
+        )
+
+        self.parse_mode_card = RadioSettingCard(
+            cfg.parse_mode,
+            FIF.CUT,
+            self.tr('Generation Mode'),
+            self.tr('Split on commas to generate multiple musical layers.'),
+            texts=["Split on Comma", "Single Command"],
+            parent=self
         )
 
         self.mode_card = RadioSettingCard(
             cfg.audio_mode,
             FallTalkStrokeIcons.VOICE_SQUARE.icon(),
             self.tr('Mode'),
-            self.tr('Which device Should we use? Changing Modes will cause loading in next generation'),
-            texts=["Mono", "Stereo"],
+            self.tr('Which model should we use? Changing causes loading in next generation'),
+            texts=["Mono (5 GB)", "Stereo (12 GB)", "Song (20 GB)"],
             parent=self
         )
 
@@ -1770,9 +1830,19 @@ Audio model is licensed under CC-By-NC license for non commercial use
         self.r_and_sub_layout.addWidget(self.duration_card, 3)
         self.r_and_sub.setLayout(self.r_and_sub_layout)
 
+        self.t_and_s = QGroupBox()
+        self.t_and_s.setStyleSheet("border: none")
+        self.t_and_s_layout = QHBoxLayout()
+        self.t_and_s_layout.setContentsMargins(0, 0, 0, 0)
+        self.t_and_s_layout.addWidget(self.extend_stride_card, 3)
+        self.t_and_s_layout.addWidget(self.temperature_card, 3)
+        self.t_and_s.setLayout(self.t_and_s_layout)
+
         self.addToFrame(self.mode_card)
+        self.addToFrame(self.parse_mode_card)
         self.addToFrame(self.f_and_sub)
         self.addToFrame(self.r_and_sub)
+        self.addToFrame(self.t_and_s)
         self.addToFrame(self.generate_button)
         self.addToFrame(self.media_player)
 

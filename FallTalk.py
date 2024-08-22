@@ -335,6 +335,7 @@ class ModelApp(FallTalkFluentWindow):
         self.cpu_action.triggered.connect(self.cpu_checked)
         self.gpu_action.triggered.connect(self.gpu_checked)
         self.gpu2_action.triggered.connect(self.gpu2_checked)
+        self.clean_action.triggered.connect(self.clean_engines)
 
         QApplication.processEvents()
 
@@ -376,11 +377,6 @@ class ModelApp(FallTalkFluentWindow):
         self.setEnabled(True)
 
     def clean_engines(self):
-        if self.transcription_engine is not None:
-            self.transcription_engine.clean()
-            del self.transcription_engine
-            self.transcription_engine = None
-
         if self.sound_fx_engine is not None:
             self.sound_fx_engine.clean()
             del self.sound_fx_engine
@@ -559,10 +555,10 @@ class ModelApp(FallTalkFluentWindow):
 
     def load_models_config(self):
         if self.characters_data is None:
-            with open('config/characters.json', 'r') as file:
+            with open('config/characters.json', 'r', encoding='utf-8') as file:
                 self.characters_data = {character['name']: character for character in json.load(file)}
         if self.models is None:
-            with open('config/models.json', 'r') as file:
+            with open('config/models.json', 'r', encoding='utf-8') as file:
                 self.models = {model['name']: model for model in json.load(file)['characters']}
 
         if os.path.exists('config/custom_models.json'):
@@ -1011,6 +1007,10 @@ if __name__ == '__main__':
     application = QApplication(sys.argv)
 
     try:
+
+        if cfg.get(cfg.huggingface_cache_dir) != "Please Select a Valid Folder":
+            os.environ["HF_HUB_CACHE"] = cfg.get(cfg.huggingface_cache_dir)
+
         # These are needed for VoiceCraft
         os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
         os.environ['USER'] = getpass.getuser()

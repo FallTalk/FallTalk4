@@ -342,6 +342,7 @@ class GPT_SoVITS_Engine(tts_engine):
         sf.write(output_file, last_audio_data, last_sampling_rate)
         print(f"Audio saved to {output_file}")
 
+    @torch.no_grad()
     def get_tts_wav(self, ref_wav_path, prompt_text, prompt_language, text, text_language, how_to_cut="No Slice", top_k=20, top_p=0.6, temperature=0.6, ref_free=False, speed=1.0, inp_refs=None):
         if inp_refs is None:
             inp_refs = []
@@ -473,13 +474,10 @@ class GPT_SoVITS_Engine(tts_engine):
         self.max_sec = self.config["data"]["max_sec"]
         self.t2s_model = Text2SemanticLightningModule(self.config, "****", is_train=False)
         self.t2s_model.load_state_dict(self.dict_s1["weight"])
-        if self.is_half:
+        if self.is_half and self.device != 'cpu':
             self.t2s_model = self.t2s_model.half()
         self.t2s_model = self.t2s_model.to(self.device)
         self.t2s_model.eval()
-        total = sum([param.nelement() for param in self.t2s_model.parameters()])
-        print("Number of parameter: %.2fM" % (total / 1e6))
-        with open("./gweight.txt", "w", encoding="utf-8") as f: f.write(gpt_path)
 
     def change_sovits_weights(self, sovits_path):
         falltalkutils.logger.debug(f"change_sovits_weights {sovits_path}")

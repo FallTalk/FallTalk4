@@ -105,7 +105,7 @@ def create_lip_files(parent, input_file, lip_file):
         txt_file = input_file.replace(".wav", ".txt")
 
         if resp['transcript'] is not None and len(resp['transcript']) > 0:
-            with open(txt_file, 'w') as file:
+            with open(txt_file, 'w', encoding='utf-8') as file:
                 file.write(resp['transcript'])
 
             command = [facefx_path, 'Fallout4', 'USEnglish', os.path.abspath(facefx_cdf_path), os.path.abspath(input_file), os.path.abspath(lip_file), resp['transcript']]
@@ -833,6 +833,8 @@ def bulk_rvc_inference(parent, directory, character, include_subdir, replace, th
 
     load_whisper(parent)
 
+    tts_engines = []
+
     if output_folder is None and not replace:
         output_folder = get_bulk_folder('RVC')
         os.makedirs(output_folder, exist_ok=True)
@@ -859,7 +861,6 @@ def bulk_rvc_inference(parent, directory, character, include_subdir, replace, th
 
         total = len(files)
 
-        tts_engines = []
         QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Setting Up RVC Engines: {threads}"))
         for i in range(threads):
             from tts_engines.rvc_engine import RVC_Engine
@@ -879,6 +880,10 @@ def bulk_rvc_inference(parent, directory, character, include_subdir, replace, th
                 time_total += time_taken
                 count += 1
                 update_progress(parent, total, time_total, count)
+
+    for engine in tts_engines:
+        engine.clean()
+        del engine
 
     if engine_changed:
         QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))

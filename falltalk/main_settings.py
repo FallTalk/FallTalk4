@@ -71,6 +71,13 @@ class FallTalkSettings(ScrollArea):
             self.settings_group
         )
 
+        self.hugging_face_cache = PushSettingCard(
+            self.tr('Huggingface Cache Directory'),
+            FallTalkIcons.HUGGING_FACE.icon(),
+            self.tr("Where the huggingface model cache is stored. (music gen, transcription, system files)"),
+            cfg.get(cfg.huggingface_cache_dir),
+            self.settings_group
+        )
 
         self.load_engine_art_start = SwitchSettingCard(
             FIF.STOP_WATCH,
@@ -106,7 +113,7 @@ class FallTalkSettings(ScrollArea):
             self.tr("Interface zoom"),
             self.tr("Change the size of widgets and fonts"),
             texts=[
-                "100%", "105%", "125%", "150%", "175%", "200%",
+                "75%", "95%", "100%", "105%", "125%", "150%", "175%", "200%",
                 self.tr("Use system setting")
             ],
             parent=self.personalGroup
@@ -227,6 +234,7 @@ class FallTalkSettings(ScrollArea):
         self.settings_group.addSettingCard(self.fallout_4_directory)
         self.settings_group.addSettingCard(self.load_engine_art_start)
         self.settings_group.addSettingCard(self.output_dir)
+        self.settings_group.addSettingCard(self.hugging_face_cache)
 
 
         self.personalGroup.addSettingCard(self.themeCard)
@@ -271,6 +279,7 @@ class FallTalkSettings(ScrollArea):
     def __connectSignalToSlot(self):
         self.tts_engine_card.optionChanged.connect(self.parent().onEngineChange)
         self.tts_device_card.optionChanged.connect(self.parent().onDeviceChange)
+        self.hugging_face_cache.clicked.connect(self.__onHuggingaceHubClicked)
 
 
         self.fallout_4_directory.clicked.connect(self.__onFallout4FolderCardClicked)
@@ -287,6 +296,18 @@ class FallTalkSettings(ScrollArea):
 
         cfg.set(cfg.fallout_4_directory, folder)
         self.fallout_4_directory.setContent(folder)
+
+    def __onHuggingaceHubClicked(self):
+        """ download folder card clicked slot """
+        folder = QFileDialog.getExistingDirectory(
+            self, self.tr("Choose Huggingface Cache Directory"), "./")
+        if not folder or cfg.get(cfg.huggingface_cache_dir) == folder:
+            return
+
+        cfg.set(cfg.huggingface_cache_dir, folder)
+        self.hugging_face_cache.setContent(folder)
+        os.environ["HF_HUB_CACHE"] = folder
+
 
     def __onOutputFolderCardClicked(self):
         folder = QFileDialog.getExistingDirectory(

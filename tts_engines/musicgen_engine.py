@@ -1,9 +1,13 @@
+import os
+
 import PySide6
 import torch
 import torchaudio
 from PySide6.QtCore import QMetaObject, Q_ARG, Qt
 from audiocraft.data.audio import audio_write
 from audiocraft.models import musicgen
+from pydub import AudioSegment
+from transformers import AutoProcessor
 
 import falltalkutils
 from falltalk.config import cfg
@@ -15,11 +19,17 @@ class MusicGenEngine:
         self.parent = parent
         self.mode = 'mono'
         self.model = None
+        self.processor = None
 
     def clean(self):
         if self.model is not None:
             del self.model
             self.model = None
+
+        if self.processor is not None:
+            del self.processor
+            self.processor = None
+
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -41,20 +51,49 @@ class MusicGenEngine:
                     print('Loading Music Model facebook/musicgen-melody')
                     self.model = musicgen.MusicGen.get_pretrained('facebook/musicgen-melody', device=cfg.get(cfg.device))
                     self.model.set_custom_progress_callback(self.progress_callback)
-                else:
+                elif mode == 'stereo':
                     print('Loading Music Model facebook/musicgen-stereo-melody')
                     self.model = musicgen.MusicGen.get_pretrained('facebook/musicgen-stereo-melody', device=cfg.get(cfg.device))
                     self.model.set_custom_progress_callback(self.progress_callback)
+                else:
+                    print('Loading Music Model nateraw/musicgen-songstarter-v0.2')
+                    self.model = musicgen.MusicGen.get_pretrained('nateraw/musicgen-songstarter-v0.2', device=cfg.get(cfg.device))
+                    self.model.set_custom_progress_callback(self.progress_callback)
 
-            self.model.set_generation_params(duration=float(audio_length_in_s))
-            print(f"Starting gen for prompt {prompt}")
+
+            if cfg.get(cfg.parse_mode) == 'split':
+                prompts = [item.strip() for item in prompt.split(',')]
+            else:
+                prompts = [prompt.strip()]
+
+            self.model.set_generation_params(duration=float(audio_length_in_s), temperature=float(cfg.get(cfg.music_temperature) / 100.0), extend_stride=float(cfg.get(cfg.extend_stride)))
+            print(f"Starting gen for prompts {prompts} with reference {reference}")
             if reference:
                 melody, sr = torchaudio.load(reference)
-                data = self.model.generate_with_chroma([prompt], melody[None].expand(1, -1, -1), sr, progress=True)
+                data = self.model.generate_with_chroma(prompts, melody_wavs=melody[None].expand(len(prompts), -1, -1), melody_sample_rate=sr, progress=True)
             else:
-                data = self.model.generate([prompt], progress=True)
+                data = self.model.generate(prompts, progress=True)
 
-            audio_write(f'{output_file}', data[0].cpu(), self.model.sample_rate, strategy="loudness")
+            wav_files = []
+            for idx, one_wav in enumerate(data):
+                # Will save under {idx}.wav, with loudness normalization at -14 db LUFS.
+                wav_files.append(audio_write(f'temp/{idx}', one_wav.cpu(), self.model.sample_rate, strategy="loudness", loudness_compressor=True))
+
+            layered = None
+
+            for wav_file in wav_files:
+                audio = AudioSegment.from_wav(wav_file)
+                if layered is None:
+                    layered = audio
+                else:
+                    layered = layered.overlay(audio)
+                os.remove(wav_file)
+
+            if layered is not None:
+                layered.export(f'{output_file}.wav', format="wav")
+
+            del data
+            del wav_files
 
             QMetaObject.invokeMethod(self.parent, "updateMediaplayer", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, panel), Q_ARG(str, f'{output_file}.wav'))
             QMetaObject.invokeMethod(self.parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, self.parent))

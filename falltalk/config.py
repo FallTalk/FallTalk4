@@ -326,7 +326,7 @@ class CustomFolderValidator(ConfigValidator):
         return value is not None and os.path.exists(value)
 
     def correct(self, value):
-        if value is not None:
+        if value is not None and value != "Please Select a Valid Folder":
             path = Path(value)
             path.mkdir(exist_ok=True, parents=True)
             return str(path.absolute()).replace("\\", "/")
@@ -387,6 +387,8 @@ class DeviceValidator(OptionsValidator):
 
 
 class Config(QConfig):
+
+    ALERT = "FallTalk is Loading.."
     # RVC
     rvc_pitch = RangeConfigItem("RVC", "rvc_pitch", 0, RangeValidator(-24, 24))
     rvc_hop_length = RangeConfigItem("RVC", "rvc_hop_length", 1, RangeValidator(1, 512))
@@ -420,6 +422,7 @@ class Config(QConfig):
     rvc_enabled = ConfigItem("App", "rvc_enabled", True, BoolValidator())
     keep_only_fuz = ConfigItem("App", "keep_only_fuz", True, BoolValidator())
     use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
+    huggingface_cache_dir = ConfigItem("App", "huggingface_cache_dir", None, CustomFolderValidator(), restart=True)
 
     xwm_enabled = ConfigItem("App", "xwm_enabled", False, BoolValidator())
     download_configs = ConfigItem(
@@ -439,9 +442,11 @@ class Config(QConfig):
 
     #Audio
     fx_duration = RangeConfigItem("fx", "duration", 10, RangeValidator(5, 120))
-    audio_mode = OptionsConfigItem("music", "mode", "mono", OptionsValidator(["mono", "stereo"]))
-    music_duration = RangeConfigItem("music", "duration", 30, RangeValidator(5, 120))
-
+    audio_mode = OptionsConfigItem("music", "mode", "stereo", OptionsValidator(["mono", "stereo", "songstarter"]))
+    music_duration = RangeConfigItem("music", "duration", 30, RangeValidator(5, 300))
+    parse_mode = OptionsConfigItem("music", "parse_mode", "single", OptionsValidator(["split", "single"]))
+    extend_stride = RangeConfigItem("music", "extend_stride", 18, RangeValidator(1, 30))
+    music_temperature = RangeConfigItem("music", "music_temperature", 100, RangeValidator(1, 100))
 
     # XTTS
     speed = RangeConfigItem("XTTS", "speed", 100, RangeValidator(1, 200))
@@ -485,7 +490,7 @@ class Config(QConfig):
     # theme
     themeColor = ColorConfigItem("QFluentWidgets", "ThemeColor", '#FFB642', restart=True)
     dpiScale = OptionsConfigItem(
-        "MainWindow", "DpiScale", "Auto", OptionsValidator([1, 1.1, 1.25, 1.5, 1.75, 2, "Auto"]), restart=True)
+        "MainWindow", "DpiScale", 1, OptionsValidator([0.75, 0.95, 1, 1.1, 1.25, 1.5, 1.75, 2, "Auto"]), restart=True)
     # main window
     enableAcrylicBackground = ConfigItem(
         "MainWindow", "EnableAcrylicBackground", False, BoolValidator())
@@ -502,6 +507,15 @@ class Config(QConfig):
         self.resetStyleTTS()
         self.resetRvc()
         self.resetMainSettings()
+        self.resetMusicAndFX()
+
+    def resetMusicAndFX(self):
+        self.set(self.music_temperature, self.music_temperature.defaultValue)
+        self.set(self.music_duration, self.music_duration.defaultValue)
+        self.set(self.extend_stride, self.extend_stride.defaultValue)
+        self.set(self.parse_mode, self.parse_mode.defaultValue)
+        self.set(self.fx_duration, self.fx_duration.defaultValue)
+
 
     def resetMainSettings(self):
         self.set(self.download_configs, self.download_configs.defaultValue)
@@ -563,7 +577,7 @@ class Config(QConfig):
 
 YEAR = 2024
 AUTHOR = "Bryant21"
-VERSION = '1.1.1'
+VERSION = '1.1.2'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"
