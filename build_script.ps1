@@ -16,7 +16,11 @@ if (-Not (Test-Path -Path $RESOURCE_TARGET_DIR)) {
 # Copy the contents of the resource directory to the target directory's resource folder
 Copy-Item -Path "resource\*" -Destination $RESOURCE_TARGET_DIR -Recurse
 
-# Compress the target directory into FallTalk.7z using 7-Zip
+Set-Location -Path "dist"
+# Compress the FallTalk directory into FallTalk.7z using 7-Zip
 # Ensure 7-Zip is installed and 7z.exe is in your PATH
-$TARGET_DIR_FILES = "$TARGET_DIR\*"
-7z a FallTalk_v1.1.2.7z $TARGET_DIR_FILES
+$FALLTALK_DIR = "FallTalk"
+7z a FallTalk_v1.1.3.7z $FALLTALK_DIR
+
+# Change back to the original directory
+Set-Location -Path ".."
