@@ -293,7 +293,7 @@ class ModelApp(FallTalkFluentWindow):
         self.gpt_sovits_widget = GPT_SoVITSWidget(self)
         self.styletts2_widget = StyleTTS2Widget(self)
         self.rvc_widget = RVCWidget(self)
-        self.rvc_widget.media_recorder.doneRecording.connect(self.generate_audio)
+        self.rvc_widget.rvc_mic_widget.media_recorder.doneRecording.connect(self.generate_audio)
 
         self.characters_widget = CharactersWidget(self)
         self.reference_widget = ReferencesWidget(self)
@@ -787,31 +787,51 @@ class ModelApp(FallTalkFluentWindow):
     def generate_audio(self, recording_file=None):
         references = self.reference_widget.reference_audio
         references_length = self.reference_widget.reference_audio_length
-        if cfg.get(cfg.engine) == "RVC" and cfg.get(cfg.rvc_mode) == "Microphone":
-            if recording_file is None:
-                self.showErrorPopup(self.rvc_widget, self.rvc_widget.media_recorder.recordButton, "Please Select Record Audio")
-            elif self.tts_engine.model_name is None:
-                self.showErrorPopup(self.rvc_widget, self.rvc_widget.media_recorder.recordButton, "Please Select Load a Model")
-            else:
-                self.showLoaderPopup("Cloning Audio", "Please Wait")
-                output_file = self.get_output_file(self.rvc_widget)
-                shutil.copy(recording_file, output_file)
-                tr = (threading.Thread(target=falltalkutils.rvc_inference, args=(self, output_file, self.rvc_widget), daemon=True))
-                tr.start()
-        elif cfg.get(cfg.engine) == "RVC":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.rvc_widget.text_input.toPlainText()))
-            if not text or text == '':
-                self.showErrorPopup(self.rvc_widget, self.rvc_widget.generate_button, "Please Enter Some Text to Generate...")
-            elif self.tts_engine.model_name is None:
-                self.showErrorPopup(self.rvc_widget, self.rvc_widget.generate_button, "Please Select Load a Model")
-            else:
-                self.showLoaderPopup("Cloning Audio", "Please Wait")
-                output_file = self.get_output_file(self.rvc_widget)
-                if cfg.get(cfg.rvc_mode) == "EdgeTTS":
-                    tr = (threading.Thread(target=falltalkutils.edge_tts_inference, args=(self, text, output_file, self.rvc_widget.voice_combo.configItem.currentText(), self.rvc_widget), daemon=True))
+        if cfg.get(cfg.engine) == "RVC":
+            if self.rvc_widget.stackedWidget.currentWidget() == self.rvc_widget.rvc_mic_widget:
+                if recording_file is None:
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_mic_widget.media_recorder.recordButton, "Please Select Record Audio")
+                elif self.tts_engine.model_name is None:
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_mic_widget.recordButton, "Please Select Load a Model")
+                else:
+                    self.showLoaderPopup("Cloning Input Audio", "Please Wait")
+                    output_file = self.get_output_file(self.rvc_widget.rvc_mic_widget)
+                    shutil.copy(recording_file, output_file)
+                    tr = (threading.Thread(target=falltalkutils.rvc_inference, args=(self, output_file, self.rvc_widget), daemon=True))
                     tr.start()
-                elif cfg.get(cfg.rvc_mode) == "Eleven-Labs":
-                    tr = (threading.Thread(target=falltalkutils.eleven_labs_inference, args=(self, text, output_file, self.rvc_widget.voice_combo.configItem.currentText(), self.rvc_widget), daemon=True))
+            elif self.rvc_widget.stackedWidget.currentWidget() == self.rvc_widget.rvc_file_widget:
+                recording_file = self.rvc_widget.rvc_file_widget.rvc_file.value
+                if recording_file is None:
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_file_widget, "Please Select a file")
+                elif self.tts_engine.model_name is None:
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_file_widget, "Please Select Load a Model")
+                else:
+                    self.showLoaderPopup("Cloning File Audio", "Please Wait")
+                    output_file = self.get_output_file(self.rvc_widget.rvc_file_widget)
+                    shutil.copy(recording_file, output_file)
+                    tr = (threading.Thread(target=falltalkutils.rvc_inference, args=(self, output_file, self.rvc_widget), daemon=True))
+                    tr.start()
+            elif self.rvc_widget.stackedWidget.currentWidget() == self.rvc_widget.edge_tts_widget:
+                text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.rvc_widget.edge_tts_widget.text_input.toPlainText()))
+                if not text or text == '':
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.edge_tts_widget.generate_button, "Please Enter Some Text to Generate...")
+                elif self.tts_engine.model_name is None:
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.edge_tts_widget.generate_button, "Please Select Load a Model")
+                else:
+                    self.showLoaderPopup("Cloning TTS from Edge", "Please Wait")
+                    output_file = self.get_output_file(self.rvc_widget.edge_tts_widget)
+                    tr = (threading.Thread(target=falltalkutils.edge_tts_inference, args=(self, text, output_file, self.rvc_widget.edge_tts_widget.voice_combo.configItem.currentText(), self.rvc_widget), daemon=True))
+                    tr.start()
+            elif self.rvc_widget.stackedWidget.currentWidget() == self.rvc_widget.eleven_labs_widget:
+                text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.rvc_widget.eleven_labs_widget.text_input.toPlainText()))
+                if not text or text == '':
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.eleven_labs_widget.generate_button, "Please Enter Some Text to Generate...")
+                elif self.tts_engine.model_name is None:
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.eleven_labs_widget.generate_button, "Please Select Load a Model")
+                else:
+                    self.showLoaderPopup("Calling ElevenLabs", "Please Wait")
+                    output_file = self.get_output_file(self.rvc_widget.eleven_labs_widget)
+                    tr = (threading.Thread(target=falltalkutils.eleven_labs_inference, args=(self, text, output_file, self.rvc_widget.eleven_labs_widget.voice_combo.configItem.currentText(), self.rvc_widget), daemon=True))
                     tr.start()
         elif cfg.get(cfg.engine) == "XTTSv2":
             text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.xtts_widget.text_input.toPlainText()))

@@ -402,7 +402,7 @@ class Config(QConfig):
     rvc_pitch_extraction = OptionsConfigItem("RVC", "rvc_pitch_extraction", default=PitchExtractionAlgorithm.rmvpe,
                                              validator=OptionsValidator(PitchExtractionAlgorithm),
                                              serializer=EnumSerializer(PitchExtractionAlgorithm))
-    rvc_mode = OptionsConfigItem("RVC", "rvc_mode", "Microphone", OptionsValidator(["Microphone", "EdgeTTS", "Eleven-Labs"]))
+    rvc_mode = OptionsConfigItem("RVC", "rvc_mode", "Microphone", OptionsValidator(["Microphone", "File", "EdgeTTS", "Eleven-Labs"]))
     rvc_eleven_labs_key = ConfigItem("RVC", "rvc_eleven_labs_key", None, ConfigValidator())
 
     rvc_embedder_model = OptionsConfigItem("RVC", "rvc_embedding_model", "contentvec", OptionsValidator(["contentvec", "hubert"]))
@@ -577,7 +577,7 @@ class Config(QConfig):
 
 YEAR = 2024
 AUTHOR = "Bryant21"
-VERSION = '1.1.3'
+VERSION = '1.1.4'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"
