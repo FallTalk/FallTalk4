@@ -344,6 +344,10 @@ class ModelApp(FallTalkFluentWindow):
         parent.complete_loader()
         parent.createErrorInfoBar(title, text)
 
+    @Slot(PySide6.QtCore.QObject, str, str)
+    def onWarn(self, parent, title, text):
+        parent.createErrorInfoBar(title, text)
+
     def createErrorInfoBar(self, title, text):
         InfoBar.error(
             title=title,

@@ -390,11 +390,24 @@ def load_xtts(parent):
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
 
 
-def load_whisper(parent):
-    if parent.transcription_engine is None:
-        from tts_engines.whisper_engine import Whisper_Engine
-        parent.transcription_engine = Whisper_Engine()
-        print("WhisperX Loaded")
+def load_whisper(parent, attempt=0):
+    try:
+        if parent.transcription_engine is None:
+            from tts_engines.whisper_engine import Whisper_Engine
+            parent.transcription_engine = Whisper_Engine()
+            print("WhisperX Loaded")
+    except Exception as e:
+        logger.exception(f"Error: {e}")
+        if attempt == 0:
+            from huggingface_hub.constants import HF_HUB_CACHE
+            cache_dir = HF_HUB_CACHE
+            if os.path.exists(HF_HUB_CACHE):
+                shutil.rmtree(cache_dir)
+                print(f"Attempting to delete HuggingFace cache directory: {cache_dir}")
+            load_whisper(parent, 1)
+        else:
+            QMetaObject.invokeMethod(parent, "onWarn", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Whispper Engine"), Q_ARG(str, "An Error Occured while loading whisper engine. Transcription will not work for untrained models. Please delete C:\\Users\\USERNAME\\.cache\\huggingface\\hub"))
+
 
 
 def load_voicecraft(parent):
