@@ -142,12 +142,10 @@ If this gets enough traction and support here are some of the future features I 
 - [ ] Streaming audio instead of wav files
 - [ ] Finetune StyleTTS2
 - [ ] Train models for missing characters
-- [ ] Bulk Generator, takes in a CSV and creates the audio for you
 - [ ] More language support
 - [ ] Compile Models for additional speed?
 - [ ] AMD support
 - [ ] Skyrim or Starfield support
-- [ ] Edge TTS
 - [ ] More TTS engines, Paler? Fish?
 
 ## Credits

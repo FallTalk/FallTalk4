@@ -3,7 +3,7 @@ import os
 from abc import ABC, abstractmethod
 import torch
 
-from tts_engines.rvc.infer.infer import RVCPipeline
+from tts_engines.rvc.infer.infer import RVCPipeline, RVCParameters
 from falltalk.config import cfg
 
 
@@ -18,6 +18,10 @@ class tts_engine(ABC):
         self.is_base = False
         self.device = cfg.get(cfg.device)
         self.rvc_pipeline = None
+        self.rvc_preload = False
+        self.rvc_parameters = None
+        self.rvc_pth_path = None
+        self.rvc_index_path = None
 
     def get_model(self, engine, model_type):
         directory = os.path.join("models", self.model_name, engine)
@@ -59,9 +63,12 @@ class tts_engine(ABC):
             else:
                 print("reusing model")
 
-        if self.rvc_model and self.rvc_pipeline is None:
-            self.rvc_pipeline = RVCPipeline(cfg.get(cfg.device))
+        if self.rvc_model:
+            if self.rvc_pipeline is None:
+                self.rvc_pipeline = RVCPipeline(cfg.get(cfg.device))
 
+            self.rvc_pth_path = self.get_model("RVC", "pth")
+            self.rvc_index_path = self.get_model("RVC", "index")
 
     def handle_lowvram_change(self):
         if torch.cuda.is_available():
@@ -103,50 +110,40 @@ class tts_engine(ABC):
         """UNLOAD"""
         pass
 
+    def preload_rvc_params(self):
+        self.rvc_preload = True
+        self.rvc_parameters = self.get_rvc_params()
+
+    def get_rvc_params(self):
+        params = RVCParameters()
+        params.f0up_key = cfg.get(cfg.rvc_pitch)
+        params.filter_radius = cfg.get(cfg.rvc_filter_radius) / 100.0
+        params.index_rate = cfg.get(cfg.rvc_index_influence) / 100.0
+        params.rms_mix_rate = cfg.get(cfg.rvc_volume_envelope) / 100.0
+        params.protect = cfg.get(cfg.rvc_protect) / 100.0
+        params.hop_length = cfg.get(cfg.rvc_hop_length)
+        params.f0method = cfg.get(cfg.rvc_pitch_extraction).value
+        params.split_audio = cfg.get(cfg.rvc_split_audio)
+        params.f0autotune = cfg.get(cfg.rvc_autotune)
+        params.embedder_model = cfg.get(cfg.rvc_embedder_model)
+        params.training_data_size = cfg.get(cfg.rvc_training_data_size)
+        params.pth_path = self.rvc_pth_path
+        params.index_path = self.rvc_index_path
+        return params
+
+
     def run_rvc(self, input_tts_path):
         print(f"Running RVC {input_tts_path}")
-        f0up_key = cfg.get(cfg.rvc_pitch)
-        filter_radius = cfg.get(cfg.rvc_filter_radius) / 100.0
-        index_rate = cfg.get(cfg.rvc_index_influence) / 100.0
-        rms_mix_rate = cfg.get(cfg.rvc_volume_envelope) / 100.0
-        protect = cfg.get(cfg.rvc_protect) / 100.0
-        hop_length = cfg.get(cfg.rvc_hop_length)
-        f0method = cfg.get(cfg.rvc_pitch_extraction).value
-        split_audio = cfg.get(cfg.rvc_split_audio)
-        f0autotune = cfg.get(cfg.rvc_autotune)
-        embedder_model = cfg.get(cfg.rvc_embedder_model)
-        training_data_size = cfg.get(cfg.rvc_training_data_size)
-        # Convert path variables to strings
-        pth_path = self.get_model("RVC", "pth")
-        # Check if the model file exists
-        if not os.path.isfile(pth_path):
-            print(f"Model file {pth_path} does not exist. Exiting.")
-            return
-        # Get the directory of the model file
-        model_dir = os.path.dirname(pth_path)
-        # Get the filename of pth_path
-        pth_filename = os.path.basename(pth_path)
-        # Find all .index files in the model directory
-        index_files = [file for file in os.listdir(model_dir) if file.endswith(".index")]
-        if len(index_files) == 1:
-            index_path = str(os.path.join(model_dir, index_files[0]))
-            # Get the filename of index_path
-            index_filename = os.path.basename(index_path)
-            index_filename_print = index_filename
-            index_size_print = training_data_size
-        elif len(index_files) > 1:
-            index_path = ""
-            index_filename = None
-            index_filename_print = "None used"
-            index_size_print = "N/A"
+        if self.rvc_preload:
+            params = self.rvc_parameters
         else:
-            index_path = ""
-            index_filename = None
-            index_filename_print = "None used"
-            index_size_print = "N/A"
-        output_rvc_path = input_tts_path
-        # Call the infer_pipeline function
-        self.rvc_pipeline.infer_pipeline(f0up_key, filter_radius, index_rate, rms_mix_rate, protect, hop_length, f0method,
-                       input_tts_path, output_rvc_path, pth_path, index_path, split_audio, f0autotune, embedder_model,
-                       training_data_size, False)
+            params = self.get_rvc_params()
+
+        if not os.path.isfile(params.pth_path) or not os.path.isfile(params.index_path):
+            print(f"Model file {params.pth_path} or {params.index_path} does not exist. Exiting.")
+            return
+
+        self.rvc_pipeline.infer_pipeline(params.f0up_key, params.filter_radius, params.index_rate, params.rms_mix_rate, params.protect, params.hop_length, params.f0method,
+                                         input_tts_path, input_tts_path, params.pth_path, params.index_path, params.split_audio, params.f0autotune, params.embedder_model,
+                                         params.training_data_size, False)
         return

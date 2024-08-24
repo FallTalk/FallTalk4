@@ -829,14 +829,14 @@ def bulk_fuz(parent, directory, include_subdir, threads=1):
 
 
 
-def bulk_rvc_inference(parent, directory, character, include_subdir, replace, threads=1, use_existing_lip=True):
+def bulk_rvc_inference(parent, directory, model, include_subdir, replace, threads=1, use_existing_lip=True):
     wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
     fuz_files = glob.glob(os.path.join(directory, '**', '*.fuz'), recursive=include_subdir)
     xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
     count = 0
     time_total = 0
     output_folder = None
-    model = get_character_model(character, parent.models, parent.custom_models)
+    # model = get_character_model(character, parent.models, parent.custom_models)
     is_trained, has_rvc = get_trained_character(model, 'RVC')
     engine_changed = False
 
@@ -857,8 +857,8 @@ def bulk_rvc_inference(parent, directory, character, include_subdir, replace, th
         #     engine_changed = True
         #     load_rvc(parent, True)
 
-        if not os.path.exists(os.path.join('models', character, 'RVC')):
-            download_rvc_models(character, model['RVC'])
+        if not os.path.exists(os.path.join('models', model['name'], 'RVC')):
+            download_rvc_models(model['name'], model['RVC'])
 
         with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
             futures = []
@@ -878,7 +878,8 @@ def bulk_rvc_inference(parent, directory, character, include_subdir, replace, th
         for i in range(threads):
             from tts_engines.rvc_engine import RVC_Engine
             tts_engine = RVC_Engine()
-            tts_engine.setup(character, has_rvc, not is_trained)
+            tts_engine.setup(model['name'], has_rvc, not is_trained)
+            tts_engine.preload_rvc_params()
             tts_engines.append(tts_engine)
 
         with ThreadPoolExecutor(max_workers=threads) as executor:

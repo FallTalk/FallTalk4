@@ -29,6 +29,25 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
+class RVCParameters:
+    def __init__(self):
+        self.f0up_key = None
+        self.filter_radius = None
+        self.index_rate = None
+        self.rms_mix_rate = None
+        self.protect = None
+        self.hop_length = None
+        self.f0method = None
+        self.split_audio = None
+        self.f0autotune = None
+        self.embedder_model = None
+        self.training_data_size = None
+        self.pth_path = None
+        self.index_path = None
+        self.index_filename = None
+        self.index_filename_print = None
+        self.index_size_print = None
+
 class RVCPipeline:
     def __init__(self, device):
         self.config = Config(device)

@@ -16,6 +16,7 @@ from qfluentwidgets import FluentIcon as FIF, TextEdit, PushButton, SegmentedWid
     ConfigItem, ConfigValidator, TableView, CheckBox, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, NavigationTreeWidget, BodyLabel, IconWidget, Theme, isDarkTheme, \
     FolderValidator, PushSettingCard, Dialog, MessageBoxBase, BoolValidator, RangeConfigItem, RangeValidator, OptionsConfigItem, OptionsValidator, TextWrap, SystemTrayMenu
 from qfluentwidgets.components.dialog_box.dialog import Ui_MessageBox, MessageBox
+from qfluentwidgets.components.widgets.combo_box import ComboItem
 from qfluentwidgets.window.fluent_window import FluentWindowBase
 
 from audio_player import StandardAudioPlayerBar
@@ -574,8 +575,14 @@ class RVCMicrophoneWidget(BaseRVCWidget):
         self.media_recorder = StandardAudioRecorderBar(self)
         self.view.addWidget(self.media_recorder)
         self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
-
         self.view.addItem(self.spacer)
+        self.rvc_pitch_card = RangeSettingCard(
+            cfg.rvc_pitch,
+            FIF.MARKET,
+            self.tr("Pitch Adjustment"),
+            self.tr("Set the pitch of the audio, useful for opposite gender."),
+        )
+        self.view.addWidget(self.rvc_pitch_card)
         self.addButtons()
         self.addGenSettings()
 
@@ -585,19 +592,18 @@ class RVCFileWidget(BaseRVCWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.rvc_file_start = "./"
         self.rvc_file = ConfigItem("bulk", "upload_file", "Please Select an Audio File", FileValidator())
-
         self.rvc_file_card = PushSettingCard(
             self.tr('Select File'),
             FIF.DOCUMENT,
             self.tr("Audio File"),
             self.rvc_file.value,
         )
-
         self.rvc_file_card.clicked.connect(self.__onFileCardClicked)
-
         self.view.addWidget(self.rvc_file_card)
         self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+
 
         self.view.addItem(self.spacer)
         self.addButtons()
@@ -606,10 +612,11 @@ class RVCFileWidget(BaseRVCWidget):
     def __onFileCardClicked(self):
         allowed_file_types = "WAV files (*.wav);;MP3 files (*.mp3)"
         folder = QFileDialog.getOpenFileName(
-            self, self.tr("Choose CSV or Text File"), "./", allowed_file_types)
+            self, self.tr("Choose CSV or Text File"), self.rvc_file_start, allowed_file_types)
         if not folder or folder[0] == "":
             return
 
+        self.rvc_file_start = os.path.dirname(folder[0])
         self.rvc_file.value = folder[0]
         self.rvc_file_card.setContent(folder[0])
 
@@ -654,7 +661,7 @@ class RVCElevenLabsWidget(BaseRVCWidget):
         font = QFont()
         font.setPointSize(12)
         self.text_input.setFont(font)
-        self.text_input.setPlaceholderText("Eleven Labs requires that you set an API key within the RVC Settings page. Once you have done that, you gain the ability to utilize all the voices on the Eleven Labs platform including ones you have created.")
+        self.text_input.setPlaceholderText("ElevenLabs requires that you set an API key below. Once you have done that, you gain the ability to utilize all the voices on the ElevenLabs platform including ones you have created.")
         self.view.addWidget(self.text_input)
 
         self.voice_combo = RvcComboBoxSettingsCard(
@@ -667,7 +674,7 @@ class RVCElevenLabsWidget(BaseRVCWidget):
             cfg.rvc_eleven_labs_key,
             FIF.SAVE_AS,
             self.tr('API Access Key'),
-            self.tr('Optional, used to access your custom eleven labs voices'),
+            self.tr('Optional, used to access your custom ElevenLabs voices'),
             placeholder="Required to use service"
         )
         self.eleven_labs_key.lineEdit.setEchoMode(QLineEdit.EchoMode.Password)
@@ -702,9 +709,9 @@ class RVCWidget(FallTalkWidget):
         self.rvc_mic_widget = RVCMicrophoneWidget(self.parent)
 
         self.addSubInterface(self.rvc_mic_widget, 'rvc_mic_widget', 'Microphone')
-        self.addSubInterface(self.rvc_file_widget, 'rvc_file_widget', 'File Upload')
+        self.addSubInterface(self.rvc_file_widget, 'rvc_file_widget', 'File')
         self.addSubInterface(self.edge_tts_widget, 'edge_tts_widget', 'Edge TTS')
-        self.addSubInterface(self.eleven_labs_widget, 'eleven_labs_widget', 'Eleven Labs')
+        self.addSubInterface(self.eleven_labs_widget, 'eleven_labs_widget', 'ElevenLabs')
 
         self.boxLayout.addWidget(self.pivot, 0, Qt.AlignmentFlag.AlignLeft)
         self.boxLayout.addWidget(self.stackedWidget)
@@ -2156,16 +2163,54 @@ class BulkGenerationRVCWidget(QWidget):
         self.f_c__layout.addWidget(self.use_existing_lip, 3)
         self.f_c_.setLayout(self.f_c__layout)
 
+        self.rvc_protect_card = RangeSettingCardScaled(
+            cfg.rvc_protect,
+            FIF.BROOM,
+            self.tr("Breath Sounds Envelope"),
+            self.tr("Prevents sound artifacts and breath noises"),
+        )
+
+        self.rvc_filter_radius_card = RangeSettingCard(
+            cfg.rvc_filter_radius,
+            FIF.FILTER,
+            self.tr("Filter Radius"),
+            self.tr("If >= 3, potential to decrease respiration."),
+        )
+
+        self.p_f = QGroupBox()
+        self.p_f.setStyleSheet("border: none")
+        self.p_f_layout = QHBoxLayout(self.p_f)
+        self.p_f_layout.setContentsMargins(0, 0, 0, 0)
+        self.p_f_layout.addWidget(self.rvc_protect_card, 3)
+        self.p_f_layout.addWidget(self.rvc_filter_radius_card, 3)
+        self.p_f.setLayout(self.p_f_layout)
+
+        self.rvc_pitch_card = RangeSettingCard(
+            cfg.rvc_pitch,
+            FIF.MARKET,
+            self.tr("Pitch Adjustment"),
+            self.tr("Set the pitch of the audio, for opposite gender."),
+        )
+
+        self.p_t = QGroupBox()
+        self.p_t.setStyleSheet("border: none")
+        self.p_t_layout = QHBoxLayout(self.p_t)
+        self.p_t_layout.setContentsMargins(0, 0, 0, 0)
+        self.p_t_layout.addWidget(self.threads_card, 3)
+        self.p_t_layout.addWidget(self.rvc_pitch_card, 3)
+        self.p_t.setLayout(self.p_t_layout)
+
         self.setContentsMargins(0, 0, 0, 0)
 
         self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.rvc_widget_view = QVBoxLayout(self)
         self.rvc_widget_view.setContentsMargins(0, 0, 0, 0)
         self.rvc_widget_view.addItem(self.spacer)
-        self.rvc_widget_view.addWidget(self.threads_card)
         self.rvc_widget_view.addWidget(self.gen_settings)
-        self.rvc_widget_view.addWidget(self.f_c_)
+        self.rvc_widget_view.addWidget(self.p_t)
+        self.rvc_widget_view.addWidget(self.p_f)
         self.rvc_widget_view.addWidget(self.r_and_sub)
+        self.rvc_widget_view.addWidget(self.f_c_)
 
     def __onFolderCardClicked(self):
         """ download folder card clicked slot """
@@ -2317,15 +2362,16 @@ class BulkGenerationWidget(FallTalkWidget):
         items = []
         for key, value in self.parent.models.items():
             if 'RVC' in value:
-                items.append(key)
+                items.append(ComboItem(value['display_name'], userData=value))
 
         if self.parent.custom_models is not None:
             for key, value in self.parent.custom_models.items():
                 if 'RVC' in value:
-                    items.append(key)
+                    items.append(ComboItem(value['display_name'], userData=value))
 
-        items.sort()
-        self.bulk_rvc_widget.character_card.configItem.addItems(items)
+        for i in sorted(items, key=lambda x: x.text):
+            self.bulk_rvc_widget.character_card.configItem.addItem(i.text, userData=i.userData)
+
         self.bulk_rvc_widget.character_card.configItem.setCurrentIndex(0)
 
     def __onShowGettingStarted(self):

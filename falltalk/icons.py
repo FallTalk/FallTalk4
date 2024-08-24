@@ -66,7 +66,7 @@ class FallTalkIcons(FluentIconBase, Enum):
     FX = "fx"
     ENHANCE = "enhance"
     SINE = "sine"
-
+    API = "api"
     def icon(self, theme=Theme.AUTO, color: QColor = None) -> QIcon:
         """ create a fluent icon
 

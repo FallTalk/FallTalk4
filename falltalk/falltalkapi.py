@@ -1,11 +1,14 @@
+import os.path
 import shutil
 import threading
 
 import uvicorn
 from PySide6.QtCore import Qt, QMetaObject, Q_ARG
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, FileResponse
 
+import config
 from falltalk import falltalkutils
 from falltalk.config import cfg
 
@@ -37,9 +40,30 @@ class FallTalkAPI:
         self.falltak_app = falltak_app
         self.server_thread = FastAPIServer()
         self.server_thread.start()
+        self.falltak_app.openapi = self.custom_openapi()
+
+    def custom_openapi(self):
+        if app.openapi_schema:
+            return app.openapi_schema
+        openapi_schema = get_openapi(
+            title="FallTalk",
+            version=config.VERSION,
+            description="FallTalk API",
+            routes=app.routes,
+        )
+        openapi_schema["info"]["x-logo"] = {
+            "url": "http://127.0.0.1:2277/logo"
+        }
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
 
     def shutdown(self):
         self.server_thread.shutdown()
+
+    @app.get("/logo", include_in_schema=False)
+    async def get_logo(self):
+        return FileResponse(os.path.abspath("resource/falltalk.png"))
 
     @app.post('/engine/load')
     async def api_engine_load(self, data: dict):
