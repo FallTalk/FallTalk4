@@ -1010,7 +1010,23 @@ class ModelApp(FallTalkFluentWindow):
         w = MessageBox(title, content, self)
         w.yesButton.setText(self.tr('Yes'))
         if w.exec():
-            shutil.rmtree(os.path.join("models", character))
+            if os.path.exists(os.path.join("models", character)):
+                shutil.rmtree(os.path.join("models", character))
+
+            if os.path.exists('config/custom_models.json'):
+                with open('config/custom_models.json', 'r', encoding="utf-8") as file:
+                    custom_models = json.load(file)
+            else:
+                custom_models = []
+
+            new_custom_models = []
+            for model in custom_models:
+                if model['display_name'] != display_name:
+                    new_custom_models.append(model)
+
+            with open('config/custom_models.json', 'w', encoding="utf-8") as file:
+                json.dump(new_custom_models, file)
+
             self.load_models_config()
 
 
