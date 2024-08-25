@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
@@ -189,40 +190,34 @@ def combine_wav_files(input_files, target_rate=24500, silence_duration=0.5):
     return file_name
 
 
+def is_stereo(audio_array):
+    return audio_array.ndim == 2
+
 def load_audio(file, sampling_rate):
-    if ".wav" in file:
-        audio_data, sr = librosa.load(file, sr=sampling_rate)
+    try:
+        # Set the ffmpeg_path variable based on the operating system
+        if sys.platform == "win32":
+            ffmpeg_path = os.path.abspath(os.path.join("ffmpeg.exe"))
+        else:
+            ffmpeg_path = "ffmpeg"  # Default path for Linux and macOS
 
-        if audio_data.dtype != np.float32:
-            audio_data = audio_data.astype(np.float32)
+        # Initialize the process variable
+        process = subprocess.Popen(
+            [ffmpeg_path, "-y", "-i", file, "-f", "f32le", "-acodec", "pcm_f32le", "-af", "aresample=resampler=soxr", "-ac", "1", "-ar", str(sampling_rate), "pipe:1"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
 
-        return audio_data
-    else:
-        try:
-            # Set the ffmpeg_path variable based on the operating system
-            if sys.platform == "win32":
-                ffmpeg_path = os.path.abspath(os.path.join("ffmpeg.exe"))
-            else:
-                ffmpeg_path = "ffmpeg"  # Default path for Linux and macOS
+        out, err = process.communicate()
+        if process.returncode != 0:
+            print(f"FFmpeg error: {err.decode('utf-8')}")  # Debug statement
+            raise RuntimeError(f"FFmpeg error: {err.decode('utf-8')}")
+        # print("Audio loaded successfully")  # Debug statement
+    except Exception as error:
+        print(f"Error loading audio: {error}")  # Debug statement
+        raise RuntimeError(f"Failed to load audio: {error}")
 
-            print(f"f{ffmpeg_path}")
-            # Initialize the process variable
-            process = subprocess.Popen(
-                [ffmpeg_path, "-y", "-i", file, "-f", "f32le", "-acodec", "pcm_f32le", "-ac", "1", "-ar", str(sampling_rate), "pipe:1"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-
-            out, err = process.communicate()
-            if process.returncode != 0:
-                print(f"FFmpeg error: {err.decode('utf-8')}")  # Debug statement
-                raise RuntimeError(f"FFmpeg error: {err.decode('utf-8')}")
-            # print("Audio loaded successfully")  # Debug statement
-        except Exception as error:
-            print(f"Error loading audio: {error}")  # Debug statement
-            raise RuntimeError(f"Failed to load audio: {error}")
-
-        return np.frombuffer(out, np.float32).flatten()
+    return np.frombuffer(out, np.float32).flatten()
 
 
 def clean_folder(folder_path):
@@ -830,6 +825,7 @@ def bulk_fuz(parent, directory, include_subdir, threads=1):
 
 
 def bulk_rvc_inference(parent, directory, model, include_subdir, replace, threads=1, use_existing_lip=True):
+    start_time = time.time()
     wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
     fuz_files = glob.glob(os.path.join(directory, '**', '*.fuz'), recursive=include_subdir)
     xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
@@ -895,9 +891,17 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
                 count += 1
                 update_progress(parent, total, time_total, count)
 
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    td = timedelta(seconds=elapsed_time)
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    print(f"Bulk Duration: {hours:02}:{minutes:02}:{seconds:02}")
+
     for engine in tts_engines:
         engine.clean()
         del engine
+
 
     if engine_changed:
         QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))

@@ -48,6 +48,7 @@ class RVCParameters:
         self.index_filename_print = None
         self.index_size_print = None
 
+
 class RVCPipeline:
     def __init__(self, device):
         self.config = Config(device)
@@ -57,8 +58,16 @@ class RVCPipeline:
         self.vc = None
         self.cpt = None
         self.version = None
+        self.synth_version = None
         self.n_spk = None
         self.debug_rvc = True
+        self.if_f0 = None
+        self.file_index = None
+        self.train_data = None
+        self.data = None
+        self.training_data_size = None
+        self.d = None
+        self.person = None
 
     def clean_up(self):
         del self.config
@@ -67,6 +76,9 @@ class RVCPipeline:
         del self.vc
         del self.cpt
         del self.n_spk
+        del self.data
+        del self.d
+        del self.train_data
         torch.cuda.empty_cache()
         self.hubert_model = None
         self.tgt_sr = None
@@ -76,6 +88,14 @@ class RVCPipeline:
         self.version = None
         self.n_spk = None
         self.config = None
+        self.synth_version = None
+        self.if_f0 = None
+        self.file_index = None
+        self.train_data = None
+        self.data = None
+        self.training_data_size = None
+        self.d = None
+        self.person = None
 
     def load_hubert(self, embedder_model):
         models, _, _ = load_embedding(embedder_model)
@@ -88,6 +108,67 @@ class RVCPipeline:
             print("loading hubert_model with full precision")
             self.hubert_model = self.hubert_model.float()
         self.hubert_model.eval()
+
+    def load_index_file(self, file_index, training_data_size):
+        if file_index is None:
+            self.file_index = None
+            self.data = None
+            self.d = None
+            self.train_data = None
+        elif self.file_index != file_index:
+            self.file_index = file_index
+            index = faiss.read_index(self.file_index)
+            self.d = index.d
+            self.data = index.reconstruct_n(0, index.ntotal)
+
+        if self.training_data_size != training_data_size and self.file_index is not None:
+            self.training_data_size = training_data_size
+            training_data_size_min = min(training_data_size, len(self.data))
+            self.train_data = self.data[:training_data_size_min]
+
+            if self.vc is not None:
+                del self.vc
+                self.vc = None
+
+        if self.vc is None:
+            if self.data is not None and self.d is not None and self.train_data is not None:
+                self.vc = VC(self.tgt_sr, self.config, self.data, self.d, self.train_data, False)
+            else:
+                self.vc = VC(self.tgt_sr, self.config)
+
+        if self.n_spk is None:
+            self.n_spk = self.cpt["config"][-3]
+
+    def load_synthesizer(self, if_f0):
+        if self.if_f0 != if_f0:
+            if self.version == "v1":
+                if if_f0 == 1:
+                    self.net_g = SynthesizerTrnMs256NSFsid(*self.cpt["config"], is_half=self.config.is_half)
+                else:
+                    self.net_g = SynthesizerTrnMs256NSFsid_nono(*self.cpt["config"])
+            elif self.version == "v2":
+                if if_f0 == 1:
+                    self.net_g = SynthesizerTrnMs768NSFsid(*self.cpt["config"], is_half=self.config.is_half)
+                else:
+                    self.net_g = SynthesizerTrnMs768NSFsid_nono(*self.cpt["config"])
+
+            self.if_f0 = if_f0
+            self.net_g.load_state_dict(self.cpt["weight"], strict=False)
+            self.net_g.eval().to(self.config.device)
+            if self.config.is_half:
+                self.net_g = self.net_g.half()
+            else:
+                self.net_g = self.net_g.float()
+
+    def load_person(self, weight_root):
+        if self.person != weight_root:
+            self.person = weight_root
+            self.cpt = torch.load(self.person, map_location="cpu")
+            self.tgt_sr = self.cpt["config"][-1]
+            self.cpt["config"][-3] = self.cpt["weight"]["emb_g.weight"].shape[0]
+            if_f0 = self.cpt.get("f0", 1)
+            self.version = self.cpt.get("version", "v1")
+            self.load_synthesizer(if_f0)
 
     def voice_conversion(
             self,
@@ -218,117 +299,11 @@ class RVCPipeline:
             print(f"Error during voice conversion: {error}")
             return None, None
 
-    def get_vc(self, weight_root, sid, file_index=None, training_data_size=10000, debug_rvc=False):
-        branding = "FallTalk "
-
+    def get_vc(self, weight_root, sid, file_index=None, training_data_size=10000, debug_rvc=True):
         if debug_rvc:
-            print(f"[{branding}Debug] Entering get_vc function")
-            print(f"[{branding}Debug] weight_root: {weight_root}")
-            print(f"[{branding}Debug] sid: {sid}")
-            print(f"[{branding}Debug] file_index: {file_index}")
-            print(f"[{branding}Debug] training_data_size: {training_data_size}")
-
-        if sid == "" or sid == []:
-            if self.hubert_model is not None:
-                if debug_rvc:
-                    print(f"[{branding}Debug] Cleaning empty cache")
-                del self.net_g, self.n_spk, self.vc, self.hubert_model, self.tgt_sr
-                self.hubert_model = self.net_g = self.n_spk = self.vc = self.hubert_model = self.tgt_sr = None
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-            if debug_rvc:
-                print(f"[{branding}Debug] sid is empty or an empty list")
-
-            if_f0 = self.cpt.get("f0", 1)
-            self.version = self.cpt.get("version", "v1")
-
-            if debug_rvc:
-                print(f"[{branding}Debug] Model version: {self.version}")
-                print(f"[{branding}Debug] f0: {if_f0}")
-
-            if self.version == "v1":
-                if if_f0 == 1:
-                    self.net_g = SynthesizerTrnMs256NSFsid(*self.cpt["config"], is_half=self.config.is_half)
-                else:
-                    self.net_g = SynthesizerTrnMs256NSFsid_nono(*self.cpt["config"])
-            elif self.version == "v2":
-                if if_f0 == 1:
-                    self.net_g = SynthesizerTrnMs768NSFsid(*self.cpt["config"], is_half=self.config.is_half)
-                else:
-                    self.net_g = SynthesizerTrnMs768NSFsid_nono(*self.cpt["config"])
-            del self.net_g, self.cpt
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            self.cpt = None
-
-        if debug_rvc:
-            print(f"[{branding}Debug] Loading model checkpoint")
-
-        person = weight_root
-        self.cpt = torch.load(person, map_location="cpu")
-        self.tgt_sr = self.cpt["config"][-1]
-        self.cpt["config"][-3] = self.cpt["weight"]["emb_g.weight"].shape[0]
-        if_f0 = self.cpt.get("f0", 1)
-        self.version = self.cpt.get("version", "v1")
-
-        if debug_rvc:
-            print(f"[{branding}Debug] Model version: {self.version}")
-
-        if self.version == "v1":
-            if if_f0 == 1:
-                self.net_g = SynthesizerTrnMs256NSFsid(*self.cpt["config"], is_half=self.config.is_half)
-            else:
-                self.net_g = SynthesizerTrnMs256NSFsid_nono(*self.cpt["config"])
-        elif self.version == "v2":
-            if if_f0 == 1:
-                self.net_g = SynthesizerTrnMs768NSFsid(*self.cpt["config"], is_half=self.config.is_half)
-            else:
-                self.net_g = SynthesizerTrnMs768NSFsid_nono(*self.cpt["config"])
-        self.net_g.load_state_dict(self.cpt["weight"], strict=False)
-        self.net_g.eval().to(self.config.device)
-        if self.config.is_half:
-            self.net_g = self.net_g.half()
-        else:
-            self.net_g = self.net_g.float()
-
-        if file_index is not None:
-            if debug_rvc:
-                print(f"[{branding}Debug] Loading index file: {file_index}")
-            index_file = file_index
-            index = faiss.read_index(index_file)
-            if debug_rvc:
-                print(f"[{branding}Debug] Extracting data from index")
-            data = index.reconstruct_n(0, index.ntotal)
-            d = index.d
-            nlist = index.nlist
-
-            training_data_size = min(training_data_size, len(data))
-            train_data = data[:training_data_size]
-
-        else:
-            if debug_rvc:
-                print(f"[{branding}Debug] No index file provided")
-            data = None
-            d = None
-            nlist = None
-            train_data = None
-
-        if debug_rvc:
-            print(f"[{branding}Debug] Creating VC instance")
-
-        if data is not None and d is not None and nlist is not None and train_data is not None:
-            if debug_rvc:
-                print(f"[{branding}Debug] Data: {data}")
-                print(f"[{branding}Debug] Dimensionality: {d}")
-                print(f"[{branding}Debug] Number of centroids: {nlist}")
-                print(f"[{branding}Debug] Training data size: {len(train_data)}")
-            self.vc = VC(self.tgt_sr, self.config, data, d, train_data, debug_rvc)
-        else:
-            self.vc = VC(self.tgt_sr, self.config)
-
-        self.n_spk = self.cpt["config"][-3]
-        if debug_rvc:
-            print(f"[{branding}Debug] Leaving get_vc function")
+            print(f"[Debug] Loading model checkpoint")
+        self.load_person(weight_root)
+        self.load_index_file(file_index, training_data_size)
         return self.vc
 
     def infer_pipeline(

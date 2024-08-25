@@ -3,6 +3,7 @@ import os
 from abc import ABC, abstractmethod
 import torch
 
+import falltalkutils
 from tts_engines.rvc.infer.infer import RVCPipeline, RVCParameters
 from falltalk.config import cfg
 
@@ -64,11 +65,17 @@ class tts_engine(ABC):
                 print("reusing model")
 
         if self.rvc_model:
-            if self.rvc_pipeline is None:
-                self.rvc_pipeline = RVCPipeline(cfg.get(cfg.device))
+            if self.rvc_pipeline is not None:
+                self.rvc_pipeline.clean_up()
 
+            self.rvc_pipeline = RVCPipeline(cfg.get(cfg.device))
             self.rvc_pth_path = self.get_model("RVC", "pth")
             self.rvc_index_path = self.get_model("RVC", "index")
+
+            if os.path.isfile(self.rvc_pth_path) and os.path.isfile(self.rvc_index_path):
+                self.rvc_pipeline.load_person(self.rvc_pth_path)
+                self.rvc_pipeline.load_index_file(self.rvc_index_path, cfg.get(cfg.rvc_training_data_size))
+
 
     def handle_lowvram_change(self):
         if torch.cuda.is_available():
@@ -133,7 +140,7 @@ class tts_engine(ABC):
 
 
     def run_rvc(self, input_tts_path):
-        print(f"Running RVC {input_tts_path}")
+        falltalkutils.logger.debug(f"Running RVC {input_tts_path}")
         if self.rvc_preload:
             params = self.rvc_parameters
         else:

@@ -16,13 +16,15 @@ from scipy import signal
 from torch import Tensor
 
 import falltalkutils
-from ..lib.FCPEF0Predictor import FCPEF0Predictor
+from tts_engines.rvc.lib.FCPEF0Predictor import FCPEF0Predictor
+from tts_engines.rvc.lib.rmvpe import RMVPE
 
 # Get the current working directory
 
 bh, ah = signal.butter(N=5, Wn=48, btype="high", fs=16000)
 
 input_audio_path2wav = {}
+
 
 
 @lru_cache
@@ -56,8 +58,8 @@ def change_rms(data1, sr1, data2, sr2, rate):
     rms2 = torch.max(rms2, torch.zeros_like(rms2) + 1e-6)
 
     data2 *= (
-        torch.pow(rms1, torch.tensor(1 - rate))
-        * torch.pow(rms2, torch.tensor(rate - 1))
+            torch.pow(rms1, torch.tensor(1 - rate))
+            * torch.pow(rms2, torch.tensor(rate - 1))
     ).numpy()
     return data2
 
@@ -129,7 +131,6 @@ class VC(object):
             if debug_rvc:
                 print(f"[{branding}Debug] FAISS index not initialized due to missing data.")
 
-
     def generate_interpolated_frequencies(self):
         note_dict = []
         for i in range(len(self.ref_freqs) - 1):
@@ -139,7 +140,6 @@ class VC(object):
             note_dict.extend(interpolated_freqs)
         note_dict.append(self.ref_freqs[-1])
         return note_dict
-
 
     def autotune_f0(self, f0):
         # Autotunes the given fundamental frequency (f0) to the nearest musical note.
@@ -162,13 +162,13 @@ class VC(object):
         return torch.device("cpu")
 
     def get_f0_crepe_computation(
-        self,
-        x,
-        f0_min,
-        f0_max,
-        p_len,
-        hop_length,
-        model="full",
+            self,
+            x,
+            f0_min,
+            f0_max,
+            p_len,
+            hop_length,
+            model="full",
     ):
         x = x.astype(np.float32)
         x /= np.quantile(np.abs(x), 0.999)
@@ -202,11 +202,11 @@ class VC(object):
         return f0
 
     def get_f0_official_crepe_computation(
-        self,
-        x,
-        f0_min,
-        f0_max,
-        model="full",
+            self,
+            x,
+            f0_min,
+            f0_max,
+            model="full",
     ):
         batch_size = 512
         audio = torch.tensor(np.copy(x))[None].float()
@@ -229,13 +229,13 @@ class VC(object):
         return f0
 
     def get_f0_hybrid_computation(
-        self,
-        methods_str,
-        x,
-        f0_min,
-        f0_max,
-        p_len,
-        hop_length,
+            self,
+            methods_str,
+            x,
+            f0_min,
+            f0_max,
+            p_len,
+            hop_length,
     ):
         methods_str = re.search("hybrid\[(.+)\]", methods_str)
         if methods_str:
@@ -286,16 +286,16 @@ class VC(object):
         return f0_median_hybrid
 
     def get_f0(
-        self,
-        input_audio_path,
-        x,
-        p_len,
-        f0_up_key,
-        f0_method,
-        filter_radius,
-        hop_length,
-        f0autotune,
-        inp_f0=None,
+            self,
+            input_audio_path,
+            x,
+            p_len,
+            f0_up_key,
+            f0_method,
+            filter_radius,
+            hop_length,
+            f0autotune,
+            inp_f0=None,
     ):
         global input_audio_path2wav
         time_step = self.window / self.sr * 1000
@@ -344,7 +344,6 @@ class VC(object):
             )
         elif f0_method == "rmvpe":
             if hasattr(self, "model_rmvpe") == False:
-                from ..lib.rmvpe import RMVPE
                 model_path = os.path.join("models", "RVC", "rmvpe.pt")
                 self.model_rmvpe = RMVPE(
                     model_path, is_half=self.is_half, device=self.device
@@ -387,14 +386,14 @@ class VC(object):
             replace_f0 = np.interp(
                 list(range(delta_t)), inp_f0[:, 0] * 100, inp_f0[:, 1]
             )
-            shape = f0[self.x_pad * tf0 : self.x_pad * tf0 + len(replace_f0)].shape[0]
-            f0[self.x_pad * tf0 : self.x_pad * tf0 + len(replace_f0)] = replace_f0[
-                :shape
-            ]
+            shape = f0[self.x_pad * tf0: self.x_pad * tf0 + len(replace_f0)].shape[0]
+            f0[self.x_pad * tf0: self.x_pad * tf0 + len(replace_f0)] = replace_f0[
+                                                                       :shape
+                                                                       ]
         f0bak = f0.copy()
         f0_mel = 1127 * np.log(1 + f0 / 700)
         f0_mel[f0_mel > 0] = (f0_mel[f0_mel > 0] - f0_mel_min) * 254 / (
-            f0_mel_max - f0_mel_min
+                f0_mel_max - f0_mel_min
         ) + 1
         f0_mel[f0_mel <= 1] = 1
         f0_mel[f0_mel > 255] = 255
@@ -403,18 +402,18 @@ class VC(object):
         return f0_coarse, f0bak
 
     def vc(
-        self,
-        model,
-        net_g,
-        sid,
-        audio0,
-        pitch,
-        pitchf,
-        index,
-        big_npy,
-        index_rate,
-        version,
-        protect,
+            self,
+            model,
+            net_g,
+            sid,
+            audio0,
+            pitch,
+            pitchf,
+            index,
+            big_npy,
+            index_rate,
+            version,
+            protect,
     ):
         #print("ENTERING pipeline vc")
         #print(f"audio0 shape: {audio0.shape}")
@@ -462,9 +461,9 @@ class VC(object):
             #print(f"feats0 shape: {feats0.shape}")
         #print("Pipeline vc STEP 1b:")
         if (
-            isinstance(index, type(None)) == False
-            and isinstance(big_npy, type(None)) == False
-            and index_rate != 0
+                isinstance(index, type(None)) == False
+                and isinstance(big_npy, type(None)) == False
+                and index_rate != 0
         ):
             #print("Pipeline vc STEP 1c:")
             #print(f"feats shape: {feats.shape}")
@@ -477,9 +476,9 @@ class VC(object):
                 #print(f"Converted npy to float32. npy dtype: {npy.dtype}")
             #print("Pipeline vc STEP 1c3:")
             #print(f"npy size: {npy.size}")
-            
+
             score, ix = self.index.search(npy, k=4)
-            
+
             #print(f"score shape: {score.shape}")
             #print(f"ix shape: {ix.shape}")
             #print("Pipeline vc STEP 1c4:")
@@ -497,8 +496,8 @@ class VC(object):
                 #print(f"Converted npy to float16. npy dtype: {npy.dtype}")
                 #print("Pipeline vc STEP 1f:")
             feats = (
-                torch.from_numpy(npy).unsqueeze(0).to(self.device) * index_rate
-                + (1 - index_rate) * feats
+                    torch.from_numpy(npy).unsqueeze(0).to(self.device) * index_rate
+                    + (1 - index_rate) * feats
             )
             #print(f"feats shape after updating with npy: {feats.shape}")
         #print("Pipeline vc STEP 2:")
@@ -559,26 +558,26 @@ class VC(object):
         return audio1
 
     def pipeline(
-        self,
-        model,
-        net_g,
-        sid,
-        audio,
-        input_audio_path,
-        f0_up_key,
-        f0_method,
-        file_index,
-        index_rate,
-        if_f0,
-        filter_radius,
-        tgt_sr,
-        resample_sr,
-        rms_mix_rate,
-        version,
-        protect,
-        hop_length,
-        f0autotune,
-        f0_file=None,
+            self,
+            model,
+            net_g,
+            sid,
+            audio,
+            input_audio_path,
+            f0_up_key,
+            f0_method,
+            file_index,
+            index_rate,
+            if_f0,
+            filter_radius,
+            tgt_sr,
+            resample_sr,
+            rms_mix_rate,
+            version,
+            protect,
+            hop_length,
+            f0autotune,
+            f0_file=None,
     ):
         if file_index != "" and os.path.exists(file_index) == True and index_rate != 0:
             try:
@@ -595,14 +594,14 @@ class VC(object):
         if audio_pad.shape[0] > self.t_max:
             audio_sum = np.zeros_like(audio)
             for i in range(self.window):
-                audio_sum += audio_pad[i : i - self.window]
+                audio_sum += audio_pad[i: i - self.window]
             for t in range(self.t_center, audio.shape[0], self.t_center):
                 opt_ts.append(
                     t
                     - self.t_query
                     + np.where(
-                        np.abs(audio_sum[t - self.t_query : t + self.t_query])
-                        == np.abs(audio_sum[t - self.t_query : t + self.t_query]).min()
+                        np.abs(audio_sum[t - self.t_query: t + self.t_query])
+                        == np.abs(audio_sum[t - self.t_query: t + self.t_query]).min()
                     )[0][0]
                 )
         s = 0
@@ -651,15 +650,15 @@ class VC(object):
                         model,
                         net_g,
                         sid,
-                        audio_pad[s : t + self.t_pad2 + self.window],
-                        pitch[:, s // self.window : (t + self.t_pad2) // self.window],
-                        pitchf[:, s // self.window : (t + self.t_pad2) // self.window],
+                        audio_pad[s: t + self.t_pad2 + self.window],
+                        pitch[:, s // self.window: (t + self.t_pad2) // self.window],
+                        pitchf[:, s // self.window: (t + self.t_pad2) // self.window],
                         index,
                         big_npy,
                         index_rate,
                         version,
                         protect,
-                    )[self.t_pad_tgt : -self.t_pad_tgt]
+                    )[self.t_pad_tgt: -self.t_pad_tgt]
                 )
             else:
                 audio_opt.append(
@@ -667,7 +666,7 @@ class VC(object):
                         model,
                         net_g,
                         sid,
-                        audio_pad[s : t + self.t_pad2 + self.window],
+                        audio_pad[s: t + self.t_pad2 + self.window],
                         None,
                         None,
                         index,
@@ -675,7 +674,7 @@ class VC(object):
                         index_rate,
                         version,
                         protect,
-                    )[self.t_pad_tgt : -self.t_pad_tgt]
+                    )[self.t_pad_tgt: -self.t_pad_tgt]
                 )
             s = t
         if if_f0 == 1:
@@ -685,14 +684,14 @@ class VC(object):
                     net_g,
                     sid,
                     audio_pad[t:],
-                    pitch[:, t // self.window :] if t is not None else pitch,
-                    pitchf[:, t // self.window :] if t is not None else pitchf,
+                    pitch[:, t // self.window:] if t is not None else pitch,
+                    pitchf[:, t // self.window:] if t is not None else pitchf,
                     index,
                     big_npy,
                     index_rate,
                     version,
                     protect,
-                )[self.t_pad_tgt : -self.t_pad_tgt]
+                )[self.t_pad_tgt: -self.t_pad_tgt]
             )
         else:
             audio_opt.append(
@@ -708,7 +707,7 @@ class VC(object):
                     index_rate,
                     version,
                     protect,
-                )[self.t_pad_tgt : -self.t_pad_tgt]
+                )[self.t_pad_tgt: -self.t_pad_tgt]
             )
         audio_opt = np.concatenate(audio_opt)
         if rms_mix_rate != 1:
