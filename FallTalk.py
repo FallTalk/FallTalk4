@@ -792,7 +792,7 @@ class ModelApp(FallTalkFluentWindow):
                 if recording_file is None:
                     self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_mic_widget.media_recorder.recordButton, "Please Select Record Audio")
                 elif self.tts_engine.model_name is None:
-                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_mic_widget.recordButton, "Please Select Load a Model")
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_mic_widget.media_recorder.recordButton, "Please Select Load a Model")
                 else:
                     self.showLoaderPopup("Cloning Input Audio", "Please Wait")
                     output_file = self.get_output_file(self.rvc_widget.rvc_mic_widget)
