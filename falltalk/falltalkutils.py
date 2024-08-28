@@ -580,7 +580,7 @@ def get_eleven_labs_voices():
     )
     response = client.voices.get_all(show_legacy=True)
     tts_voice_list = response.voices
-    return [f"{v.name}" for v in tts_voice_list]
+    return sorted([f"{v.name}" for v in tts_voice_list])
 
 
 def get_edge_tts_voices():
