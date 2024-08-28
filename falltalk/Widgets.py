@@ -910,10 +910,10 @@ class GPT_SoVITSWidget(GenerationWidget):
         self.setEnabled(False)
 
     def onReferenceSelect(self):
-        if self.parent.tts_engine.is_base:
+        if self.parent.tts_engine and self.parent.tts_engine.is_base:
             self.generate_button.setEnabled(False)
             self.transcribe_button.setEnabled(True)
-        else:
+        elif self.parent.tts_engine:
             self.generate_button.setEnabled(True)
             self.transcribe_button.setVisible(False)
 
@@ -2482,6 +2482,50 @@ class CustomTableModel(QAbstractTableModel):
         self.dataChanged.emit(self.index(row, 0), self.index(row, len(self._headers) - 1))
 
 
+class CustomReferencesModel(QAbstractTableModel):
+    def __init__(self, data, headers, parent=None):
+        super().__init__(parent)
+        self._data = sorted(data, key=lambda x: len(x[0]), reverse=True)
+        self._headers = headers
+        self._selected_rows = set()
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self._data)
+
+    def columnCount(self, parent=QModelIndex()):
+        return len(self._headers)
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid():
+            return None
+        if role == Qt.ItemDataRole.DisplayRole:
+            return self._data[index.row()][index.column()]
+        elif role == Qt.ItemDataRole.BackgroundRole:
+            if index.row() in self._selected_rows:
+                color = QColor(cfg.get(cfg.themeColor))
+                color.setAlpha(128)
+                return color
+        return None
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if role == Qt.ItemDataRole.DisplayRole:
+            if orientation == Qt.Orientation.Horizontal:
+                return self._headers[section]
+            if orientation == Qt.Orientation.Vertical:
+                return section + 1
+        return None
+
+    def toggle_selection(self, row):
+        if row in self._selected_rows:
+            self._selected_rows.remove(row)
+        else:
+            self._selected_rows.add(row)
+        self.redraw(row)
+
+    def redraw(self, row):
+        self.dataChanged.emit(self.index(row, 0), self.index(row, len(self._headers) - 1))
+
+
 class ReferencesWidget(FallTalkWidget):
 
     def __init__(self, parent=None):
@@ -2626,7 +2670,7 @@ class ReferencesWidget(FallTalkWidget):
         for row, file_name in enumerate(files):
             data.append([file_name])
         headers = ['filename']
-        model = CustomTableModel(data, headers)
+        model = CustomReferencesModel(data, headers)
         self.custom_reference_table.setModel(model)
 
     def onCurrentIndexChanged(self, index):
