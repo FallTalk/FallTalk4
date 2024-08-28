@@ -578,7 +578,7 @@ def get_eleven_labs_voices():
     client = ElevenLabs(
         api_key=key
     )
-    response = client.voices.get_all()
+    response = client.voices.get_all(show_legacy=True)
     tts_voice_list = response.voices
     return [f"{v.name}" for v in tts_voice_list]
 
