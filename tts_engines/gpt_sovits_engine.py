@@ -366,7 +366,7 @@ class GPT_SoVITS_Engine(tts_engine):
         )
         if not ref_free:
             with torch.no_grad():
-                wav16k, sr = librosa.load(ref_wav_path, sr=16000)
+                wav16k = falltalkutils.load_audio(ref_wav_path, sampling_rate=16000)
                 wav16k = torch.from_numpy(wav16k)
                 zero_wav_torch = torch.from_numpy(zero_wav)
                 if self.is_half:

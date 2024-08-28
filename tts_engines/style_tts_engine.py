@@ -45,10 +45,8 @@ class StyleTTS2_Engine(tts_engine):
         return mel_tensor
 
     def compute_style(self, path):
-        wave, sr = librosa.load(path, sr=24000)
+        wave = falltalkutils.load_audio(path, sampling_rate=24000)
         audio, index = librosa.effects.trim(wave, top_db=30)
-        if sr != 24000:
-            audio = librosa.resample(audio, sr, 24000)
         mel_tensor = self.preprocess(audio).to(self.device)
 
         with torch.no_grad():

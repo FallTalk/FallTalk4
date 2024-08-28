@@ -362,10 +362,3 @@ class HParams:
     def __repr__(self):
         return self.__dict__.__repr__()
 
-
-if __name__ == "__main__":
-    print(
-        load_wav_to_torch(
-            "/home/fish/wenetspeech/dataset_vq/Y0000022499_wHFSeHEx9CM/S00261.flac"
-        )
-    )
