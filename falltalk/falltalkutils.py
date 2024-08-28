@@ -109,12 +109,19 @@ def create_lip_files(parent, input_file, lip_file):
             with open(txt_file, 'w', encoding='utf-8') as file:
                 file.write(resp['transcript'])
 
-            command = [facefx_path, 'Fallout4', 'USEnglish', os.path.abspath(facefx_cdf_path), os.path.abspath(input_file), os.path.abspath(lip_file), resp['transcript']]
+            rs_wav = input_file.replace(".wav", "_16000.wav")
+            rs_data = load_audio(input_file, 16000)
+            sf.write(rs_wav, rs_data, 16000, subtype='PCM_16')
+
+            command = [facefx_path, 'Fallout4', 'USEnglish', os.path.abspath(facefx_cdf_path), os.path.abspath(rs_wav), os.path.abspath(lip_file), resp['transcript']]
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
             stdout, stderr = process.communicate()
             if process.returncode != 0:
                 raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
             logger.debug(f"lip file created {lip_file}")
+
+            if rs_wav is not None and os.path.exists(rs_wav):
+                os.remove(rs_wav)
 
             if cfg.get(cfg.keep_only_fuz):
                 os.remove(txt_file)
