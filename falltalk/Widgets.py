@@ -22,7 +22,7 @@ from qfluentwidgets.window.fluent_window import FluentWindowBase
 from audio_player import StandardAudioPlayerBar
 from audio_recorder import StandardAudioRecorderBar
 from falltalk import falltalkutils
-from falltalk.config import RangeSettingCardScaled, cfg, TextSettingCard, RadioSettingCard, ComboBoxSettingsCard, RvcComboBoxSettingsCard, FileValidator, CUSTOM_DISCLAIMER, CustomFolderValidator, SpinSettingCard
+from falltalk.config import RangeSettingCardScaled, cfg, TextSettingCard, RadioSettingCard, ComboBoxSettingsCard, RvcComboBoxSettingsCard, FileValidator, CUSTOM_DISCLAIMER, CustomFolderValidator, SpinSettingCard, ComboBoxWordsCard
 from falltalk.main_settings import FallTalkSettings
 from falltalk.rvc_settings import RVCSettings
 from falltalk.voicecraft_settings import VoiceCraftSettings
@@ -958,11 +958,11 @@ class VoiceCraftWidget(GenerationWidget):
 
         self.addToFrame(self.mode_card)
 
-        self.start_dropdown_card = ComboBoxSettingsCard(
+        self.start_dropdown_card = ComboBoxWordsCard(
             FIF.RIGHT_ARROW,
             self.tr('Start'),
             self.tr('Where do we start generating the new text'))
-        self.end_dropdown_card = ComboBoxSettingsCard(
+        self.end_dropdown_card = ComboBoxWordsCard(
             FIF.LEFT_ARROW,
             self.tr('End'),
             self.tr('Where do we stop generating the new text'))
@@ -978,7 +978,7 @@ class VoiceCraftWidget(GenerationWidget):
         # self.edit_mode_card.setVisible(cfg.get(cfg.mode) == "edit")
         self.addToFrame(self.start_and_end)
 
-        self.start_tts_dropdown_card = ComboBoxSettingsCard(
+        self.start_tts_dropdown_card = ComboBoxWordsCard(
             FIF.RIGHT_ARROW,
             self.tr('Start'),
             self.tr('Where do we start generating the new text'))
@@ -1048,10 +1048,9 @@ class VoiceCraftWidget(GenerationWidget):
         self.start_tts_dropdown_card.setTranscript(self.transcribe_state['words_info'])
 
         for word_info in self.transcribe_state['words_info']:
-            word = word_info['word']
-            self.start_dropdown_card.configItem.addItem(word)
-            self.end_dropdown_card.configItem.addItem(word)
-            self.start_tts_dropdown_card.configItem.addItem(word)
+            self.start_dropdown_card.configItem.addItem(f"{word_info['word']}\t{word_info['start']}", userData=word_info)
+            self.end_dropdown_card.configItem.addItem(f"{word_info['word']}\t{word_info['end']}", userData=word_info)
+            self.start_tts_dropdown_card.configItem.addItem(f"{word_info['word']}\t{word_info['end']}", userData=word_info)
 
         self.end_dropdown_card.configItem.setCurrentIndex(self.end_dropdown_card.configItem.count() - 1)
         self.start_tts_dropdown_card.configItem.setCurrentIndex(self.end_dropdown_card.configItem.count() - 1)

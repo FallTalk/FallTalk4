@@ -124,6 +124,45 @@ class ComboBoxSettingsCard(SettingCard):
         self.valueLabel.adjustSize()
 
 
+class ComboBoxWordsCard(SettingCard):
+    """ Setting card with a slider """
+
+    valueChanged = Signal(int)
+
+    def __init__(self, icon: Union[str, QIcon, FluentIconBase], title, content=None, parent=None):
+        super().__init__(icon, title, content, parent)
+        self.configItem = ComboBox(self)
+        self.configItem.setMaxVisibleItems(10)
+        self.configItem.setMinimumWidth(200)
+        self.valueLabel = QLabel(self)
+        self.hBoxLayout.addStretch(1)
+        self.hBoxLayout.addWidget(self.valueLabel, 0, Qt.AlignmentFlag.AlignRight)
+        self.hBoxLayout.addSpacing(6)
+        self.hBoxLayout.addWidget(self.configItem, 0, Qt.AlignmentFlag.AlignRight)
+        self.hBoxLayout.addSpacing(16)
+        self.transcript = None
+        self.valueLabel.setObjectName('valueLabel')
+        self.configItem.currentIndexChanged.connect(self.__onValueChanged)
+
+    def __onValueChanged(self, value: int):
+        selected_word = self.configItem.itemData(value)
+        self.setValue(selected_word)
+        self.valueChanged.emit(selected_word)
+
+    def setTranscript(self, transcript):
+        self.transcript = transcript
+
+    def getWordInfo(self):
+        if self.transcript:
+            return self.transcript[self.configItem.currentIndex()]
+        else:
+            return None
+
+    def setValue(self, value):
+        self.valueLabel.setText(f" {value['start']} {value['end']}")
+        self.valueLabel.adjustSize()
+
+
 class RangeSettingCardScaled(SettingCard):
     """ Setting card with a slider """
 
@@ -340,7 +379,6 @@ class FileValidator(ConfigValidator):
             allowed_file_types = ['csv', 'txt']
         self.allowed_file_types = allowed_file_types
 
-
     """ File validator """
 
     def validate(self, value):
@@ -387,7 +425,6 @@ class DeviceValidator(OptionsValidator):
 
 
 class Config(QConfig):
-
     ALERT = "FallTalk is Loading.."
     # RVC
     rvc_pitch = RangeConfigItem("RVC", "rvc_pitch", 0, RangeValidator(-24, 24))
@@ -515,7 +552,6 @@ class Config(QConfig):
         self.set(self.extend_stride, self.extend_stride.defaultValue)
         self.set(self.parse_mode, self.parse_mode.defaultValue)
         self.set(self.fx_duration, self.fx_duration.defaultValue)
-
 
     def resetMainSettings(self):
         self.set(self.download_configs, self.download_configs.defaultValue)
