@@ -200,7 +200,8 @@ def combine_wav_files(input_files, target_rate=24500, silence_duration=0.5):
 def is_stereo(audio_array):
     return audio_array.ndim == 2
 
-def load_audio(file, sampling_rate):
+
+def load_audio(file, sampling_rate, channels=1):
     try:
         # Set the ffmpeg_path variable based on the operating system
         if sys.platform == "win32":
@@ -210,7 +211,7 @@ def load_audio(file, sampling_rate):
 
         # Initialize the process variable
         process = subprocess.Popen(
-            [ffmpeg_path, "-y", "-i", file, "-f", "f32le", "-acodec", "pcm_f32le", "-af", "aresample=resampler=soxr", "-ac", "1", "-ar", str(sampling_rate), "pipe:1"],
+            [ffmpeg_path, "-y", "-i", file, "-f", "f32le", "-acodec", "pcm_f32le", "-af", "aresample=resampler=soxr", "-ac", f"{channels}", "-ar", str(sampling_rate), "pipe:1"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
@@ -408,8 +409,8 @@ def load_whisper(parent, attempt=0):
                 print(f"Attempting to delete HuggingFace cache directory: {cache_dir}")
             load_whisper(parent, 1)
         else:
-            QMetaObject.invokeMethod(parent, "onWarn", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Whispper Engine"), Q_ARG(str, "An Error Occured while loading whisper engine. Transcription will not work for untrained models. Please delete C:\\Users\\USERNAME\\.cache\\huggingface\\hub"))
-
+            QMetaObject.invokeMethod(parent, "onWarn", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Whispper Engine"),
+                                     Q_ARG(str, "An Error Occured while loading whisper engine. Transcription will not work for untrained models. Please delete C:\\Users\\USERNAME\\.cache\\huggingface\\hub"))
 
 
 def load_voicecraft(parent):
@@ -719,6 +720,7 @@ def update_progress(parent, total, time_total, count):
     minutes, seconds = divmod(remainder, 60)
     QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Completed: {count}/{total}. Estimated Duration: {hours:02}:{minutes:02}:{seconds:02}"))
 
+
 def formatted_time_stamp():
     current_time = datetime.now()
     time_stamp = current_time.strftime("%Y%m%d%H%M%S")
@@ -775,15 +777,14 @@ def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent, use_e
             output_file = os.path.join(output_folder, os.path.basename(wav_file))
             shutil.copy(wav_file, output_file)
             if use_existing_lip and os.path.exists(wav_file.replace(".wav", ".lip")):
-                    existing_lip = os.path.join(output_folder, os.path.basename(wav_file.replace(".wav", ".lip")))
-                    shutil.copy(wav_file.replace(".wav", ".lip"), existing_lip)
+                existing_lip = os.path.join(output_folder, os.path.basename(wav_file.replace(".wav", ".lip")))
+                shutil.copy(wav_file.replace(".wav", ".lip"), existing_lip)
 
 
         else:
             output_file = wav_file
             if use_existing_lip and os.path.exists(wav_file.replace(".wav", ".lip")):
                 existing_lip = wav_file.replace(".wav", ".lip")
-
 
         tts_engine.run_rvc(output_file)
 
@@ -796,7 +797,7 @@ def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent, use_e
     return (end - start).total_seconds()
 
 
-def bulk_fuz(parent, directory, include_subdir, threads=1):
+def bulk_fuz(parent, directory, include_subdir, threads=1, use_existing_lip=True):
     wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
     xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
     count = 0
@@ -818,7 +819,12 @@ def bulk_fuz(parent, directory, include_subdir, threads=1):
     with ThreadPoolExecutor(max_workers=threads) as executor:
         futures = []
         for idx, wav_file in enumerate(files):
-            future = executor.submit(create_lip_and_fuz, parent, wav_file, 44100, True, None)
+
+            existing_lip = None
+            if use_existing_lip and os.path.exists(wav_file.replace(".wav", ".lip")):
+                existing_lip = wav_file.replace(".wav", ".lip")
+
+            future = executor.submit(create_lip_and_fuz, parent, wav_file, 44100, True, existing_lip)
             futures.append(future)
 
         for future in as_completed(futures):
@@ -828,7 +834,6 @@ def bulk_fuz(parent, directory, include_subdir, threads=1):
             update_progress(parent, total, time_total, count)
 
     QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-
 
 
 def bulk_rvc_inference(parent, directory, model, include_subdir, replace, threads=1, use_existing_lip=True):
@@ -852,7 +857,7 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
     tts_engines = []
 
     if output_folder is None and not replace:
-        output_folder = get_bulk_folder('RVC')
+        output_folder = get_bulk_folder(model['display_name'])
         os.makedirs(output_folder, exist_ok=True)
 
     if is_trained:
@@ -908,7 +913,6 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
     for engine in tts_engines:
         engine.clean()
         del engine
-
 
     if engine_changed:
         QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
@@ -1001,7 +1005,6 @@ def bulk_inference(parent):
             end = datetime.now()
             time_total += (end - start).total_seconds()
             update_progress(parent, total, time_total, count)
-
 
     QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
 

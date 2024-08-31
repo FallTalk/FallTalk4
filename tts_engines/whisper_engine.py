@@ -4,6 +4,7 @@ from num2words import num2words
 
 from falltalk.config import cfg
 
+from whisperx import load_model
 
 class WhisperxAlignModel:
     def __init__(self):
@@ -18,15 +19,19 @@ class WhisperxAlignModel:
 
 class WhisperxModel:
     def __init__(self, model_name, align_model: WhisperxAlignModel):
-        from whisperx import load_model
-        if cfg.get(cfg.device) == "cpu":
-            compute_type = "float32"
+        self.device = cfg.get(cfg.device)
+        if self.device == "cpu":
+            self.compute_type = "float32"
         else:
-            compute_type = "float16"
-        self.model = load_model(model_name, cfg.get(cfg.device), language='en', compute_type=compute_type, asr_options={"suppress_numerals": True, "max_new_tokens": None, "clip_timestamps": None, "hallucination_silence_threshold": None})
+            self.compute_type = "float16"
         self.align_model = align_model
+        self.model_name = model_name
+        self.model = None
 
     def transcribe(self, audio_path):
+        if self.model is None:
+            self.model = load_model(self.model_name, self.device, language='en', compute_type=self.compute_type, asr_options={"suppress_numerals": True, "max_new_tokens": None, "clip_timestamps": None, "hallucination_silence_threshold": None})
+
         segments = self.model.transcribe(audio_path, batch_size=8)["segments"]
         for segment in segments:
             segment['text'] = replace_numbers_with_words(segment['text'])

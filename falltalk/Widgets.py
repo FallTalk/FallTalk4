@@ -1912,14 +1912,14 @@ class UpscaleWidget(FallTalkWidget):
         self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.boxLayout.addItem(self.spacer)
 
-        self.audio_mode = OptionsConfigItem("upscaler", "mode", "speech", OptionsValidator(["denoise", "upscale", "both"]))
+        self.audio_mode = OptionsConfigItem("upscaler", "mode", "isolate vocals", OptionsValidator(["denoise", "isolate", "upscale"]))
 
         self.mode_card = RadioSettingCard(
             self.audio_mode,
             FallTalkStrokeIcons.VOICE_SQUARE.icon(),
             self.tr('Mode'),
-            self.tr('How to enhance the audio. Upscale should only be used on audio that is 16000Hz or below. Denoise should be used for speech.'),
-            texts=["Denoise", "Upscale", "Both"],
+            self.tr('Upscale 16 kHz or below. Denoise for Recorded Speech. Isolate vocals is an AI denoiser from removing vocals from heavy background noise'),
+            texts=["Denoise", "Isolate Vocals", "Upscale"],
             parent=self
         )
 

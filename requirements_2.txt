@@ -80,3 +80,4 @@ torchlibrosa
 ftfy
 timm
 accelerate
+noisereduce

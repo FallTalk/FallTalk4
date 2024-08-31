@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 from pydub import AudioSegment
-from pydub.silence import detect_silence
+from pydub.silence import detect_silence, split_on_silence
 
 import falltalkutils
 from audio_upscaler.predict import Predictor
@@ -14,7 +14,7 @@ from falltalk.config import cfg
 from demucs.apply import apply_model
 from demucs.pretrained import get_model
 from demucs.audio import AudioFile
-
+import noisereduce as nr
 import soundfile as sf
 
 
@@ -26,19 +26,23 @@ class UpscaleEngine:
         self.demucs_model = None
         self.p = None
         self.sr = 44100
+        self.denoise = True
 
     def upscale_dir(self, directory, replace=True, include_subdir=False, mode="denoise", sr=44100, ddim_steps=50, guidance_scale=3.5, seed=None):
         try:
             self.sr = sr
             print(f'Starting Enhancement {mode}')
             self.mode = mode
-            if self.mode == 'denoise' or self.mode == 'both':
-                self.demucs_model = get_model('htdemucs_ft')
-                self.demucs_model.to(cfg.get(cfg.device))
+            if self.mode == 'denoise':
+                self.denoise = True
 
-            if self.mode == 'upscale' or self.mode == 'both':
+            if self.mode == 'upscale':
                 self.p = Predictor()
                 self.p.setup(device=cfg.get(cfg.device))
+
+            if self.mode == 'isolate':
+                self.demucs_model = get_model('htdemucs_ft')
+                self.demucs_model.to(cfg.get(cfg.device))
 
             print('Getting Files')
 
@@ -104,7 +108,11 @@ class UpscaleEngine:
                 self.remove_silence_at_end(output_file)
 
             if self.demucs_model:
-                self.demucs_file(wav_file if self.mode != 'both' else output_file, output_file)
+                self.demucs_file(wav_file, output_file)
+
+            if self.denoise:
+                self.denoise_file(wav_file, output_file)
+
 
         except Exception as e:
             falltalkutils.logger.exception(f"Error: {e}")
@@ -127,6 +135,9 @@ class UpscaleEngine:
 
             if self.demucs_model:
                 self.demucs_file(wav_file, wav_file)
+
+            if self.denoise:
+                self.denoise_file(wav_file, wav_file)
 
             if replace:
                 falltalkutils.create_xwm(wav_file, xwm_file, encode=True)
@@ -154,6 +165,9 @@ class UpscaleEngine:
 
             if self.demucs_model:
                 self.demucs_file(wav_file, wav_file)
+
+            if self.denoise:
+                self.denoise_file(wav_file, wav_file)
 
             if replace:
                 falltalkutils.create_lip_and_fuz(self.parent, wav_file, True)
@@ -202,23 +216,18 @@ class UpscaleEngine:
         audio.export(output_file, format="wav")
         print(f"Trimmed audio saved as {output_file}")
 
-    def demucs_file(self, input_file, output_file):
-        # Read the audio file with the correct samplerate
-        audio = AudioFile(input_file).read(streams=0, samplerate=self.sr)
+    def denoise_file(self, input_file, output_file):
+        data = falltalkutils.load_audio(input_file, sampling_rate=self.sr)
+        reduced_noise = nr.reduce_noise(y=data,  sr=self.sr, device=cfg.get(cfg.device))
+        sf.write(output_file, reduced_noise, self.sr)
 
-        # Check if the input audio is mono
-        is_mono = audio.shape[0] == 1
+    def demucs_file(self, input_file, output_file, save_to_mono=True):
+        audio = falltalkutils.load_audio(input_file, sampling_rate=self.sr, channels=2)
 
-        # Ensure the audio tensor has 2 channels (stereo)
-        if is_mono:
-            audio = torch.cat([audio, audio], dim=0)  # Duplicate the mono channel to create stereo
+        audio = torch.tensor(audio).float()
+        audio = audio.view(1, 2, -1)  # Reshape to (batch, channels, length)
 
-        # Ensure the audio tensor has the correct shape (batch, channels, length)
-        if len(audio.shape) == 2:
-            audio = audio.unsqueeze(0)  # Add batch dimension
-
-        # Apply the model to separate sources
-        sources = apply_model(self.demucs_model, audio.float(), device=cfg.get(cfg.device), num_workers=os.cpu_count())
+        sources = apply_model(self.demucs_model, torch.tensor(audio).float(), device=cfg.get(cfg.device), num_workers=os.cpu_count())
 
         # Extract the vocals from the sources (assuming vocals are the fourth source)
         vocals = sources[:, 3, :, :]  # Shape: (batch, channels, length)
@@ -232,7 +241,7 @@ class UpscaleEngine:
         vocals_np = vocals.squeeze(0).cpu().numpy()
 
         # If the input was mono, convert the output to mono
-        if is_mono:
+        if save_to_mono:
             vocals_np = np.mean(vocals_np, axis=0)  # Average the two channels to create mono
 
         # Transpose the array to match the expected shape for writing
@@ -240,3 +249,22 @@ class UpscaleEngine:
 
         # Write the vocals to the output file
         sf.write(output_file, vocals_np, self.demucs_model.samplerate)
+
+    def split_wav(self, input_file, min_silence_len=1000, silence_thresh=-40, keep_silence=500):
+        data = AudioSegment.from_wav(input_file)
+
+        # Split the audio by silence
+        chunks = split_on_silence(
+            data,
+            min_silence_len=min_silence_len,
+            silence_thresh=silence_thresh,
+            keep_silence=keep_silence
+        )
+
+        output_folder = os.path.dirname(input_file)
+        base_name = os.path.basename(input_file)
+        file_name, file_ext = os.path.splitext(base_name)
+
+        for i, chunk in enumerate(chunks):
+            output_file = f"{output_folder}/{file_name}_chunk{i + 1}{file_ext}"
+            chunk.export(output_file, format="wav")
