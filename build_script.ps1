@@ -20,7 +20,7 @@ Set-Location -Path "dist"
 # Compress the FallTalk directory into FallTalk.7z using 7-Zip
 # Ensure 7-Zip is installed and 7z.exe is in your PATH
 $FALLTALK_DIR = "FallTalk"
-7z a FallTalk_v1.1.7.7z $FALLTALK_DIR
+7z a FallTalk_v1.1.8.7z $FALLTALK_DIR
 
 # Change back to the original directory
 Set-Location -Path ".."
