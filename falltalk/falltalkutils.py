@@ -67,10 +67,11 @@ def create_lip_and_fuz(parent, input_file, sr=44100, api=False, existing_lip=Non
         length_in_ms = (len(data) / samplerate) * 1000
         if samplerate != sr:
             rs_wav = input_file.replace(".wav", "_44100.wav")
-            audio_data = librosa.resample(data, orig_sr=samplerate, target_sr=sr)
+            audio_data = load_audio(input_file, sr)
             sf.write(rs_wav, audio_data, sr)
             logger.debug(f"file resampled {rs_wav}")
         elif not api:
+            #we do this because its already playing in the ui, and changing it will cause issues
             rs_wav = input_file.replace(".wav", "_44100.wav")
             sf.write(rs_wav, data, sr)
             logger.debug(f"file copy {rs_wav}")
@@ -721,6 +722,11 @@ def update_progress(parent, total, time_total, count):
     QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Completed: {count}/{total}. Estimated Duration: {hours:02}:{minutes:02}:{seconds:02}"))
 
 
+def sanitize_filename(filename):
+    invalid_chars = '<>:"/\\|?*%'
+    return ''.join(c for c in filename if c not in invalid_chars)
+
+
 def formatted_time_stamp():
     current_time = datetime.now()
     time_stamp = current_time.strftime("%Y%m%d%H%M%S")
@@ -769,17 +775,24 @@ def process_fuz_file(fuz_file, cfg, files, use_existing_lip=False):
         os.remove(xwm_file.replace(".xwm", ".lip"))
 
 
-def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent, use_existing_lip=False):
+def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent, directory, use_existing_lip=False):
     start = datetime.now()
     try:
         existing_lip = None
         if not replace:
-            output_file = os.path.join(output_folder, os.path.basename(wav_file))
+            relative_path = os.path.relpath(wav_file, directory)
+            if os.path.dirname(relative_path) != '':
+                sub_dir = os.path.split(relative_path)[0]
+                output_file = os.path.join(output_folder, sub_dir, os.path.basename(wav_file))
+                os.makedirs(os.path.join(output_folder, sub_dir), exist_ok=True)
+            else:
+                output_file = os.path.join(output_folder, os.path.basename(wav_file))
+
             shutil.copy(wav_file, output_file)
+
             if use_existing_lip and os.path.exists(wav_file.replace(".wav", ".lip")):
                 existing_lip = os.path.join(output_folder, os.path.basename(wav_file.replace(".wav", ".lip")))
                 shutil.copy(wav_file.replace(".wav", ".lip"), existing_lip)
-
 
         else:
             output_file = wav_file
@@ -894,7 +907,7 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
             futures = []
             for idx, wav_file in enumerate(files):
                 tts_engine = tts_engines[idx % threads]
-                future = executor.submit(process_rvc_file, tts_engine, wav_file, replace, output_folder, parent, use_existing_lip)
+                future = executor.submit(process_rvc_file, tts_engine, wav_file, replace, output_folder, parent, directory, use_existing_lip)
                 futures.append(future)
 
             for future in as_completed(futures):

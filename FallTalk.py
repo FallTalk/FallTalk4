@@ -644,6 +644,7 @@ class ModelApp(FallTalkFluentWindow):
             unique_id = uuid.uuid4()
             file_name = f"{falltalkutils.formatted_time_stamp()}_{self.tts_engine.model_name}_{self.tts_engine.engine_name}_{unique_id.hex[:10]}"
 
+        file_name = falltalkutils.sanitize_filename(file_name)
         path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), self.tts_engine.model_name, f"{file_name}.wav"))
         os.makedirs(os.path.join(cfg.get(cfg.output_dir), self.tts_engine.model_name), exist_ok=True)
         return path
@@ -652,6 +653,7 @@ class ModelApp(FallTalkFluentWindow):
         if file_name is None or file_name == "" or file_name == "Random":
             file_name = falltalkutils.formatted_time_stamp_uuid()
 
+        file_name = falltalkutils.sanitize_filename(file_name)
         path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), "music", f"{file_name}.wav" if wav else f"{file_name}"))
         os.makedirs(os.path.join(cfg.get(cfg.output_dir), "music"), exist_ok=True)
         return path
@@ -660,6 +662,7 @@ class ModelApp(FallTalkFluentWindow):
         if file_name is None or file_name == "" or file_name == "Random":
             file_name = falltalkutils.formatted_time_stamp_uuid()
 
+        file_name = falltalkutils.sanitize_filename(file_name)
         path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), "fx", f"{file_name}.wav" if wav else f"{file_name}"))
         os.makedirs(os.path.join(cfg.get(cfg.output_dir), "fx"), exist_ok=True)
         return path
@@ -789,8 +792,8 @@ class ModelApp(FallTalkFluentWindow):
         references_length = self.reference_widget.reference_audio_length
         if cfg.get(cfg.engine) == "RVC":
             if self.rvc_widget.stackedWidget.currentWidget() == self.rvc_widget.rvc_mic_widget:
-                if recording_file is None:
-                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_mic_widget.media_recorder.recordButton, "Please Select Record Audio")
+                if recording_file is None or not recording_file:
+                    self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_mic_widget.media_recorder.recordButton, "Please Record Audio")
                 elif self.tts_engine.model_name is None:
                     self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_mic_widget.media_recorder.recordButton, "Please Select Load a Model")
                 else:
@@ -1057,7 +1060,10 @@ if __name__ == '__main__':
         os.environ['PHONEMIZER_ESPEAK_PATH'] = os.path.abspath(os.path.join("resource", "apps", "espeak", "espeak-ng.exe"))
         os.environ['ESPEAK_DATA_PATH'] = os.path.abspath(os.path.join("resource", "apps", "espeak", "espeak-ng-data"))
         os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = os.path.abspath(os.path.join("resource", "apps", "espeak", "libespeak-ng.dll"))
-        # os.environ['FFMPEG_BIN'] = os.path.abspath(os.path.join("resource", "apps", "win_ffmpeg", "ffmpeg.exe"))
+        os.environ['FFMPEG_BIN'] = os.path.abspath(os.path.join("ffmpeg.exe"))
+        os.environ['FFMPEG_BINARY'] = os.path.abspath(os.path.join("ffmpeg.exe"))
+
+
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         falltalkutils.logger.debug('Unable to find espeak', e)
 

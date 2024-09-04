@@ -603,9 +603,16 @@ class RVCFileWidget(BaseRVCWidget):
         self.rvc_file_card.clicked.connect(self.__onFileCardClicked)
         self.view.addWidget(self.rvc_file_card)
         self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
-
-
         self.view.addItem(self.spacer)
+
+        self.rvc_pitch_card = RangeSettingCard(
+            cfg.rvc_pitch,
+            FIF.MARKET,
+            self.tr("Pitch Adjustment"),
+            self.tr("Set the pitch of the audio, useful for opposite gender."),
+        )
+        self.view.addWidget(self.rvc_pitch_card)
+
         self.addButtons()
         self.addGenSettings()
 

@@ -46,14 +46,26 @@ class UpscaleEngine:
 
             print('Getting Files')
 
+            flac_files = glob.glob(os.path.join(directory, '**', '*.flac'), recursive=include_subdir)
             wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
             fuz_files = glob.glob(os.path.join(directory, '**', '*.fuz'), recursive=include_subdir)
             xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
+            mp3_files = glob.glob(os.path.join(directory, '**', '*.mp3'), recursive=include_subdir)
 
-            total = len(wav_files) + len(fuz_files) + len(xwm_files)
+            total = len(wav_files) + len(fuz_files) + len(xwm_files) + len(flac_files) + len(mp3_files)
             count = 0
 
             QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Starting: {count}/{total}"))
+
+            for flac_file in flac_files:
+                self.do_flac(ddim_steps, guidance_scale, seed, replace, flac_file)
+                count += 1
+                QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
+
+            for mp3_file in mp3_files:
+                self.do_mp3(ddim_steps, guidance_scale, seed, replace, mp3_file)
+                count += 1
+                QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
 
             for wav_file in wav_files:
                 self.do_wav(ddim_steps, guidance_scale, seed, replace, wav_file)
@@ -89,6 +101,50 @@ class UpscaleEngine:
             falltalkutils.logger.exception(f"Error: {e}")
             QMetaObject.invokeMethod(self.parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, self.parent), Q_ARG(str, "Error During Enhancement"), Q_ARG(str, "An Error Occured while loading the cleaner. Please check your logs and report the issue if needed"))
 
+    def do_mp3(self, ddim_steps, guidance_scale, seed, replace, mp3_file):
+        try:
+            audio = AudioSegment.from_mp3(mp3_file)
+            wav_file = mp3_file.replace(".mp3", ".wav")
+            audio.export(wav_file, format="wav")
+
+            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
+
+            if replace:
+                output_file = mp3_file
+            else:
+                output_file = mp3_file.replace(".mp3", "_enhanced.mp3")
+
+            audio = AudioSegment.from_wav(wav_file)
+            audio.export(output_file, format="mp3")
+
+            if os.path.exists(wav_file):
+                os.remove(wav_file)
+
+        except Exception as e:
+            falltalkutils.logger.exception(f"Error: {e}")
+
+    def do_flac(self, ddim_steps, guidance_scale, seed, replace, flac_file):
+        try:
+            data, sample_rate = sf.read(flac_file)
+            wav_file = flac_file.replace(".flac", ".wav")
+            sf.write(wav_file, data, sample_rate)
+
+            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
+
+            if replace:
+                output_file = flac_file
+            else:
+                output_file = flac_file.replace(".flac", "_enhanced.flac")
+
+            data, sample_rate = sf.read(wav_file)
+            sf.write(output_file, data, sample_rate)
+
+            if os.path.exists(wav_file):
+                os.remove(wav_file)
+
+        except Exception as e:
+            falltalkutils.logger.exception(f"Error: {e}")
+
     def do_wav(self, ddim_steps, guidance_scale, seed, replace, wav_file):
         try:
             if replace:
@@ -96,23 +152,7 @@ class UpscaleEngine:
             else:
                 output_file = wav_file.replace(".wav", "_enhanced.wav")
 
-            if self.p:
-                self.p.predict(
-                    wav_file,
-                    output_file,
-                    sr=self.sr,
-                    ddim_steps=ddim_steps,
-                    guidance_scale=guidance_scale,
-                    seed=seed
-                )
-                self.remove_silence_at_end(output_file)
-
-            if self.demucs_model:
-                self.demucs_file(wav_file, output_file)
-
-            if self.denoise:
-                self.denoise_file(wav_file, output_file)
-
+            self.do_upscale(wav_file, output_file, ddim_steps, guidance_scale, seed)
 
         except Exception as e:
             falltalkutils.logger.exception(f"Error: {e}")
@@ -122,22 +162,7 @@ class UpscaleEngine:
             wav_file = xwm_file.replace(".xwm", ".wav")
             falltalkutils.create_xwm(xwm_file, wav_file, encode=False)
 
-            if self.p:
-                self.p.predict(
-                    wav_file,
-                    wav_file,
-                    sr=self.sr,
-                    ddim_steps=ddim_steps,
-                    guidance_scale=guidance_scale,
-                    seed=seed
-                )
-                self.remove_silence_at_end(wav_file)
-
-            if self.demucs_model:
-                self.demucs_file(wav_file, wav_file)
-
-            if self.denoise:
-                self.denoise_file(wav_file, wav_file)
+            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
 
             if replace:
                 falltalkutils.create_xwm(wav_file, xwm_file, encode=True)
@@ -151,28 +176,30 @@ class UpscaleEngine:
             wav_file = fuz_file.replace(".fuz", ".wav")
             falltalkutils.create_xwm(xwm_file, wav_file, encode=False)
 
-            if self.p:
-                self.p.p.predict(
-                    wav_file,
-                    wav_file,
-                    sr=self.sr,
-                    ddim_steps=ddim_steps,
-                    guidance_scale=guidance_scale,
-                    seed=seed
-                )
-
-                self.remove_silence_at_end(wav_file)
-
-            if self.demucs_model:
-                self.demucs_file(wav_file, wav_file)
-
-            if self.denoise:
-                self.denoise_file(wav_file, wav_file)
+            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
 
             if replace:
                 falltalkutils.create_lip_and_fuz(self.parent, wav_file, True)
         except Exception as e:
             falltalkutils.logger.exception(f"Error: {e}")
+
+    def do_upscale(self, input_file, output_file, ddim_steps, guidance_scale, seed):
+        if self.p:
+            self.p.predict(
+                input_file,
+                output_file,
+                sr=self.sr,
+                ddim_steps=ddim_steps,
+                guidance_scale=guidance_scale,
+                seed=seed
+            )
+            self.remove_silence_at_end(output_file)
+
+        if self.demucs_model:
+            self.demucs_file(input_file, output_file)
+
+        if self.denoise:
+            self.denoise_file(input_file, output_file)
 
     def upscale_file(self, input_file, replace=True, sr=44100, ddim_steps=50, guidance_scale=3.5, model_name="basic", seed=None):
         self.p = Predictor()
@@ -211,14 +238,16 @@ class UpscaleEngine:
             if last_silence[1] == len(audio):
                 audio = audio[:last_silence[0]]
 
+        # Add 400ms padding to the end
+        padding = AudioSegment.silent(duration=400)
+        audio = audio + padding
+
         # Export the modified audio
-        output_file = wav_file.replace('.wav', '_trimmed.wav')
-        audio.export(output_file, format="wav")
-        print(f"Trimmed audio saved as {output_file}")
+        audio.export(wav_file, format="wav")
 
     def denoise_file(self, input_file, output_file):
         data = falltalkutils.load_audio(input_file, sampling_rate=self.sr)
-        reduced_noise = nr.reduce_noise(y=data,  sr=self.sr, device=cfg.get(cfg.device))
+        reduced_noise = nr.reduce_noise(y=data, sr=self.sr, device=cfg.get(cfg.device))
         sf.write(output_file, reduced_noise, self.sr)
 
     def demucs_file(self, input_file, output_file, save_to_mono=True):
