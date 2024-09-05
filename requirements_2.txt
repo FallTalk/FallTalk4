@@ -81,4 +81,3 @@ ftfy
 timm
 accelerate
 noisereduce
-pedalboard
