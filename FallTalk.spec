@@ -33,7 +33,6 @@ torchaudio_datas = collect_data_files('torio', include_py_files=True)
 ffmpeg_datas  = collect_data_files('ffmpeg', include_py_files=True)
 phonemizer_datas = collect_data_files('phonemizer', include_py_files=True)
 config_datas = collect_data_files('config', include_py_files=True)
-audio_upscaler_datas = collect_data_files('audio_upscaler', include_py_files=True)
 demucs_datas = collect_data_files('demucs', include_py_files=True)
 
 
@@ -52,7 +51,20 @@ def collect_module_data(module_path):
 module_path = os.path.abspath('tts_engines/')
 tts_engines_datas_modules = collect_module_data(module_path)
 
-print(f"tts_engines_datas_modules {tts_engines_datas_modules}")
+def collect_upscaler(module_path):
+    data_files = []
+    for root, dirs, files in os.walk(module_path):
+        if '__pycache__' in dirs:
+            dirs.remove('__pycache__')
+        for file in files:
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, module_path)
+            data_files.append((full_path, os.path.join('audio_upscaler', os.path.dirname(relative_path))))
+    return data_files
+
+# Manually specify the data files to be included
+upscale_module_path = os.path.abspath('audio_upscaler/')
+audio_upscaler_datas = collect_upscaler(upscale_module_path)
 
 lightning_fabric_data = collect_data_files('lightning_fabric', include_py_files=True)
 language_tags_data = collect_data_files('language_tags', include_py_files=True)
