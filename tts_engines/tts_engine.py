@@ -153,4 +153,3 @@ class tts_engine(ABC):
         self.rvc_pipeline.infer_pipeline(params.f0up_key, params.filter_radius, params.index_rate, params.rms_mix_rate, params.protect, params.hop_length, params.f0method,
                                          input_tts_path, input_tts_path, params.pth_path, params.index_path, params.split_audio, params.f0autotune, params.embedder_model,
                                          params.training_data_size, False)
-        return

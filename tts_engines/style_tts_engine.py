@@ -131,6 +131,9 @@ class StyleTTS2_Engine(tts_engine):
         if rvc_enabled and self.rvc_model:
             self.run_rvc(output_file)
 
+        rs_data = falltalkutils.load_audio(output_file, 44100)
+        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
+
     def inference(self, text, ref_s, output_file, alpha=0.3, beta=0.7, diffusion_steps=5, embedding_scale=1):
         text = text.strip()
         ps = self.global_phonemizer.phonemize([text])

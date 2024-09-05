@@ -14,7 +14,7 @@ from tts_engines.voicecraft.data.tokenizer import (
 )
 
 from falltalk import falltalkutils
-
+import soundfile as sf
 from falltalk.config import cfg
 from tts_engines.tts_engine import tts_engine
 
@@ -120,6 +120,9 @@ class VoiceCraft_Engine(tts_engine):
         self.inference(text=text, voice=voice, language="en", output_file=output_file, transcribe_state=transcribe_state, prompt_end_time=prompt_end_time, edit_start_time=edit_start_time, edit_end_time=edit_end_time)
         if cfg.get(cfg.rvc_enabled) and self.rvc_model:
             self.run_rvc(output_file)
+
+        rs_data = falltalkutils.load_audio(output_file, 44100)
+        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     @torch.no_grad()
     def inference(self, text=None, voice=None, language=None, output_file=None, streaming=None, transcribe_state=None, prompt_end_time=None, edit_start_time=None, edit_end_time=None):

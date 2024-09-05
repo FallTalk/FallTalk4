@@ -8,6 +8,7 @@ from TTS.tts.models.xtts import Xtts
 
 from falltalk.config import cfg
 from tts_engines.tts_engine import tts_engine
+import soundfile as sf
 
 from falltalk import falltalkutils
 
@@ -36,6 +37,9 @@ class XTTS_Engine(tts_engine):
         self.inference(text=text, voice=voice, language=language, output_file=output_file, streaming=streaming)
         if cfg.get(cfg.rvc_enabled) and self.rvc_model:
             self.run_rvc(output_file)
+
+        rs_data = falltalkutils.load_audio(output_file, 44100)
+        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     @torch.no_grad()
     def inference(self, text=None, voice=None, language=None, output_file=None, streaming=False):

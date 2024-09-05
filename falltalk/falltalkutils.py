@@ -64,20 +64,16 @@ def create_lip_and_fuz(parent, input_file, sr=44100, api=False, existing_lip=Non
         fuz_file = input_file.replace(".wav", ".fuz")
 
         data, samplerate = sf.read(input_file)
-        length_in_ms = (len(data) / samplerate) * 1000
+        #length_in_ms = (len(data) / samplerate) * 1000
+
         if samplerate != sr:
             rs_wav = input_file.replace(".wav", "_44100.wav")
             audio_data = load_audio(input_file, sr)
-            sf.write(rs_wav, audio_data, sr)
+            sf.write(rs_wav, audio_data, sr, subtype='PCM_16')
             logger.debug(f"file resampled {rs_wav}")
-        elif not api:
-            #we do this because its already playing in the ui, and changing it will cause issues
-            rs_wav = input_file.replace(".wav", "_44100.wav")
-            sf.write(rs_wav, data, sr)
-            logger.debug(f"file copy {rs_wav}")
 
-        if existing_lip is None and length_in_ms > 500:
-            create_lip_files(parent, rs_wav if rs_wav is not None else input_file, lip_file)
+        #if existing_lip is None and length_in_ms > 500:
+        create_lip_files(parent, rs_wav if rs_wav is not None else input_file, lip_file)
 
         create_xwm(rs_wav if rs_wav is not None else input_file, xwm_file)
         create_fuz_files(fuz_file, xwm_file, lip_file)
@@ -89,17 +85,20 @@ def create_lip_and_fuz(parent, input_file, sr=44100, api=False, existing_lip=Non
             os.remove(xwm_file)
             os.remove(lip_file)
 
+    except Exception as e:
+        logger.exception("Unable to create lip and fuz file")
+    finally:
         if rs_wav is not None and os.path.exists(rs_wav):
             os.remove(rs_wav)
 
-
-    except Exception as e:
-        logger.exception("Unable to create lip and fuz file")
     end = datetime.now()
     return (end - start).total_seconds(), fuz_file
 
 
 def create_lip_files(parent, input_file, lip_file):
+    rs_wav = None
+    txt_file = None
+
     try:
         resp = parent.transcription_engine.transcribe(input_file)
         facefx_path = "./resource/apps/lipgen/FaceFXWrapper.exe"
@@ -121,16 +120,17 @@ def create_lip_files(parent, input_file, lip_file):
                 raise subprocess.CalledProcessError(process.returncode, command, stdout, stderr)
             logger.debug(f"lip file created {lip_file}")
 
-            if rs_wav is not None and os.path.exists(rs_wav):
-                os.remove(rs_wav)
-
-            if cfg.get(cfg.keep_only_fuz):
-                os.remove(txt_file)
         else:
             logger.exception("Unable to create lip files: not transcript generated")
 
     except subprocess.CalledProcessError as e:
         logger.exception("Unable to create lip files: %s", e.stderr)
+    finally:
+        if rs_wav is not None and os.path.exists(rs_wav):
+            os.remove(rs_wav)
+
+        if txt_file is not None and cfg.get(cfg.keep_only_fuz):
+            os.remove(txt_file)
 
 
 def create_xwm(input, output, encode=True):

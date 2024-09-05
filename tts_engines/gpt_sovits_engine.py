@@ -306,6 +306,9 @@ class GPT_SoVITS_Engine(tts_engine):
             # self.bert_model = None
             self.run_rvc(output_file)
 
+        rs_data = falltalkutils.load_audio(output_file, 44100)
+        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
+
     @torch.no_grad()
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
         falltalkutils.logger.debug("Generating Audio...")
