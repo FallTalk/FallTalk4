@@ -72,8 +72,8 @@ def create_lip_and_fuz(parent, input_file, sr=44100, api=False, existing_lip=Non
             sf.write(rs_wav, audio_data, sr, subtype='PCM_16')
             logger.debug(f"file resampled {rs_wav}")
 
-        #if existing_lip is None and length_in_ms > 500:
-        create_lip_files(parent, rs_wav if rs_wav is not None else input_file, lip_file)
+        if existing_lip is None:
+            create_lip_files(parent, rs_wav if rs_wav is not None else input_file, lip_file)
 
         create_xwm(rs_wav if rs_wav is not None else input_file, xwm_file)
         create_fuz_files(fuz_file, xwm_file, lip_file)
