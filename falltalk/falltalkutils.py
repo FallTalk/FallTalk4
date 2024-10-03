@@ -986,7 +986,7 @@ def bulk_inference(parent):
                         download_rvc_models(character, model['RVC'])
 
                     if is_trained and character != parent.tts_engine.model_name:
-                        parent.tts_engine.setup(character, has_rvc, not is_trained)
+                        parent.tts_engine.setup(character, has_rvc, False)
 
                     elif not is_trained and character != parent.tts_engine.model_name:
                         parent.tts_engine.setup(character, has_rvc, True)
