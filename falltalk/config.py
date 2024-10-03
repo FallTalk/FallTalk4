@@ -613,7 +613,7 @@ class Config(QConfig):
 
 YEAR = 2024
 AUTHOR = "Bryant21"
-VERSION = '1.1.8'
+VERSION = '1.1.9'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"
