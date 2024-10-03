@@ -1044,11 +1044,12 @@ def get_character_model(character, models, custom_models):
 def get_trained_character(character_model, engine_name):
     rvc = False
     trained = False
-    if "RVC" in character_model and character_model['RVC'] is not None:
-        rvc = True
+    if character_model is not None:
+        if "RVC" in character_model and character_model['RVC'] is not None:
+            rvc = True
 
-    if engine_name in character_model and character_model[engine_name] is not None:
-        trained = True
+        if engine_name in character_model and character_model[engine_name] is not None:
+            trained = True
 
     return trained, rvc
 
