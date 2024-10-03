@@ -1633,6 +1633,16 @@ class CharactersWidget(FallTalkWidget):
         state = self.rvc_checkbox.isChecked()
         text = self.filter_line_edit.text()
 
+        model = self.custom_table.model()
+        if model:
+            for row in range(model.rowCount()):
+                match = text.lower() in model.full_data(row, 0).lower() or text.lower() in model.full_data(row, 1).lower()
+                if state:
+                    rvc_match = model.full_data(row, 5)['RVC'] is not None
+                    self.custom_table.setRowHidden(row, not match or not rvc_match)
+                else:
+                    self.custom_table.setRowHidden(row, not match)
+
         model = self.untrained_table.model()
         if model:
             for row in range(model.rowCount()):
