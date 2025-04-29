@@ -1,0 +1,18 @@
+[submodule "GPT_SoVITS"]
+	path = GPT_SoVITS
+	url = https://github.com/RVC-Boss/GPT-SoVITS
+[submodule "StyleTTS2"]
+	path = StyleTTS2
+	url = https://github.com/yl4579/StyleTTS2
+[submodule "f5"]
+	path = f5
+	url = https://github.com/SWivid/F5-TTS
+[submodule "dia"]
+	path = dia
+	url = https://github.com/nari-labs/dia
+[submodule "fish"]
+	path = fish
+	url = https://github.com/fishaudio/fish-speech
+[submodule "orpheus"]
+	path = orpheus
+	url = https://github.com/canopyai/Orpheus-TTS

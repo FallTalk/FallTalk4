@@ -2,23 +2,54 @@ import copy
 import logging
 import os
 import sys
+import glob
+import shutil
 from logging.handlers import RotatingFileHandler
 
-from icons import FallTalkIcons, FallTalkStrokeIcons
+from src.falltalk.icons import FallTalkIcons, FallTalkStrokeIcons
+
+def rotate_logs():
+    log_dir = "logs"
+    main_log = os.path.join(log_dir, "falltalk.log")
+
+    if not os.path.exists(main_log):
+        return
+
+    # Remove falltalk.log.20 if it exists
+    backup_20 = os.path.join(log_dir, "falltalk.log.20")
+    if os.path.exists(backup_20):
+        os.remove(backup_20)
+
+    # Shift backups (backwards to avoid conflicts)
+    for i in range(19, 0, -1):
+        src = os.path.join(log_dir, f"falltalk.log.{i}")
+        dst = os.path.join(log_dir, f"falltalk.log.{i+1}")
+        if os.path.exists(src):
+            shutil.move(src, dst)
+
+    # Move main log to .1
+    shutil.move(main_log, os.path.join(log_dir, "falltalk.log.1"))
 
 # Configure the logger
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.INFO)
-
 os.makedirs("logs", exist_ok=True)
-# Create a handler that writes log messages to a file, with rotation
-handler = RotatingFileHandler('logs/falltalk.log', maxBytes=5 * 1024 * 1024, backupCount=5, encoding='utf-8')
-handler.setLevel(logging.INFO)
 
-# Create a formatter and add it to the handler
+# Rotate logs before creating new handler
+rotate_logs()
+
+# Create rotating handler with large file size limit
+handler = logging.handlers.RotatingFileHandler(
+    'logs/falltalk.log',
+    maxBytes=1024 * 1024 * 50,  # 50MB (safety net for single-run logging)
+    backupCount=20,  # Should match our manual rotation
+    encoding='utf-8'
+)
+handler.setLevel(logging.DEBUG)
+
+# Formatter and activation
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
-# Add the handler to the logger
 root_logger.addHandler(handler)
 
 
@@ -69,11 +100,11 @@ from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Dialog, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, MessageBox, TextWrap
 from qfluentwidgets import Theme, NavigationItemPosition
 from packaging import version
-import config
-import falltalkapi
-from falltalk import falltalkutils
-from falltalk.Widgets import SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, VoiceCraftWidget, FaqWidget, GPT_SoVITSWidget, StyleTTS2Widget, RVCWidget, FallTalkFluentWindow, FallTalkWidget, BulkGenerationWidget, UpscaleWidget, MusicGenWidget, AudioGenWidget
-from falltalk.config import cfg, DISCLAIMER, REPO
+import src.falltalk.config as config
+import src.falltalk.falltalkapi as falltalkapi
+from src.falltalk import falltalkutils
+from src.falltalk.Widgets import StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget, DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, FallTalkFluentWindow, FallTalkWidget, BulkGenerationWidget
+from src.falltalk.config import cfg, DISCLAIMER, REPO
 
 
 class ModelApp(FallTalkFluentWindow):
@@ -97,8 +128,6 @@ class ModelApp(FallTalkFluentWindow):
         self.custom_models = None
         self.pending_bulk = False
         self.upscale_engine = None
-        self.music_engine = None
-        self.sound_fx_engine = None
 
         falltalkutils.clean_folder("temp/")
 
@@ -230,13 +259,6 @@ class ModelApp(FallTalkFluentWindow):
         elif cfg.get(cfg.engine) == "XTTSv2":
             self.xtts_action.setChecked(True)
 
-    def voicecraft_checked(self, checked):
-        if checked:
-            cfg.set(cfg.engine, "VoiceCraft")
-            self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "VoiceCraft":
-            self.voicecraft_action.setChecked(True)
-
     def rvc_checked(self, checked):
         if checked:
             cfg.set(cfg.engine, "RVC")
@@ -250,6 +272,41 @@ class ModelApp(FallTalkFluentWindow):
             self.onEngineChange(cfg.engine)
         elif cfg.get(cfg.engine) == "StyleTTS2":
             self.styletts2_action.setChecked(True)
+
+    def dia_checked(self, checked):
+        if checked:
+            cfg.set(cfg.engine, "DIA")
+            self.onEngineChange(cfg.engine)
+        elif cfg.get(cfg.engine) == "DIA":
+            self.dia_action.setChecked(True)
+
+    def f5_checked(self, checked):
+        if checked:
+            cfg.set(cfg.engine, "F5")
+            self.onEngineChange(cfg.engine)
+        elif cfg.get(cfg.engine) == "F5":
+            self.f5_action.setChecked(True)
+
+    def orpheus_checked(self, checked):
+        if checked:
+            cfg.set(cfg.engine, "Orpheus")
+            self.onEngineChange(cfg.engine)
+        elif cfg.get(cfg.engine) == "Orpheus":
+            self.orpheus_action.setChecked(True)
+
+    def llasa_checked(self, checked):
+        if checked:
+            cfg.set(cfg.engine, "Llasa")
+            self.onEngineChange(cfg.engine)
+        elif cfg.get(cfg.engine) == "Llasa":
+            self.llasa_action.setChecked(True)
+
+    def fish_checked(self, checked):
+        if checked:
+            cfg.set(cfg.engine, "FishSpeech")
+            self.onEngineChange(cfg.engine)
+        elif cfg.get(cfg.engine) == "FishSpeech":
+            self.f5_action.setChecked(True)
 
     def gpt_sovits_checked(self, checked):
         if checked:
@@ -288,10 +345,15 @@ class ModelApp(FallTalkFluentWindow):
     def initUI(self):
 
         self.xtts_widget = XttsWidget(self)
-        self.voicecraft_widget = VoiceCraftWidget(self)
         self.faq_widget = FaqWidget(self)
         self.gpt_sovits_widget = GPT_SoVITSWidget(self)
         self.styletts2_widget = StyleTTS2Widget(self)
+        self.dia_widget = DIAWidget(self)
+        self.f5_widget = F5Widget(self)
+        self.fish_widget = FishWidget(self)
+        self.orpheus_widget = OrpheusWidget(self)
+        self.llasa_widget = LlasaWidget(self)
+
         self.rvc_widget = RVCWidget(self)
         self.rvc_widget.rvc_mic_widget.media_recorder.doneRecording.connect(self.generate_audio)
 
@@ -300,17 +362,18 @@ class ModelApp(FallTalkFluentWindow):
         self.generate_widget = FallTalkWidget(parent=self, text="Generate Voice")
 
         self.generate_widget.addToFrame(self.xtts_widget)
-        self.generate_widget.addToFrame(self.voicecraft_widget)
         self.generate_widget.addToFrame(self.gpt_sovits_widget)
         self.generate_widget.addToFrame(self.styletts2_widget)
         self.generate_widget.addToFrame(self.rvc_widget)
+        self.generate_widget.addToFrame(self.dia_widget)
+        self.generate_widget.addToFrame(self.f5_widget)
+        self.generate_widget.addToFrame(self.fish_widget)
+        self.generate_widget.addToFrame(self.orpheus_widget)
+        self.generate_widget.addToFrame(self.llasa_widget)
 
         self.bulk_generate_widget = BulkGenerationWidget(parent=self)
 
         self.upscale_widget = UpscaleWidget(parent=self)
-        self.music_widget = MusicGenWidget(parent=self)
-        self.fx_widget = AudioGenWidget(parent=self)
-
         self.setting_widget = SettingsWidget(self)
 
         self.addSubInterface(self.characters_widget, FIF.PEOPLE, 'Character Models', NavigationItemPosition.TOP)
@@ -320,22 +383,24 @@ class ModelApp(FallTalkFluentWindow):
         self.addSubInterface(self.bulk_generate_widget, FallTalkIcons.BULK.icon(), 'Bulk Generation', NavigationItemPosition.TOP)
         self.addSubInterface(self.upscale_widget, FallTalkIcons.ENHANCE.icon(), 'Bulk Enhancement', NavigationItemPosition.TOP)
         self.navigationInterface.addSeparator()
-        self.addSubInterface(self.music_widget, FallTalkStrokeIcons.MUSIC.icon(), 'Music Generator', NavigationItemPosition.SCROLL)
-        self.addSubInterface(self.fx_widget, FallTalkIcons.FX.icon(), 'Sound FX Generator', NavigationItemPosition.SCROLL)
-
         self.addSubInterface(self.faq_widget, FIF.HELP, 'FAQ', NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.setting_widget, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
 
         self.rvc_action.triggered.connect(self.rvc_checked)
         self.gpt_sovits_action.triggered.connect(self.gpt_sovits_checked)
-        self.voicecraft_action.triggered.connect(self.voicecraft_checked)
         self.xtts_action.triggered.connect(self.xttsv2_checked)
         self.styletts2_action.triggered.connect(self.styletts2_checked)
+        self.fish_action.triggered.connect(self.fish_checked)
+        self.f5_action.triggered.connect(self.f5_checked)
+        self.dia_action.triggered.connect(self.dia_checked)
+        self.llasa_action.triggered.connect(self.llasa_checked)
+        self.orpheus_action.triggered.connect(self.orpheus_checked)
+
 
         self.cpu_action.triggered.connect(self.cpu_checked)
         self.gpu_action.triggered.connect(self.gpu_checked)
         self.gpu2_action.triggered.connect(self.gpu2_checked)
-        self.clean_action.triggered.connect(self.clean_engines)
+        #self.clean_action.triggered.connect(self.clean_engines)
 
         QApplication.processEvents()
 
@@ -380,19 +445,6 @@ class ModelApp(FallTalkFluentWindow):
         self.stateTooltip = None
         self.setEnabled(True)
 
-    def clean_engines(self):
-        if self.sound_fx_engine is not None:
-            self.sound_fx_engine.clean()
-            del self.sound_fx_engine
-            self.sound_fx_engine = None
-
-        if self.music_engine is not None:
-            self.music_engine.clean()
-            del self.music_engine
-            self.music_engine = None
-
-        print("Cache Cleaned")
-
     def onDeviceChange(self):
         falltalkutils.logger.debug(f'Device Changed {cfg.get(cfg.device)}')
         tr = (threading.Thread(target=self.clean_engines, daemon=True))
@@ -410,14 +462,22 @@ class ModelApp(FallTalkFluentWindow):
         self.showLoaderPopup("Loading Engine", f"Loading {engine.value}")
         falltalkutils.logger.debug(f"Engine Changed to {engine.value}")
 
-        self.voicecraft_widget.setVisible(False)
-        self.voicecraft_widget.setEnabled(False)
         self.gpt_sovits_widget.setEnabled(False)
         self.gpt_sovits_widget.setVisible(False)
         self.xtts_widget.setVisible(False)
         self.xtts_widget.setEnabled(False)
         self.styletts2_widget.setVisible(False)
         self.styletts2_widget.setEnabled(False)
+        self.dia_widget.setVisible(False)
+        self.dia_widget.setEnabled(False)
+        self.orpheus_widget.setVisible(False)
+        self.orpheus_widget.setEnabled(False)
+        self.llasa_widget.setVisible(False)
+        self.llasa_widget.setEnabled(False)
+        self.f5_widget.setVisible(False)
+        self.f5_widget.setEnabled(False)
+        self.fish_widget.setVisible(False)
+        self.fish_widget.setEnabled(False)
         self.rvc_widget.setVisible(False)
         self.rvc_widget.setEnabled(False)
         self.bulk_generate_widget.setEnabled(False)
@@ -426,19 +486,20 @@ class ModelApp(FallTalkFluentWindow):
 
         self.rvc_action.setChecked(False)
         self.gpt_sovits_action.setChecked(False)
-        self.voicecraft_action.setChecked(False)
         self.xtts_action.setChecked(False)
         self.styletts2_action.setChecked(False)
+        self.dia_action.setChecked(False)
+        self.orpheus_action.setChecked(False)
+        self.llasa_action.setChecked(False)
+        self.f5_action.setChecked(False)
+        self.fish_action.setChecked(False)
+
 
         if self.tts_engine is not None:
             self.tts_engine.clean()
         if engine.value == "XTTSv2":
             self.xtts_action.setChecked(True)
             tr = (threading.Thread(target=falltalkutils.load_xtts, args={self}, daemon=True))
-            tr.start()
-        elif engine.value == "VoiceCraft":
-            self.voicecraft_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_voicecraft, args={self}, daemon=True))
             tr.start()
         elif engine.value == "GPT_SoVITS":
             self.gpt_sovits_action.setChecked(True)
@@ -447,6 +508,26 @@ class ModelApp(FallTalkFluentWindow):
         elif engine.value == "StyleTTS2":
             self.styletts2_action.setChecked(True)
             tr = (threading.Thread(target=falltalkutils.load_style_tts2, args={self}, daemon=True))
+            tr.start()
+        elif engine.value == "DIA":
+            self.dia_action.setChecked(True)
+            tr = (threading.Thread(target=falltalkutils.load_dia, args={self}, daemon=True))
+            tr.start()
+        elif engine.value == "Llasa":
+            self.llasa_action.setChecked(True)
+            tr = (threading.Thread(target=falltalkutils.load_llasa, args={self}, daemon=True))
+            tr.start()
+        elif engine.value == "Orpheus":
+            self.orpheus_action.setChecked(True)
+            tr = (threading.Thread(target=falltalkutils.load_orpheus, args={self}, daemon=True))
+            tr.start()
+        elif engine.value == "FishSpeech":
+            self.fish_action.setChecked(True)
+            tr = (threading.Thread(target=falltalkutils.load_fish, args={self}, daemon=True))
+            tr.start()
+        elif engine.value == "F5":
+            self.f5_action.setChecked(True)
+            tr = (threading.Thread(target=falltalkutils.load_f5, args={self}, daemon=True))
             tr.start()
         elif engine.value == "RVC":
             self.rvc_action.setChecked(True)
@@ -473,14 +554,6 @@ class ModelApp(FallTalkFluentWindow):
         parent.bulk_generate_widget.setEnabled(True)
 
     @Slot(PySide6.QtCore.QObject)
-    def afterVoiceCraft(self, parent):
-        parent.complete_loader()
-        parent.voicecraft_widget.setEnabled(True)
-        parent.voicecraft_widget.setVisible(True)
-        parent.voicecraft_widget.media_player.setVisible(True)
-        parent.bulk_generate_widget.setEnabled(False)
-
-    @Slot(PySide6.QtCore.QObject)
     def afterGPT_SoVITS(self, parent):
         parent.complete_loader()
         parent.gpt_sovits_widget.setEnabled(True)
@@ -494,6 +567,46 @@ class ModelApp(FallTalkFluentWindow):
         parent.styletts2_widget.setEnabled(True)
         parent.styletts2_widget.setVisible(True)
         parent.styletts2_widget.media_player.setVisible(True)
+        parent.bulk_generate_widget.setEnabled(True)
+
+    @Slot(PySide6.QtCore.QObject)
+    def afterDIA(self, parent):
+        parent.complete_loader()
+        parent.dia_widget.setEnabled(True)
+        parent.dia_widget.setVisible(True)
+        parent.dia_widget.media_player.setVisible(True)
+        parent.bulk_generate_widget.setEnabled(True)
+
+    @Slot(PySide6.QtCore.QObject)
+    def afterOrpheus(self, parent):
+        parent.complete_loader()
+        parent.orpheus_widget.setEnabled(True)
+        parent.orpheus_widget.setVisible(True)
+        parent.orpheus_widget.media_player.setVisible(True)
+        parent.bulk_generate_widget.setEnabled(True)
+
+    @Slot(PySide6.QtCore.QObject)
+    def afterLlasa(self, parent):
+        parent.complete_loader()
+        parent.llasa_widget.setEnabled(True)
+        parent.llasa_widget.setVisible(True)
+        parent.llasa_widget.media_player.setVisible(True)
+        parent.bulk_generate_widget.setEnabled(True)
+
+    @Slot(PySide6.QtCore.QObject)
+    def afterF5(self, parent):
+        parent.complete_loader()
+        parent.f5_widget.setEnabled(True)
+        parent.f5_widget.setVisible(True)
+        parent.f5_widget.media_player.setVisible(True)
+        parent.bulk_generate_widget.setEnabled(True)
+
+    @Slot(PySide6.QtCore.QObject)
+    def afterFish(self, parent):
+        parent.complete_loader()
+        parent.fish_widget.setEnabled(True)
+        parent.fish_widget.setVisible(True)
+        parent.fish_widget.media_player.setVisible(True)
         parent.bulk_generate_widget.setEnabled(True)
 
     @Slot(PySide6.QtCore.QObject)
@@ -518,6 +631,37 @@ class ModelApp(FallTalkFluentWindow):
                 parent.gpt_sovits_widget.transcribe_button.setVisible(False)
 
             self.stackedWidget.setCurrentWidget(self.reference_widget)
+
+        elif cfg.get(cfg.engine) == "DIA":
+            if parent.tts_engine.is_base:
+                parent.dia_widget.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
+                parent.dia_widget.transcribe_button.setVisible(True)
+            else:
+                parent.dia_widget.text_input.setPlaceholderText("Please Enter Text")
+                parent.dia_widget.transcribe_button.setVisible(False)
+
+            self.stackedWidget.setCurrentWidget(self.reference_widget)
+
+        elif cfg.get(cfg.engine) == "F5":
+            if parent.tts_engine.is_base:
+                parent.f5_widget.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
+                parent.f5_widget.transcribe_button.setVisible(True)
+            else:
+                parent.f5_widget.text_input.setPlaceholderText("Please Enter Text")
+                parent.f5_widget.transcribe_button.setVisible(False)
+
+            self.stackedWidget.setCurrentWidget(self.reference_widget)
+
+        elif cfg.get(cfg.engine) == "FishSpeech":
+            if parent.tts_engine.is_base:
+                parent.fish_widget.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
+                parent.fish_widget.transcribe_button.setVisible(True)
+            else:
+                parent.fish_widget.text_input.setPlaceholderText("Please Enter Text")
+                parent.fish_widget.transcribe_button.setVisible(False)
+
+            self.stackedWidget.setCurrentWidget(self.reference_widget)
+
         else:
             self.stackedWidget.setCurrentWidget(self.reference_widget)
 
@@ -686,48 +830,6 @@ class ModelApp(FallTalkFluentWindow):
         return sentence
 
     @Slot(PySide6.QtCore.QObject)
-    def after_fx_gen(self, parent):
-        parent.complete_loader()
-        parent.generate_fx()
-
-    def generate_fx(self):
-        if self.sound_fx_engine is None:
-            self.showLoaderPopup("Loading FX Generator", "Please Wait")
-            tr = (threading.Thread(target=falltalkutils.load_fx_gen, args={self}, daemon=True))
-            tr.start()
-        else:
-            output_file = str(self.get_fx_file(self.fx_widget.output_name.value, True))
-            text = self.fx_widget.text_input.toPlainText()
-            if text is None or text == "":
-                self.showErrorPopup(self.fx_widget, self.fx_widget.generate_button, "Please Enter Valid Text")
-            else:
-                self.showLoaderPopup("Generating Sound FX", "Please Wait")
-                tr = (threading.Thread(target=self.sound_fx_engine.generate, args=(text, output_file, self.fx_widget, cfg.fx_duration.value), daemon=True))
-                tr.start()
-
-    @Slot(PySide6.QtCore.QObject)
-    def after_music_gen(self, parent):
-        parent.complete_loader()
-        parent.generate_music()
-
-    def generate_music(self):
-        if self.music_engine is None:
-            self.showLoaderPopup("Loading Music Generator", "Please Wait")
-            tr = (threading.Thread(target=falltalkutils.load_music_gen, args={self}, daemon=True))
-            tr.start()
-        else:
-            output_file = str(self.get_music_file(self.music_widget.output_name.value))
-            text = self.music_widget.text_input.toPlainText()
-            if text is None or text == "":
-                self.showErrorPopup(self.music_widget, self.music_widget.generate_button, "Please Enter Valid Text")
-            else:
-                ref = self.music_widget.ref_file.value if self.music_widget.ref_file.value != "Please Select a File" else None
-
-                self.showLoaderPopup("Generating Music", "Please Wait")
-                tr = (threading.Thread(target=self.music_engine.generate, args=(text, output_file, self.music_widget, cfg.audio_mode.value, cfg.music_duration.value, ref), daemon=True))
-                tr.start()
-
-    @Slot(PySide6.QtCore.QObject)
     def after_upscale(self, parent):
         parent.complete_loader()
         parent.upscale_folder()
@@ -848,28 +950,6 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Generating Audio", "Please Wait")
                 tr = (threading.Thread(target=falltalkutils.xtts_inference, args=(self, self.get_output_file(self.xtts_widget), text, self.combine_references(references), self.xtts_widget), daemon=True))
                 tr.start()
-        elif cfg.get(cfg.engine) == "VoiceCraft":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.voicecraft_widget.text_input.toPlainText()))
-            start_word = self.voicecraft_widget.start_dropdown_card.getWordInfo()
-            end_word = self.voicecraft_widget.end_dropdown_card.getWordInfo()
-            start_tts_word = self.voicecraft_widget.start_tts_dropdown_card.getWordInfo()
-            start_time = start_word['start'] if start_word is not None else None
-            end_time = end_word['end'] if end_word is not None else None
-            start_tts_time = start_tts_word['end'] if start_tts_word is not None else None
-            if references is None or not references:
-                self.showErrorPopup(self.voicecraft_widget, self.voicecraft_widget.generate_button, "Please Select Reference Audio")
-            elif references_length > 16:
-                self.showErrorPopup(self.xtts_widget, self.xtts_widget.generate_button, "Please Select less than 16 seconds of Reference Audio")
-            elif start_time is None and end_time is None and start_tts_time is None:
-                self.showErrorPopup(self.voicecraft_widget, self.voicecraft_widget.generate_button, "Please Transcribe your reference audio")
-            elif not text or text == '':
-                self.showErrorPopup(self.voicecraft_widget, self.voicecraft_widget.generate_button, "Please Enter Some Text to Generate...")
-            elif cfg.get(cfg.mode) == "edit" and start_time > end_time:
-                self.showErrorPopup(self.voicecraft_widget, self.voicecraft_widget.generate_button, "Start must come before the end time")
-            else:
-                self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=falltalkutils.voicecraft_inference, args=(self, self.get_output_file(self.voicecraft_widget), text, self.combine_references(references), self.voicecraft_widget, start_time, end_time, start_tts_time, self.voicecraft_widget.transcribe_state), daemon=True))
-                tr.start()
         elif cfg.get(cfg.engine) == "GPT_SoVITS":
             text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.gpt_sovits_widget.text_input.toPlainText()))
             transcribe_state = None
@@ -878,9 +958,9 @@ class ModelApp(FallTalkFluentWindow):
             if references is None or not references:
                 self.showErrorPopup(self.gpt_sovits_widget, self.gpt_sovits_widget.generate_button, "Please Select Reference Audio")
             elif self.tts_engine.is_base and (references_length > 15 or references_length < 3):
-                self.showErrorPopup(self.xtts_widget, self.xtts_widget.generate_button, "Please Select between 3 and 10 seconds of Reference Audio")
+                self.showErrorPopup(self.gpt_sovits_widget, self.gpt_sovits_widget.generate_button, "Please Select between 3 and 10 seconds of Reference Audio")
             elif not self.tts_engine.is_base and references_length < 3:
-                self.showErrorPopup(self.xtts_widget, self.xtts_widget.generate_button, "Please Select at least 3 seconds of Reference Audio")
+                self.showErrorPopup(self.gpt_sovits_widget, self.gpt_sovits_widget.generate_button, "Please Select at least 3 seconds of Reference Audio")
             elif self.tts_engine.is_base and transcribe_state is None:
                 self.showErrorPopup(self.gpt_sovits_widget, self.gpt_sovits_widget.generate_button, "Please Transcribe your reference audio")
             elif not text or text == '':
@@ -892,7 +972,7 @@ class ModelApp(FallTalkFluentWindow):
         elif cfg.get(cfg.engine) == "StyleTTS2":
             text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.styletts2_widget.text_input.toPlainText()))
             if references_length > 15 or references_length < 5:
-                self.showErrorPopup(self.xtts_widget, self.xtts_widget.generate_button, "Please Select between 5 and 10 seconds of Reference Audio")
+                self.showErrorPopup(self.styletts2_widget, self.styletts2_widget.generate_button, "Please Select between 5 and 10 seconds of Reference Audio")
             elif references is None or not references:
                 self.showErrorPopup(self.styletts2_widget, self.styletts2_widget.generate_button, "Please Select Reference Audio")
             elif not text or text == '':
@@ -901,6 +981,103 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Generating Audio", "Please Wait")
                 tr = (threading.Thread(target=falltalkutils.styletts2_inference, args=(self, self.get_output_file(self.styletts2_widget), text, self.combine_references(references), self.styletts2_widget), daemon=True))
                 tr.start()
+        elif cfg.get(cfg.engine) == "Llasa":
+            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.llasa_widget.text_input.toPlainText()))
+            transcribe_state = None
+            if self.tts_engine.is_base:
+                transcribe_state = self.llasa_widget.transcribe_state
+            if references is None or not references:
+                self.showErrorPopup(self.llasa_widget, self.llasa_widget.generate_button, "Please Select Reference Audio")
+            elif self.tts_engine.is_base and (references_length > 15 or references_length < 3):
+                self.showErrorPopup(self.llasa_widget, self.llasa_widget.generate_button, "Please Select between 3 and 10 seconds of Reference Audio")
+            elif not self.tts_engine.is_base and references_length < 3:
+                self.showErrorPopup(self.llasa_widget, self.llasa_widget.generate_button, "Please Select at least 3 seconds of Reference Audio")
+            elif self.tts_engine.is_base and transcribe_state is None:
+                self.showErrorPopup(self.llasa_widget, self.llasa_widget.generate_button, "Please Transcribe your reference audio")
+            elif not text or text == '':
+                self.showErrorPopup(self.llasa_widget, self.llasa_widget.generate_button, "Please Enter Some Text to Generate...")
+            else:
+                self.showLoaderPopup("Generating Audio", "Please Wait")
+                tr = (threading.Thread(target=falltalkutils.llasa_inference, args=(self, self.get_output_file(self.llasa_widget), text, self.combine_references(references), self.llasa_widget, transcribe_state), daemon=True))
+                tr.start()
+        elif cfg.get(cfg.engine) == "Orpheus":
+            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.orpheus_widget.text_input.toPlainText()))
+            transcribe_state = None
+            if self.tts_engine.is_base:
+                transcribe_state = self.orpheus_widget.transcribe_state
+            if references is None or not references:
+                self.showErrorPopup(self.orpheus_widget, self.orpheus_widget.generate_button, "Please Select Reference Audio")
+            elif self.tts_engine.is_base and (references_length > 15 or references_length < 3):
+                self.showErrorPopup(self.orpheus_widget, self.orpheus_widget.generate_button, "Please Select between 3 and 10 seconds of Reference Audio")
+            elif not self.tts_engine.is_base and references_length < 3:
+                self.showErrorPopup(self.orpheus_widget, self.orpheus_widget.generate_button, "Please Select at least 3 seconds of Reference Audio")
+            elif self.tts_engine.is_base and transcribe_state is None:
+                self.showErrorPopup(self.orpheus_widget, self.orpheus_widget.generate_button, "Please Transcribe your reference audio")
+            elif not text or text == '':
+                self.showErrorPopup(self.orpheus_widget, self.orpheus_widget.generate_button, "Please Enter Some Text to Generate...")
+            else:
+                self.showLoaderPopup("Generating Audio", "Please Wait")
+                tr = (threading.Thread(target=falltalkutils.orpheus_inference, args=(self, self.get_output_file(self.orpheus_widget), text, self.combine_references(references), self.orpheus_widget, transcribe_state), daemon=True))
+                tr.start()
+        elif cfg.get(cfg.engine) == "DIA":
+            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.dia_widget.text_input.toPlainText()))
+            transcribe_state = None
+            if self.tts_engine.is_base:
+                transcribe_state = self.dia_widget.transcribe_state
+            if references is None or not references:
+                self.showErrorPopup(self.dia_widget, self.dia_widget.generate_button, "Please Select Reference Audio")
+            elif self.tts_engine.is_base and (references_length > 15 or references_length < 3):
+                self.showErrorPopup(self.dia_widget, self.dia_widget.generate_button, "Please Select between 3 and 10 seconds of Reference Audio")
+            elif not self.tts_engine.is_base and references_length < 3:
+                self.showErrorPopup(self.dia_widget, self.dia_widget.generate_button, "Please Select at least 3 seconds of Reference Audio")
+            elif self.tts_engine.is_base and transcribe_state is None:
+                self.showErrorPopup(self.dia_widget, self.dia_widget.generate_button, "Please Transcribe your reference audio")
+            elif not text or text == '':
+                self.showErrorPopup(self.dia_widget, self.dia_widget.generate_button, "Please Enter Some Text to Generate...")
+            else:
+                self.showLoaderPopup("Generating Audio", "Please Wait")
+                tr = (threading.Thread(target=falltalkutils.dia_inference, args=(self, self.get_output_file(self.dia_widget), text, self.combine_references(references), self.dia_widget, transcribe_state), daemon=True))
+                tr.start()
+        elif cfg.get(cfg.engine) == "F5":
+            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.f5_widget.text_input.toPlainText()))
+            start_word = self.f5_widget.start_dropdown_card.getWordInfo()
+            end_word = self.f5_widget.end_dropdown_card.getWordInfo()
+            start_time = start_word['start'] if start_word is not None else None
+            end_time = end_word['end'] if end_word is not None else None
+            if references is None or not references:
+                self.showErrorPopup(self.f5_widget, self.f5_widget.generate_button, "Please Select Reference Audio")
+            elif references_length > 12:
+                self.showErrorPopup(self.f5_widget, self.f5_widget.generate_button, "Please Select less than 12 seconds of Reference Audio")
+            elif start_time is None and end_time is None and cfg.get(cfg.f5_mode) != 'tts':
+                self.showErrorPopup(self.f5_widget, self.f5_widget.generate_button, "Please Select Words to Edit")
+            elif not text or text == '':
+                self.showErrorPopup(self.f5_widget, self.f5_widget.generate_button, "Please Enter Some Text to Generate...")
+            elif cfg.get(cfg.f5_mode) == "edit" and start_time > end_time:
+                self.showErrorPopup(self.f5_widget, self.f5_widget.generate_button, "Start must come before the end time")
+            else:
+                self.showLoaderPopup("Generating Audio", "Please Wait")
+                tr = (threading.Thread(target=falltalkutils.f5_inference, args=(self, self.get_output_file(self.f5_widget), text, self.combine_references(references), self.f5_widget, start_time, end_time, self.f5_widget.transcribe_state), daemon=True))
+                tr.start()
+        elif cfg.get(cfg.engine) == "FishSpeech":
+            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.fish_widget.text_input.toPlainText()))
+            transcribe_state = None
+            if self.tts_engine.is_base:
+                transcribe_state = self.fish_widget.transcribe_state
+            if references is None or not references:
+                self.showErrorPopup(self.fish_widget, self.fish_widget.generate_button, "Please Select Reference Audio")
+            elif self.tts_engine.is_base and (references_length > 15 or references_length < 3):
+                self.showErrorPopup(self.fish_widget, self.fish_widget.generate_button, "Please Select between 3 and 10 seconds of Reference Audio")
+            elif not self.tts_engine.is_base and references_length < 3:
+                self.showErrorPopup(self.fish_widget, self.fish_widget.generate_button, "Please Select at least 3 seconds of Reference Audio")
+            elif self.tts_engine.is_base and transcribe_state is None:
+                self.showErrorPopup(self.fish_widget, self.fish_widget.generate_button, "Please Transcribe your reference audio")
+            elif not text or text == '':
+                self.showErrorPopup(self.fish_widget, self.fish_widget.generate_button, "Please Enter Some Text to Generate...")
+            else:
+                self.showLoaderPopup("Generating Audio", "Please Wait")
+                tr = (threading.Thread(target=falltalkutils.fish_inference, args=(self, self.get_output_file(self.fish_widget), text, self.combine_references(references), self.fish_widget, transcribe_state), daemon=True))
+                tr.start()
+
 
     def showErrorPopup(self, parent, target, content):
         Flyout.create(
@@ -927,12 +1104,20 @@ class ModelApp(FallTalkFluentWindow):
         elif character:
             if cfg.get(cfg.engine) == "XTTSv2":
                 self.xtts_widget.rvc_enabled.setVisible(rvc is not None)
-            elif cfg.get(cfg.engine) == "VoiceCraft":
-                self.voicecraft_widget.rvc_enabled.setVisible(rvc is not None)
             elif cfg.get(cfg.engine) == "GPT_SoVITS":
                 self.gpt_sovits_widget.rvc_enabled.setVisible(rvc is not None)
             elif cfg.get(cfg.engine) == "StyleTTS2":
                 self.styletts2_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "DIA":
+                self.dia_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "Llasa":
+                self.llasa_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "Orpheus":
+                self.orpheus_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "FishSpeech":
+                self.fish_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "F5":
+                self.f5_widget.rvc_enabled.setVisible(rvc is not None)
 
             self.showLoaderPopup("Loading Base Model", f"Loading")
             tr = (threading.Thread(target=falltalkutils.load_model, args=(self, character['name'], rvc, character['display_name'], base_model), daemon=True))
@@ -964,12 +1149,20 @@ class ModelApp(FallTalkFluentWindow):
 
             if cfg.get(cfg.engine) == "XTTSv2":
                 self.xtts_widget.rvc_enabled.setVisible(rvc is not None)
-            elif cfg.get(cfg.engine) == "VoiceCraft":
-                self.voicecraft_widget.rvc_enabled.setVisible(rvc is not None)
             elif cfg.get(cfg.engine) == "GPT_SoVITS":
                 self.gpt_sovits_widget.rvc_enabled.setVisible(rvc is not None)
             elif cfg.get(cfg.engine) == "StyleTTS2":
                 self.styletts2_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "DIA":
+                self.dia_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "Llasa":
+                self.llasa_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "Orpheus":
+                self.orpheus_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "FishSpeech":
+                self.fish_widget.rvc_enabled.setVisible(rvc is not None)
+            elif cfg.get(cfg.engine) == "F5":
+                self.f5_widget.rvc_enabled.setVisible(rvc is not None)
 
             self.showLoaderPopup("Loading Model", f"Loading {character}")
             tr = (threading.Thread(target=falltalkutils.load_model, args=(self, character, rvc, model['display_name'], False), daemon=True))
@@ -1041,7 +1234,7 @@ def hide_console():
 
 if __name__ == '__main__':
 
-    falltalkutils.seed_everything(0)
+    falltalkutils.seed_everything(cfg.get(cfg.seed))
 
     if cfg.get(cfg.dpiScale) != "Auto":
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
@@ -1054,7 +1247,22 @@ if __name__ == '__main__':
         if cfg.get(cfg.huggingface_cache_dir) != "Please Select a Valid Folder":
             os.environ["HF_HUB_CACHE"] = cfg.get(cfg.huggingface_cache_dir)
 
-        # These are needed for VoiceCraft
+        if cfg.get(cfg.disableSSLVerify) == True:
+            import requests
+            from huggingface_hub import configure_http_backend
+
+            def backend_factory() -> requests.Session:
+                session = requests.Session()
+                session.verify = False
+                return session
+
+            configure_http_backend(backend_factory=backend_factory)
+
+        if cfg.get(cfg.huggingface_key) is not None and cfg.get(cfg.huggingface_key != ""):
+            os.environ['HF_TOKEN'] = cfg.huggingface_key
+
+        os.environ['WANDB_DISABLED'] = 'True'
+        os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
         os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
         os.environ['USER'] = getpass.getuser()
         os.environ['PHONEMIZER_ESPEAK_PATH'] = os.path.abspath(os.path.join("resource", "apps", "espeak", "espeak-ng.exe"))

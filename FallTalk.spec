@@ -48,7 +48,7 @@ def collect_module_data(module_path):
     return data_files
 
 # Manually specify the data files to be included
-module_path = os.path.abspath('tts_engines/')
+module_path = os.path.abspath('src/tts_engines/')
 tts_engines_datas_modules = collect_module_data(module_path)
 
 def collect_upscaler(module_path):
@@ -72,21 +72,26 @@ TTS_datas = collect_data_files('TTS', include_py_files=True)
 
 a = Analysis(
     ['FallTalk.py'],
-    pathex=['falltalk',
-    'tts_engines',
-    'tts_engines/GPT_SoVITS',
-    'tts_engines/rvc',
-    'tts_engines/styletts2',
-    'tts_engines/voicecraft',
-    'tts_engines/rvc/lib/infer_pack',
-    'tts_engines/rvc/lib/infer_pack/modules/F0Predictor',
-    'tts_engines/styletts2/Modules',
-    'tts_engines/styletts2/Utils',
-    'tts_engines/styletts2/Utils/ASR',
-    'tts_engines/styletts2/Utils/JDC',
-    'tts_engines/voicecraft/modules',
-    'tts_engines/GPT_SoVITS/text',
-    'tts_engines/GPT_SoVITS/text/g2pw'],
+    pathex=['src/falltalk',
+    'src/tts_engines',
+    'src/tts_engines/GPT_SoVITS',
+    'src/tts_engines/rvc',
+    'src/tts_engines/styletts2',
+    'src/tts_engines/voicecraft',
+    'src/tts_engines/rvc/lib/infer_pack',
+    'src/tts_engines/rvc/lib/infer_pack/modules/F0Predictor',
+    'src/tts_engines/styletts2/Modules',
+    'src/tts_engines/styletts2/Utils',
+    'src/tts_engines/styletts2/Utils/ASR',
+    'src/tts_engines/styletts2/Utils/JDC',
+    'src/tts_engines/voicecraft/modules',
+    'src/tts_engines/GPT_SoVITS/text',
+    'src/tts_engines/GPT_SoVITS/text/g2pw',
+    'kokoro',
+    'fish-speech',
+    'GPT-SoVITS',
+    'StyleTTS2'
+    ],
     binaries=[],
     datas=[('utils.py', '.')]
     +wordsegment_datas
@@ -160,4 +165,3 @@ coll = COLLECT(
     upx_exclude=[],
     name='FallTalk',
 )
-

@@ -122,14 +122,19 @@ To get this to work on windows was not exactly easy, and I needed to make severa
 Here is the basic idea to get you started
 
 ```bash
+git submodule update --init --recursive
 conda create --name falltalk python=3.11.8
 conda activate falltalk
-pip install -r requirements_torch.txt #This will move install cuda dlls to torch, rather than the conda env
+pip install uv
+uv pip install -r requirements_torch.txt #This will move install cuda dlls to torch, rather than the conda env
 conda install -c conda-forge 'ffmpeg<7'
 conda install -y pytorch::faiss-cpu
 conda install -y conda-forge::pyinstaller
-pip install audiocraft==1.2.0 --no-deps
-pip install -r requirements.txt
+uv pip install -r requirements.txt
+uv pip install packaging==25.0
+uv pip install flash-attn --no-build-isolation
+uv pip install xcodec2 --no-deps
+
 ```
 Next, you will need to copy and paste the "site-packages" folder into your conda env. This contains files chagnes needed to build on windows.
 

@@ -4,7 +4,8 @@ logs/
 /models/
 output/
 bulk_outputs/
-
+hf/
+/hf/
 references/
 temp/
 config/
