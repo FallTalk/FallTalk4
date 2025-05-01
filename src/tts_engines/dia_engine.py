@@ -6,6 +6,7 @@ import torch
 
 from src.falltalk.config import cfg
 from src.tts_engines.tts_engine import tts_engine
+from src.falltalk import falltalkutils
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dia/dia')))
 

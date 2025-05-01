@@ -23,3 +23,4 @@ class FishSpeechEngine(tts_engine):
     @torch.no_grad()
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
         print("Loading Fish Model")
+

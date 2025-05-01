@@ -13,7 +13,7 @@ num2words
 numpy==1.26.4
 sentencepiece
 transformers>=4.45.2
-xformers==v0.0.29.post3
+xformers==v0.0.30
 torchmetrics
 demucs
 soundfile
@@ -67,9 +67,9 @@ edge-tts
 elevenlabs
 pip-system-certs
 ctranslate2
-torch==2.6.0
-torchvision==0.21.0
-torchaudio==2.6.0
+torch==2.7.0
+torchvision==0.22.0
+torchaudio==2.7.0
 nltk==3.9.1
 torchfcpe
 phonemizer
@@ -88,7 +88,7 @@ safetensors
 datasets
 transformers_stream_generator
 ema_pytorch>=0.5.2
-triton-windows<3.3
+triton-windows>=3.3
 pywin32==308
 deepspeed==0.16.5
 descript-audio-codec
@@ -98,5 +98,5 @@ diffusers
 torchsde
 torchtune
 descript-audiotools>=0.7.2
-flash-attn @ https://github.com/kingbri1/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu124torch2.6.0cxx11abiFALSE-cp311-cp311-win_amd64.whl
-exllamav2 @ https://github.com/turboderp-org/exllamav2/releases/download/v0.2.8/exllamav2-0.2.8+cu124.torch2.6.0-cp311-cp311-win_amd64.whl ; platform_system == 'Windows' and python_version == '3.11'
+flash-attn @ https://github.com/kingbri1/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu128torch2.7.0cxx11abiFALSE-cp311-cp311-win_amd64.whl
+exllamav2 @ https://github.com/turboderp-org/exllamav2/releases/download/v0.2.9/exllamav2-0.2.9+cu128.torch2.7.0-cp311-cp311-win_amd64.whl

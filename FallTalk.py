@@ -2,86 +2,13 @@ import copy
 import logging
 import os
 import sys
-import glob
-import shutil
-from logging.handlers import RotatingFileHandler
 
-from src.falltalk.icons import FallTalkIcons, FallTalkStrokeIcons
-
-def rotate_logs():
-    log_dir = "logs"
-    main_log = os.path.join(log_dir, "falltalk.log")
-
-    if not os.path.exists(main_log):
-        return
-
-    # Remove falltalk.log.20 if it exists
-    backup_20 = os.path.join(log_dir, "falltalk.log.20")
-    if os.path.exists(backup_20):
-        os.remove(backup_20)
-
-    # Shift backups (backwards to avoid conflicts)
-    for i in range(19, 0, -1):
-        src = os.path.join(log_dir, f"falltalk.log.{i}")
-        dst = os.path.join(log_dir, f"falltalk.log.{i+1}")
-        if os.path.exists(src):
-            shutil.move(src, dst)
-
-    # Move main log to .1
-    shutil.move(main_log, os.path.join(log_dir, "falltalk.log.1"))
+from src.falltalk.icons import FallTalkIcons
+from src.utils import setup_logging
 
 # Configure the logger
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
-os.makedirs("logs", exist_ok=True)
-
-# Rotate logs before creating new handler
-rotate_logs()
-
-# Create rotating handler with large file size limit
-handler = logging.handlers.RotatingFileHandler(
-    'logs/falltalk.log',
-    maxBytes=1024 * 1024 * 50,  # 50MB (safety net for single-run logging)
-    backupCount=20,  # Should match our manual rotation
-    encoding='utf-8'
-)
-handler.setLevel(logging.DEBUG)
-
-# Formatter and activation
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-root_logger.addHandler(handler)
-
-
-class LoggerStream:
-    def __init__(self, logger, level):
-        self.logger = logger
-        self.level = level
-
-    def write(self, message):
-        if message.strip():
-            try:
-                self.logger.log(self.level, message.strip())
-            except UnicodeEncodeError:
-                # Fallback to a safe encoding
-                safe_message = message.encode('utf-8', errors='replace').decode('utf-8')
-                self.logger.log(self.level, safe_message.strip())
-
-    def flush(self):
-        pass
-
-    def isatty(self):
-        return False
-
-
-stdout_logger = logging.getLogger('stdout')
-stderr_logger = logging.getLogger('stderr')
-
-# Redirect stdout and stderr to the logger
-sys.stdout = LoggerStream(stdout_logger, logging.INFO)
-sys.stderr = LoggerStream(stderr_logger, logging.ERROR)
-
-import pip_system_certs.wrapt_requests
+root_logger = setup_logging()
+logger = logging.getLogger('falltalk')
 
 import ctypes
 import getpass
@@ -97,14 +24,29 @@ import huggingface_hub
 from PySide6.QtCore import Qt, QSize, Slot, QUrl, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
-from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Dialog, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, MessageBox, TextWrap
+from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, MessageBox
 from qfluentwidgets import Theme, NavigationItemPosition
 from packaging import version
 import src.falltalk.config as config
 import src.falltalk.falltalkapi as falltalkapi
-from src.falltalk import falltalkutils
 from src.falltalk.Widgets import StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget, DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, FallTalkFluentWindow, FallTalkWidget, BulkGenerationWidget
 from src.falltalk.config import cfg, DISCLAIMER, REPO
+
+# Import utility functions directly from utility modules
+from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp, formatted_time_stamp_uuid
+from src.utils.audio_utils import combine_wav_files
+from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models
+from src.utils.model_utils import (
+    load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc,
+    load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler,
+    seed_everything
+)
+from src.utils.inference_utils import (
+    do_transcribe, replace_numbers_with_words, eleven_labs_inference, edge_tts_inference,
+    rvc_inference, xtts_inference, dia_inference, fish_inference, f5_inference,
+    gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference
+)
+from src.utils.bulk_utils import bulk_inference, bulk_rvc_inference, bulk_fuz
 
 
 class ModelApp(FallTalkFluentWindow):
@@ -129,7 +71,7 @@ class ModelApp(FallTalkFluentWindow):
         self.pending_bulk = False
         self.upscale_engine = None
 
-        falltalkutils.clean_folder("temp/")
+        clean_folder("temp/")
 
         self.initUI()
 
@@ -160,7 +102,7 @@ class ModelApp(FallTalkFluentWindow):
 
     def checkForRelease(self):
         try:
-            latest = falltalkutils.get_latest_release()
+            latest = get_latest_release()
             my_version = version.parse(config.VERSION)
             latest_version = version.parse(latest)
             if latest_version.base_version > my_version.base_version:
@@ -168,7 +110,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.toolbar_1.addAction(self.update_action)
                 self.update_action.triggered.connect(lambda: webbrowser.open(config.RELEASE_URL))
         except Exception as e:
-            falltalkutils.logger.exception(f"Failed to fetch latest release: {e}")
+            logger.exception(f"Failed to fetch latest release: {e}")
 
     def setupWindow(self):
         self.setWindowTitle(f'FallTalk - {config.VERSION}')
@@ -222,7 +164,7 @@ class ModelApp(FallTalkFluentWindow):
         w.cancelButton.setText(self.tr('No'))
         if w.exec():
             self.showLoaderPopup("Downloading", "Please Wait")
-            tr = (threading.Thread(target=falltalkutils.downloadBaseModels, args={self}, daemon=True))
+            tr = (threading.Thread(target=downloadBaseModels, args={self}, daemon=True))
             tr.start()
 
     def download_models_config(self):
@@ -238,7 +180,7 @@ class ModelApp(FallTalkFluentWindow):
             with open('config/models.json', 'r', encoding="utf-8") as new_file:
                 new_json = json.load(new_file)
 
-            diff = falltalkutils.get_model_diff(old_json, new_json)
+            diff = get_model_diff(old_json, new_json)
 
             if diff is not None:
                 self.toolbar_1.addSeparator()
@@ -248,7 +190,7 @@ class ModelApp(FallTalkFluentWindow):
 
             huggingface_hub.hf_hub_download(REPO, "config/characters.json", local_dir=os.path.abspath(f"./"))
         except Exception as e:
-            falltalkutils.logger.exception("Unable to load configs")
+            logger.exception("Unable to load configs")
             if not os.path.exists('config/characters.json') and not os.path.exists('config/models.json'):
                 self.createErrorInfoBar("Unable to Download Configs", "Unable to download the required configuration files, please check your network")
 
@@ -446,7 +388,7 @@ class ModelApp(FallTalkFluentWindow):
         self.setEnabled(True)
 
     def onDeviceChange(self):
-        falltalkutils.logger.debug(f'Device Changed {cfg.get(cfg.device)}')
+        logger.debug(f'Device Changed {cfg.get(cfg.device)}')
         tr = (threading.Thread(target=self.clean_engines, daemon=True))
         tr.start()
 
@@ -460,7 +402,7 @@ class ModelApp(FallTalkFluentWindow):
 
     def onEngineChange(self, engine):
         self.showLoaderPopup("Loading Engine", f"Loading {engine.value}")
-        falltalkutils.logger.debug(f"Engine Changed to {engine.value}")
+        logger.debug(f"Engine Changed to {engine.value}")
 
         self.gpt_sovits_widget.setEnabled(False)
         self.gpt_sovits_widget.setVisible(False)
@@ -499,39 +441,39 @@ class ModelApp(FallTalkFluentWindow):
             self.tts_engine.clean()
         if engine.value == "XTTSv2":
             self.xtts_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_xtts, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_xtts, args={self}, daemon=True))
             tr.start()
         elif engine.value == "GPT_SoVITS":
             self.gpt_sovits_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_gpt_sovits, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_gpt_sovits, args={self}, daemon=True))
             tr.start()
         elif engine.value == "StyleTTS2":
             self.styletts2_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_style_tts2, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_style_tts2, args={self}, daemon=True))
             tr.start()
         elif engine.value == "DIA":
             self.dia_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_dia, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_dia, args={self}, daemon=True))
             tr.start()
         elif engine.value == "Llasa":
             self.llasa_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_llasa, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_llasa, args={self}, daemon=True))
             tr.start()
         elif engine.value == "Orpheus":
             self.orpheus_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_orpheus, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_orpheus, args={self}, daemon=True))
             tr.start()
         elif engine.value == "FishSpeech":
             self.fish_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_fish, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_fish, args={self}, daemon=True))
             tr.start()
         elif engine.value == "F5":
             self.f5_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_f5, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_f5, args={self}, daemon=True))
             tr.start()
         elif engine.value == "RVC":
             self.rvc_action.setChecked(True)
-            tr = (threading.Thread(target=falltalkutils.load_rvc, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_rvc, args={self}, daemon=True))
             tr.start()
         else:
             self.tts_engine = None
@@ -756,14 +698,14 @@ class ModelApp(FallTalkFluentWindow):
             self.showErrorPopup(widget, widget.transcribe_button, "Please Select Reference Audio")
         else:
             if len(references) == 1:
-                falltalkutils.logger.debug(references)
+                logger.debug(references)
                 selected_audio = references[0]
             else:
-                falltalkutils.logger.debug(references)
-                selected_audio = falltalkutils.combine_wav_files(references)
+                logger.debug(references)
+                selected_audio = combine_wav_files(references)
 
             self.showLoaderPopup("Transcribing Audio", "Please Wait")
-            tr = (threading.Thread(target=falltalkutils.do_transcribe, args=(self, selected_audio, widget), daemon=True))
+            tr = (threading.Thread(target=do_transcribe, args=(self, selected_audio, widget), daemon=True))
             tr.start()
 
     @Slot(PySide6.QtCore.QObject, PySide6.QtCore.QObject)
@@ -773,40 +715,40 @@ class ModelApp(FallTalkFluentWindow):
         parent.complete_loader()
 
     def combine_references(self, references):
-        falltalkutils.logger.debug(f"{references}")
+        logger.debug(f"{references}")
         if len(references) == 1:
-            falltalkutils.logger.debug(references)
+            logger.debug(references)
             selected_audio = references[0]
         else:
-            falltalkutils.logger.debug(references)
-            selected_audio = falltalkutils.combine_wav_files(references)
+            logger.debug(references)
+            selected_audio = combine_wav_files(references)
 
         return selected_audio
 
     def get_output_file_name(self, file_name):
         if file_name is None or file_name == "" or file_name == "Random":
             unique_id = uuid.uuid4()
-            file_name = f"{falltalkutils.formatted_time_stamp()}_{self.tts_engine.model_name}_{self.tts_engine.engine_name}_{unique_id.hex[:10]}"
+            file_name = f"{formatted_time_stamp()}_{self.tts_engine.model_name}_{self.tts_engine.engine_name}_{unique_id.hex[:10]}"
 
-        file_name = falltalkutils.sanitize_filename(file_name)
+        file_name = sanitize_filename(file_name)
         path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), self.tts_engine.model_name, f"{file_name}.wav"))
         os.makedirs(os.path.join(cfg.get(cfg.output_dir), self.tts_engine.model_name), exist_ok=True)
         return path
 
     def get_music_file(self, file_name, wav=False):
         if file_name is None or file_name == "" or file_name == "Random":
-            file_name = falltalkutils.formatted_time_stamp_uuid()
+            file_name = formatted_time_stamp_uuid()
 
-        file_name = falltalkutils.sanitize_filename(file_name)
+        file_name = sanitize_filename(file_name)
         path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), "music", f"{file_name}.wav" if wav else f"{file_name}"))
         os.makedirs(os.path.join(cfg.get(cfg.output_dir), "music"), exist_ok=True)
         return path
 
     def get_fx_file(self, file_name, wav=False):
         if file_name is None or file_name == "" or file_name == "Random":
-            file_name = falltalkutils.formatted_time_stamp_uuid()
+            file_name = formatted_time_stamp_uuid()
 
-        file_name = falltalkutils.sanitize_filename(file_name)
+        file_name = sanitize_filename(file_name)
         path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), "fx", f"{file_name}.wav" if wav else f"{file_name}"))
         os.makedirs(os.path.join(cfg.get(cfg.output_dir), "fx"), exist_ok=True)
         return path
@@ -837,7 +779,7 @@ class ModelApp(FallTalkFluentWindow):
     def upscale_folder(self):
         if self.upscale_engine is None:
             self.showLoaderPopup("Loading Enhancer", "Please Wait")
-            tr = (threading.Thread(target=falltalkutils.load_upscaler, args={self}, daemon=True))
+            tr = (threading.Thread(target=load_upscaler, args={self}, daemon=True))
             tr.start()
         else:
             up_dir = self.upscale_widget.upscale_dir.value
@@ -864,7 +806,7 @@ class ModelApp(FallTalkFluentWindow):
                 data = len(self.bulk_generate_widget.bulk_csv_widget.bulk_table.model().getData())
                 if data > 0:
                     self.showLoaderPopup(f"Generating Bulk Audio", f"Completed: 0/{data}")
-                    tr = (threading.Thread(target=falltalkutils.bulk_inference, args={self}, daemon=True))
+                    tr = (threading.Thread(target=bulk_inference, args={self}, daemon=True))
                     tr.start()
                 else:
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select Load some Data")
@@ -876,7 +818,7 @@ class ModelApp(FallTalkFluentWindow):
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select a valid Character")
                 else:
                     self.showLoaderPopup(f"Generating Bulk RVC Audio", f"Gathering Files")
-                    tr = (threading.Thread(target=falltalkutils.bulk_rvc_inference, args=(self, rvc_dir, self.bulk_generate_widget.bulk_rvc_widget.character_card.configItem.currentData(), cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads), cfg.get(cfg.use_existing_lip)), daemon=True))
+                    tr = (threading.Thread(target=bulk_rvc_inference, args=(self, rvc_dir, self.bulk_generate_widget.bulk_rvc_widget.character_card.configItem.currentData(), cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads), cfg.get(cfg.use_existing_lip)), daemon=True))
                     tr.start()
             elif self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_fuz_widget:
                 lip_dir = self.bulk_generate_widget.bulk_fuz_widget.lip_dir.value
@@ -884,7 +826,7 @@ class ModelApp(FallTalkFluentWindow):
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.generate_button, "Please Select a Valid Folder")
                 else:
                     self.showLoaderPopup(f"Generating Bulk FUZ Audio", f"Gathering Files")
-                    tr = (threading.Thread(target=falltalkutils.bulk_fuz, args=(self, lip_dir, cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads)), daemon=True))
+                    tr = (threading.Thread(target=bulk_fuz, args=(self, lip_dir, cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads)), daemon=True))
                     tr.start()
 
 
@@ -902,7 +844,7 @@ class ModelApp(FallTalkFluentWindow):
                     self.showLoaderPopup("Cloning Input Audio", "Please Wait")
                     output_file = self.get_output_file(self.rvc_widget.rvc_mic_widget)
                     shutil.copy(recording_file, output_file)
-                    tr = (threading.Thread(target=falltalkutils.rvc_inference, args=(self, output_file, self.rvc_widget), daemon=True))
+                    tr = (threading.Thread(target=rvc_inference, args=(self, output_file, self.rvc_widget), daemon=True))
                     tr.start()
             elif self.rvc_widget.stackedWidget.currentWidget() == self.rvc_widget.rvc_file_widget:
                 recording_file = self.rvc_widget.rvc_file_widget.rvc_file.value
@@ -914,10 +856,10 @@ class ModelApp(FallTalkFluentWindow):
                     self.showLoaderPopup("Cloning File Audio", "Please Wait")
                     output_file = self.get_output_file(self.rvc_widget.rvc_file_widget)
                     shutil.copy(recording_file, output_file)
-                    tr = (threading.Thread(target=falltalkutils.rvc_inference, args=(self, output_file, self.rvc_widget), daemon=True))
+                    tr = (threading.Thread(target=rvc_inference, args=(self, output_file, self.rvc_widget), daemon=True))
                     tr.start()
             elif self.rvc_widget.stackedWidget.currentWidget() == self.rvc_widget.edge_tts_widget:
-                text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.rvc_widget.edge_tts_widget.text_input.toPlainText()))
+                text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.rvc_widget.edge_tts_widget.text_input.toPlainText()))
                 if not text or text == '':
                     self.showErrorPopup(self.rvc_widget, self.rvc_widget.edge_tts_widget.generate_button, "Please Enter Some Text to Generate...")
                 elif self.tts_engine.model_name is None:
@@ -925,10 +867,10 @@ class ModelApp(FallTalkFluentWindow):
                 else:
                     self.showLoaderPopup("Cloning TTS from Edge", "Please Wait")
                     output_file = self.get_output_file(self.rvc_widget.edge_tts_widget)
-                    tr = (threading.Thread(target=falltalkutils.edge_tts_inference, args=(self, text, output_file, self.rvc_widget.edge_tts_widget.voice_combo.configItem.currentText(), self.rvc_widget), daemon=True))
+                    tr = (threading.Thread(target=edge_tts_inference, args=(self, text, output_file, self.rvc_widget.edge_tts_widget.voice_combo.configItem.currentText(), self.rvc_widget), daemon=True))
                     tr.start()
             elif self.rvc_widget.stackedWidget.currentWidget() == self.rvc_widget.eleven_labs_widget:
-                text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.rvc_widget.eleven_labs_widget.text_input.toPlainText()))
+                text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.rvc_widget.eleven_labs_widget.text_input.toPlainText()))
                 if not text or text == '':
                     self.showErrorPopup(self.rvc_widget, self.rvc_widget.eleven_labs_widget.generate_button, "Please Enter Some Text to Generate...")
                 elif self.tts_engine.model_name is None:
@@ -936,10 +878,10 @@ class ModelApp(FallTalkFluentWindow):
                 else:
                     self.showLoaderPopup("Calling ElevenLabs", "Please Wait")
                     output_file = self.get_output_file(self.rvc_widget.eleven_labs_widget)
-                    tr = (threading.Thread(target=falltalkutils.eleven_labs_inference, args=(self, text, output_file, self.rvc_widget.eleven_labs_widget.voice_combo.configItem.currentText(), self.rvc_widget), daemon=True))
+                    tr = (threading.Thread(target=eleven_labs_inference, args=(self, text, output_file, self.rvc_widget.eleven_labs_widget.voice_combo.configItem.currentText(), self.rvc_widget), daemon=True))
                     tr.start()
         elif cfg.get(cfg.engine) == "XTTSv2":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.xtts_widget.text_input.toPlainText()))
+            text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.xtts_widget.text_input.toPlainText()))
             if references is None or not references:
                 self.showErrorPopup(self.xtts_widget, self.xtts_widget.generate_button, "Please Select Reference Audio")
             elif references_length < 10:
@@ -948,10 +890,10 @@ class ModelApp(FallTalkFluentWindow):
                 self.showErrorPopup(self.xtts_widget, self.xtts_widget.generate_button, "Please Enter Some Text to Generate...")
             else:
                 self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=falltalkutils.xtts_inference, args=(self, self.get_output_file(self.xtts_widget), text, self.combine_references(references), self.xtts_widget), daemon=True))
+                tr = (threading.Thread(target=xtts_inference, args=(self, self.get_output_file(self.xtts_widget), text, self.combine_references(references), self.xtts_widget), daemon=True))
                 tr.start()
         elif cfg.get(cfg.engine) == "GPT_SoVITS":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.gpt_sovits_widget.text_input.toPlainText()))
+            text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.gpt_sovits_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:
                 transcribe_state = self.gpt_sovits_widget.transcribe_state
@@ -967,10 +909,10 @@ class ModelApp(FallTalkFluentWindow):
                 self.showErrorPopup(self.gpt_sovits_widget, self.gpt_sovits_widget.generate_button, "Please Enter Some Text to Generate...")
             else:
                 self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=falltalkutils.gpt_sovits_inference, args=(self, self.get_output_file(self.gpt_sovits_widget), text, self.combine_references(references) if self.tts_engine.is_base else references, self.gpt_sovits_widget, transcribe_state), daemon=True))
+                tr = (threading.Thread(target=gpt_sovits_inference, args=(self, self.get_output_file(self.gpt_sovits_widget), text, self.combine_references(references) if self.tts_engine.is_base else references, self.gpt_sovits_widget, transcribe_state), daemon=True))
                 tr.start()
         elif cfg.get(cfg.engine) == "StyleTTS2":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.styletts2_widget.text_input.toPlainText()))
+            text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.styletts2_widget.text_input.toPlainText()))
             if references_length > 15 or references_length < 5:
                 self.showErrorPopup(self.styletts2_widget, self.styletts2_widget.generate_button, "Please Select between 5 and 10 seconds of Reference Audio")
             elif references is None or not references:
@@ -979,10 +921,10 @@ class ModelApp(FallTalkFluentWindow):
                 self.showErrorPopup(self.styletts2_widget, self.styletts2_widget.generate_button, "Please Enter Some Text to Generate...")
             else:
                 self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=falltalkutils.styletts2_inference, args=(self, self.get_output_file(self.styletts2_widget), text, self.combine_references(references), self.styletts2_widget), daemon=True))
+                tr = (threading.Thread(target=styletts2_inference, args=(self, self.get_output_file(self.styletts2_widget), text, self.combine_references(references), self.styletts2_widget), daemon=True))
                 tr.start()
         elif cfg.get(cfg.engine) == "Llasa":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.llasa_widget.text_input.toPlainText()))
+            text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.llasa_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:
                 transcribe_state = self.llasa_widget.transcribe_state
@@ -998,10 +940,10 @@ class ModelApp(FallTalkFluentWindow):
                 self.showErrorPopup(self.llasa_widget, self.llasa_widget.generate_button, "Please Enter Some Text to Generate...")
             else:
                 self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=falltalkutils.llasa_inference, args=(self, self.get_output_file(self.llasa_widget), text, self.combine_references(references), self.llasa_widget, transcribe_state), daemon=True))
+                tr = (threading.Thread(target=llasa_inference, args=(self, self.get_output_file(self.llasa_widget), text, self.combine_references(references), self.llasa_widget, transcribe_state), daemon=True))
                 tr.start()
         elif cfg.get(cfg.engine) == "Orpheus":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.orpheus_widget.text_input.toPlainText()))
+            text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.orpheus_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:
                 transcribe_state = self.orpheus_widget.transcribe_state
@@ -1017,10 +959,10 @@ class ModelApp(FallTalkFluentWindow):
                 self.showErrorPopup(self.orpheus_widget, self.orpheus_widget.generate_button, "Please Enter Some Text to Generate...")
             else:
                 self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=falltalkutils.orpheus_inference, args=(self, self.get_output_file(self.orpheus_widget), text, self.combine_references(references), self.orpheus_widget, transcribe_state), daemon=True))
+                tr = (threading.Thread(target=orpheus_inference, args=(self, self.get_output_file(self.orpheus_widget), text, self.combine_references(references), self.orpheus_widget, transcribe_state), daemon=True))
                 tr.start()
         elif cfg.get(cfg.engine) == "DIA":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.dia_widget.text_input.toPlainText()))
+            text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.dia_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:
                 transcribe_state = self.dia_widget.transcribe_state
@@ -1036,10 +978,10 @@ class ModelApp(FallTalkFluentWindow):
                 self.showErrorPopup(self.dia_widget, self.dia_widget.generate_button, "Please Enter Some Text to Generate...")
             else:
                 self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=falltalkutils.dia_inference, args=(self, self.get_output_file(self.dia_widget), text, self.combine_references(references), self.dia_widget, transcribe_state), daemon=True))
+                tr = (threading.Thread(target=dia_inference, args=(self, self.get_output_file(self.dia_widget), text, self.combine_references(references), self.dia_widget, transcribe_state), daemon=True))
                 tr.start()
         elif cfg.get(cfg.engine) == "F5":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.f5_widget.text_input.toPlainText()))
+            text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.f5_widget.text_input.toPlainText()))
             start_word = self.f5_widget.start_dropdown_card.getWordInfo()
             end_word = self.f5_widget.end_dropdown_card.getWordInfo()
             start_time = start_word['start'] if start_word is not None else None
@@ -1056,10 +998,10 @@ class ModelApp(FallTalkFluentWindow):
                 self.showErrorPopup(self.f5_widget, self.f5_widget.generate_button, "Start must come before the end time")
             else:
                 self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=falltalkutils.f5_inference, args=(self, self.get_output_file(self.f5_widget), text, self.combine_references(references), self.f5_widget, start_time, end_time, self.f5_widget.transcribe_state), daemon=True))
+                tr = (threading.Thread(target=f5_inference, args=(self, self.get_output_file(self.f5_widget), text, self.combine_references(references), self.f5_widget, start_time, end_time, self.f5_widget.transcribe_state), daemon=True))
                 tr.start()
         elif cfg.get(cfg.engine) == "FishSpeech":
-            text = falltalkutils.replace_numbers_with_words(self.ensure_sentence_punctuation(self.fish_widget.text_input.toPlainText()))
+            text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.fish_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:
                 transcribe_state = self.fish_widget.transcribe_state
@@ -1075,7 +1017,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.showErrorPopup(self.fish_widget, self.fish_widget.generate_button, "Please Enter Some Text to Generate...")
             else:
                 self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=falltalkutils.fish_inference, args=(self, self.get_output_file(self.fish_widget), text, self.combine_references(references), self.fish_widget, transcribe_state), daemon=True))
+                tr = (threading.Thread(target=fish_inference, args=(self, self.get_output_file(self.fish_widget), text, self.combine_references(references), self.fish_widget, transcribe_state), daemon=True))
                 tr.start()
 
 
@@ -1120,7 +1062,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.f5_widget.rvc_enabled.setVisible(rvc is not None)
 
             self.showLoaderPopup("Loading Base Model", f"Loading")
-            tr = (threading.Thread(target=falltalkutils.load_model, args=(self, character['name'], rvc, character['display_name'], base_model), daemon=True))
+            tr = (threading.Thread(target=load_model, args=(self, character['name'], rvc, character['display_name'], base_model), daemon=True))
             tr.start()
 
     def load_custom_model(self, character, model, rvc):
@@ -1165,12 +1107,12 @@ class ModelApp(FallTalkFluentWindow):
                 self.f5_widget.rvc_enabled.setVisible(rvc is not None)
 
             self.showLoaderPopup("Loading Model", f"Loading {character}")
-            tr = (threading.Thread(target=falltalkutils.load_model, args=(self, character, rvc, model['display_name'], False), daemon=True))
+            tr = (threading.Thread(target=load_model, args=(self, character, rvc, model['display_name'], False), daemon=True))
             tr.start()
 
     def download_model(self, character, model, rvc):
         self.showLoaderPopup("Downloading Model", f"Downloading {character}")
-        tr = (threading.Thread(target=falltalkutils.download_models, args=(self, character, model, rvc), daemon=True))
+        tr = (threading.Thread(target=download_models, args=(self, character, model, rvc), daemon=True))
         tr.start()
 
     def update_model(self, character, model, rvc):
@@ -1182,7 +1124,7 @@ class ModelApp(FallTalkFluentWindow):
             rvc_folder = os.path.join("models", character, 'RVC')
             if os.path.exists(rvc_folder):
                 shutil.rmtree(os.path.join("models", character, 'RVC'))
-        tr = (threading.Thread(target=falltalkutils.download_models, args=(self, character, model, rvc), daemon=True))
+        tr = (threading.Thread(target=download_models, args=(self, character, model, rvc), daemon=True))
         tr.start()
 
     def delete_model(self, character, model, display_name):
@@ -1234,7 +1176,7 @@ def hide_console():
 
 if __name__ == '__main__':
 
-    falltalkutils.seed_everything(cfg.get(cfg.seed))
+    seed_everything(cfg.get(cfg.seed))
 
     if cfg.get(cfg.dpiScale) != "Auto":
         os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
@@ -1273,7 +1215,7 @@ if __name__ == '__main__':
 
 
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        falltalkutils.logger.debug('Unable to find espeak', e)
+        logger.debug('Unable to find espeak', e)
 
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.Ceil)
 

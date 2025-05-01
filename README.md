@@ -122,6 +122,7 @@ To get this to work on windows was not exactly easy, and I needed to make severa
 Here is the basic idea to get you started
 
 ```bash
+set PYTHONUTF8=1
 git submodule update --init --recursive
 conda create --name falltalk python=3.11.8
 conda activate falltalk

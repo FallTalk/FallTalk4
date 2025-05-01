@@ -1,4 +1,4 @@
--i https://download.pytorch.org/whl/cu126
-torch==2.6.0
-torchvision==0.21.0
-torchaudio==2.6.0
+-i https://download.pytorch.org/whl/cu128
+torch==2.7.0
+torchvision==0.22.0
+torchaudio==2.7.0
