@@ -1,1 +1,0 @@
-# This file makes the falltalk directory a Python package

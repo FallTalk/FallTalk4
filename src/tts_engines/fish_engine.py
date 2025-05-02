@@ -1,12 +1,12 @@
-import src.falltalk.falltalkutils
-from src.falltalk.config import cfg
+from src.config.config import cfg
 
 import sys
 import os
 import torch
 from src.tts_engines.tts_engine import tts_engine
+from src.utils.file_utils import get_app_root
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'fish-speech/fish_speech')))
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'fish-speech/fish_speech')))
 
 class FishSpeechEngine(tts_engine):
 

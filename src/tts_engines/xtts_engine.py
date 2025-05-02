@@ -6,11 +6,14 @@ import torchaudio
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
 
-from src.falltalk.config import cfg
+from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
+from src.utils import logging_utils
+from src.utils.audio_utils import load_audio
+
 import soundfile as sf
 
-from src.falltalk import falltalkutils
+
 
 try:
     import deepspeed
@@ -38,12 +41,12 @@ class XTTS_Engine(tts_engine):
         if cfg.get(cfg.rvc_enabled) and self.rvc_model:
             self.run_rvc(output_file)
 
-        rs_data = falltalkutils.load_audio(output_file, 44100)
+        rs_data = load_audio(output_file, 44100)
         sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     @torch.no_grad()
     def inference(self, text=None, voice=None, language=None, output_file=None, streaming=False):
-        falltalkutils.logger.debug("Generating Audio...")
+        logging_utils.logger.debug("Generating Audio...")
         if cfg.low_vram and self.device == "cpu":  # If necessary, move the model out of System Ram to VRAM
             self.handle_lowvram_change()
 
@@ -78,10 +81,10 @@ class XTTS_Engine(tts_engine):
         if streaming:
             common_args["stream_chunk_size"] = 20
 
-        falltalkutils.logger.debug("Starting")
+        logging_utils.logger.debug("Starting")
         # Call the appropriate function
         output = inference_func(**common_args)
-        falltalkutils.logger.debug(f'Done')
+        logging_utils.logger.debug(f'Done')
         # Convert the NumPy array to a PyTorch tensor
         wav_tensor = torch.tensor(output["wav"])
         # Add a batch dimension
@@ -97,7 +100,7 @@ class XTTS_Engine(tts_engine):
         self.load_model()
 
     def load_model(self):
-        falltalkutils.logger.debug(f"Loading {self.model_path}")
+        logging_utils.logger.debug(f"Loading {self.model_path}")
         config = XttsConfig()
         config_path = os.path.join("models", "XTTSv2", "config.json")
         vocab_path_dir = os.path.join("models", "XTTSv2", "vocab.json")

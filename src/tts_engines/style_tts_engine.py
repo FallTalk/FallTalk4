@@ -2,14 +2,18 @@ import soundfile as sf
 from nltk.tokenize import word_tokenize
 from phonemizer.backend import EspeakBackend
 
-import src.falltalk.falltalkutils
-from src.falltalk.config import cfg
+from src.utils.file_utils import get_app_root
+from src.utils.audio_utils import load_audio
+from src.utils import logging_utils
+
+from src.config.config import cfg
 
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'StyleTTS2', 'utils')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'StyleTTS2', 'modules')))
+
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'StyleTTS2', 'utils')))
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'StyleTTS2', 'modules')))
 
 from src.tts_engines.tts_engine import tts_engine
 from StyleTTS2.Modules.diffusion.sampler import DiffusionSampler, ADPM2Sampler, KarrasSchedule
@@ -52,7 +56,7 @@ class StyleTTS2_Engine(tts_engine):
         return mel_tensor
 
     def compute_style(self, path):
-        wave = falltalkutils.load_audio(path, sampling_rate=24000)
+        wave = load_audio(path, sampling_rate=24000)
         audio, index = librosa.effects.trim(wave, top_db=30)
         mel_tensor = self.preprocess(audio).to(self.device)
 
@@ -78,7 +82,7 @@ class StyleTTS2_Engine(tts_engine):
         self.load_model()
 
     def load_model(self):
-        falltalkutils.logger.debug(f"Loading {self.model_path}")
+        logging_utils.logger.debug(f"Loading {self.model_path}")
 
         config = yaml.safe_load(open("models/StyleTTS2/Models/Vokan/config.yml"))
 
@@ -138,7 +142,7 @@ class StyleTTS2_Engine(tts_engine):
         if rvc_enabled and self.rvc_model:
             self.run_rvc(output_file)
 
-        rs_data = falltalkutils.load_audio(output_file, 44100)
+        rs_data = load_audio(output_file, 44100)
         sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     def inference(self, text, ref_s, output_file, alpha=0.3, beta=0.7, diffusion_steps=5, embedding_scale=1):

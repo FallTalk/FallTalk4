@@ -2,7 +2,7 @@ import re
 
 from num2words import num2words
 
-from src.falltalk.config import cfg
+from src.config.config import cfg
 
 from whisperx import load_model
 

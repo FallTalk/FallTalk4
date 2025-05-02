@@ -2,10 +2,12 @@ import logging
 import os
 import sys
 import shutil
+
+from src.utils.file_utils import get_app_root
 from logging.handlers import RotatingFileHandler
 
 def rotate_logs():
-    log_dir = "logs"
+    log_dir = os.path.join(get_app_root(),"logs")
     main_log = os.path.join(log_dir, "falltalk.log")
 
     if not os.path.exists(main_log):
@@ -79,3 +81,6 @@ def setup_logging():
 
     # Return the root logger for convenience
     return root_logger
+
+logger = logging.getLogger('falltalk')
+logger.setLevel(logging.DEBUG)

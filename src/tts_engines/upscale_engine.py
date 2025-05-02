@@ -12,10 +12,10 @@ from demucs.pretrained import get_model
 from pydub import AudioSegment
 from pydub.silence import detect_silence, split_on_silence
 
-import src.falltalk.falltalkutils
+from src.utils import logging_utils
 from audio_upscaler.predict import Predictor
-from src.falltalk.config import cfg
-
+from src.config.config import cfg
+from src.utils.audio_utils import load_audio, create_xwm, create_lip_and_fuz, extract_fuz
 
 class UpscaleEngine:
 
@@ -97,7 +97,7 @@ class UpscaleEngine:
 
             QMetaObject.invokeMethod(self.parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, self.parent))
         except Exception as e:
-            falltalkutils.logger.exception(f"Error: {e}")
+            logging_utils.logger.exception(f"Error: {e}")
             QMetaObject.invokeMethod(self.parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, self.parent), Q_ARG(str, "Error During Enhancement"), Q_ARG(str, "An Error Occured while loading the cleaner. Please check your logs and report the issue if needed"))
 
     def do_mp3(self, ddim_steps, guidance_scale, seed, replace, mp3_file):
@@ -120,7 +120,7 @@ class UpscaleEngine:
                 os.remove(wav_file)
 
         except Exception as e:
-            falltalkutils.logger.exception(f"Error: {e}")
+            logging_utils.logger.exception(f"Error: {e}")
 
     def do_flac(self, ddim_steps, guidance_scale, seed, replace, flac_file):
         try:
@@ -142,7 +142,7 @@ class UpscaleEngine:
                 os.remove(wav_file)
 
         except Exception as e:
-            falltalkutils.logger.exception(f"Error: {e}")
+            logging_utils.logger.exception(f"Error: {e}")
 
     def do_wav(self, ddim_steps, guidance_scale, seed, replace, wav_file):
         try:
@@ -154,33 +154,33 @@ class UpscaleEngine:
             self.do_upscale(wav_file, output_file, ddim_steps, guidance_scale, seed)
 
         except Exception as e:
-            falltalkutils.logger.exception(f"Error: {e}")
+            logging_utils.logger.exception(f"Error: {e}")
 
     def do_xwm(self, ddim_steps, guidance_scale, seed, replace, xwm_file):
         try:
             wav_file = xwm_file.replace(".xwm", ".wav")
-            falltalkutils.create_xwm(xwm_file, wav_file, encode=False)
+            create_xwm(xwm_file, wav_file, encode=False)
 
             self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
 
             if replace:
-                falltalkutils.create_xwm(wav_file, xwm_file, encode=True)
+                create_xwm(wav_file, xwm_file, encode=True)
         except Exception as e:
-            falltalkutils.logger.exception(f"Error: {e}")
+            logging_utils.logger.exception(f"Error: {e}")
 
     def do_fuz(self, ddim_steps, guidance_scale, seed, replace, fuz_file):
         try:
-            falltalkutils.extract_fuz(fuz_file)
+            extract_fuz(fuz_file)
             xwm_file = fuz_file.replace(".fuz", ".xwm")
             wav_file = fuz_file.replace(".fuz", ".wav")
-            falltalkutils.create_xwm(xwm_file, wav_file, encode=False)
+            create_xwm(xwm_file, wav_file, encode=False)
 
             self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
 
             if replace:
-                falltalkutils.create_lip_and_fuz(self.parent, wav_file, True)
+                create_lip_and_fuz(self.parent, wav_file, True)
         except Exception as e:
-            falltalkutils.logger.exception(f"Error: {e}")
+            logging_utils.logger.exception(f"Error: {e}")
 
     def do_upscale(self, input_file, output_file, ddim_steps, guidance_scale, seed):
         if self.p:
@@ -245,12 +245,12 @@ class UpscaleEngine:
         audio.export(wav_file, format="wav")
 
     def denoise_file(self, input_file, output_file):
-        data = falltalkutils.load_audio(input_file, sampling_rate=self.sr)
+        data = load_audio(input_file, sampling_rate=self.sr)
         reduced_noise = nr.reduce_noise(y=data, sr=self.sr, device=cfg.get(cfg.device))
         sf.write(output_file, reduced_noise, self.sr)
 
     def demucs_file(self, input_file, output_file, save_to_mono=True):
-        audio = falltalkutils.load_audio(input_file, sampling_rate=self.sr, channels=2)
+        audio = load_audio(input_file, sampling_rate=self.sr, channels=2)
 
         audio = torch.tensor(audio).float()
         audio = audio.view(1, 2, -1)  # Reshape to (batch, channels, length)

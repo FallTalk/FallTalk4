@@ -4,11 +4,14 @@ import sys
 import soundfile as sf
 import torch
 
-from src.falltalk.config import cfg
+from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
-from src.falltalk import falltalkutils
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dia/dia')))
+from src.utils.file_utils import get_app_root
+from src.utils import logging_utils
+from src.utils.audio_utils import load_audio
+
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'dia/dia')))
 
 from dia.dia.model import Dia
 
@@ -34,13 +37,13 @@ class DIA_Engine(tts_engine):
         self.load_model()
 
     def load_model(self):
-        falltalkutils.logger.debug(f"Loading {self.model_path}")
+        logging_utils.logger.debug(f"Loading {self.model_path}")
 
 
         if self.is_base:
-            self.dia = Dia.from_local(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'DIA', 'config.json')), os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'DIA', 'dia-v0_1.pth')), compute_dtype="float16", device=self.device)
+            self.dia = Dia.from_local(os.path.abspath(os.path.join(get_app_root(), 'models', 'DIA', 'config.json')), os.path.abspath(os.path.join(get_app_root(), 'models', 'DIA', 'dia-v0_1.pth')), compute_dtype="float16", device=self.device)
         else:
-            self.dia = Dia.from_local(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'DIA', 'config.json')), os.path.abspath(self.model_path), compute_dtype="float16", device=self.device)
+            self.dia = Dia.from_local(os.path.abspath(os.path.join(get_app_root(), 'models', 'DIA', 'config.json')), os.path.abspath(self.model_path), compute_dtype="float16", device=self.device)
 
         self.model = self.dia.model
         self.dia.model = self.dia.model.half()
@@ -53,7 +56,7 @@ class DIA_Engine(tts_engine):
         if rvc_enabled and self.rvc_model:
             self.run_rvc(output_file)
 
-        rs_data = falltalkutils.load_audio(output_file, 44100)
+        rs_data = load_audio(output_file, 44100)
         sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     @torch.no_grad()
@@ -62,7 +65,7 @@ class DIA_Engine(tts_engine):
         text = ". "+text
 
         output = self.dia.generate(
-            transcript + text, audio_prompt=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', str(voice))), use_torch_compile=False, verbose=True
+            transcript + text, audio_prompt=os.path.abspath(os.path.join(get_app_root(), str(voice))), use_torch_compile=False, verbose=True
         )
         self.dia.save_audio(output_file, output)
 

@@ -9,8 +9,8 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import ScrollArea, ExpandLayout
 
-from src.falltalk.config import cfg, DISCLAIMER
-from src.falltalk.icons import FallTalkIcons, FallTalkStrokeIcons
+from src.config.config import cfg, DISCLAIMER
+from src.utils.icons import FallTalkIcons, FallTalkStrokeIcons
 
 
 class FaqSettingCard(ExpandSettingCard):

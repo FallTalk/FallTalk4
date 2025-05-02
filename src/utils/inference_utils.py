@@ -6,7 +6,7 @@ import soundfile as sf
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 import PySide6
 
-from src.falltalk.config import cfg
+from src.config.config import cfg
 from src.utils.audio_utils import create_lip_and_fuz
 from num2words import num2words
 

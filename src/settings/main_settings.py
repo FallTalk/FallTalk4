@@ -4,11 +4,12 @@ import torch.cuda
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QFileDialog
 from qfluentwidgets import FluentIcon as FIF, SettingCardGroup, isDarkTheme, OptionsSettingCard, SwitchSettingCard, \
-    PushSettingCard, CustomColorSettingCard, HyperlinkCard, qconfig, InfoBar
+    PushSettingCard, CustomColorSettingCard, HyperlinkCard, InfoBar
 from qfluentwidgets import ScrollArea, ExpandLayout
 
-from src.falltalk.config import cfg, HELP_URL, YEAR, AUTHOR, VERSION, NEXUS_URL, KOFI_URL, DISCORD_URL, HUGGING_FACE, SpinSettingCard
-from src.falltalk.icons import FallTalkIcons
+from src.config.config import cfg, HELP_URL, YEAR, AUTHOR, VERSION, NEXUS_URL, KOFI_URL, DISCORD_URL, HUGGING_FACE
+from src.ui.cards import SpinSettingCard
+from src.utils.icons import FallTalkIcons
 
 
 class FallTalkSettings(ScrollArea):
@@ -343,5 +344,3 @@ class FallTalkSettings(ScrollArea):
             parent=self.window(),
             duration=3000
         )
-
-

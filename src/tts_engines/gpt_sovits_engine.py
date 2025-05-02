@@ -8,23 +8,26 @@ import numpy as np
 import soundfile as sf
 import torch
 from transformers import AutoModelForMaskedLM, AutoTokenizer
+from src.utils.file_utils import get_app_root
 
 import sys
 import os
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'GPT_SoVITS/tools')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'GPT_SoVITS/GPT_SoVITS/AR')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'GPT_SoVITS/GPT_SoVITS/module')))
+from src.utils import logging_utils
 
-from src.falltalk import falltalkutils
-from src.falltalk.config import cfg
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'GPT_SoVITS/tools')))
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'GPT_SoVITS/GPT_SoVITS/AR')))
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'GPT_SoVITS/GPT_SoVITS/module')))
+
+
+from src.config.config import cfg
 from GPT_SoVITS.GPT_SoVITS.AR.models.t2s_lightning_module import Text2SemanticLightningModule
 from GPT_SoVITS.GPT_SoVITS.feature_extractor import cnhubert
 from GPT_SoVITS.GPT_SoVITS.module.mel_processing import spectrogram_torch
 from GPT_SoVITS.GPT_SoVITS.module.models import SynthesizerTrn
 from GPT_SoVITS.GPT_SoVITS.text import cleaned_text_to_sequence
 from GPT_SoVITS.GPT_SoVITS.text.cleaner import clean_text
-from src.falltalk.falltalkutils import load_audio
+from src.utils.audio_utils import load_audio
 from src.tts_engines.tts_engine import tts_engine
 
 
@@ -310,12 +313,12 @@ class GPT_SoVITS_Engine(tts_engine):
             # self.bert_model = None
             self.run_rvc(output_file)
 
-        rs_data = falltalkutils.load_audio(output_file, 44100)
+        rs_data = load_audio(output_file, 44100)
         sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     @torch.no_grad()
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
-        falltalkutils.logger.debug("Generating Audio...")
+        logging_utils.logger.debug("Generating Audio...")
         # Synthesize audio
 
         self.loadSsl()
@@ -373,7 +376,7 @@ class GPT_SoVITS_Engine(tts_engine):
         )
         if not ref_free:
             with torch.no_grad():
-                wav16k = falltalkutils.load_audio(ref_wav_path, sampling_rate=16000)
+                wav16k = load_audio(ref_wav_path, sampling_rate=16000)
                 wav16k = torch.from_numpy(wav16k)
                 zero_wav_torch = torch.from_numpy(zero_wav)
                 if self.is_half:
@@ -474,7 +477,7 @@ class GPT_SoVITS_Engine(tts_engine):
         )
 
     def change_gpt_weights(self, gpt_path):
-        falltalkutils.logger.debug(f"change_gpt_weights {gpt_path}")
+        logging_utils.logger.debug(f"change_gpt_weights {gpt_path}")
         self.hz = 50
         self.dict_s1 = torch.load(gpt_path, map_location="cpu")
         self.config = self.dict_s1["config"]
@@ -487,7 +490,7 @@ class GPT_SoVITS_Engine(tts_engine):
         self.t2s_model.eval()
 
     def change_sovits_weights(self, sovits_path):
-        falltalkutils.logger.debug(f"change_sovits_weights {sovits_path}")
+        logging_utils.logger.debug(f"change_sovits_weights {sovits_path}")
         self.dict_s2 = torch.load(sovits_path, map_location="cpu")
         self.hps = self.dict_s2["config"]
         self.hps = DictToAttrRecursive(self.hps)

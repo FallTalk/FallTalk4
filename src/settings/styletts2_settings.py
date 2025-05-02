@@ -5,8 +5,9 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import ScrollArea, ExpandLayout
 
-from src.falltalk.config import cfg, RangeSettingCardScaled, RadioSettingCard
-from src.falltalk.icons import FallTalkIcons, FallTalkStrokeIcons
+from src.config.config import cfg
+from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
+from src.utils.icons import FallTalkIcons, FallTalkStrokeIcons
 
 
 class StyleTTS2Settings(ScrollArea):

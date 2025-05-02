@@ -7,7 +7,7 @@ import uuid
 import numpy as np
 import soundfile as sf
 
-from src.falltalk.config import cfg
+from src.config.config import cfg
 
 logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)

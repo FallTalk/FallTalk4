@@ -15,9 +15,10 @@ import torchcrepe
 from scipy import signal
 from torch import Tensor
 
-import src.falltalk.falltalkutils
+
 from src.tts_engines.rvc.lib.FCPEF0Predictor import FCPEF0Predictor
 from src.tts_engines.rvc.lib.rmvpe import RMVPE
+from src.utils import logging_utils
 
 # Get the current working directory
 
@@ -100,7 +101,7 @@ class VC(object):
 
         if data is not None and d is not None and train_data is not None:
             if debug_rvc:
-                falltalkutils.logger.debug(f"[{branding}Debug] Initializing FAISS quantizer with dimensionality: {d}")
+                logging_utils.logger.debug(f"[{branding}Debug] Initializing FAISS quantizer with dimensionality: {d}")
             self.quantizer = faiss.IndexFlatL2(d)
             if debug_rvc:
                 print(f"[{branding}Debug] FAISS quantizer initialized: {self.quantizer}")

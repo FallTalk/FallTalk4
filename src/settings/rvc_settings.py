@@ -3,7 +3,8 @@ from PySide6.QtWidgets import QWidget, QLineEdit
 from qfluentwidgets import FluentIcon as FIF, SettingCardGroup, isDarkTheme, OptionsSettingCard, SwitchSettingCard
 from qfluentwidgets import ScrollArea, RangeSettingCard, ExpandLayout
 
-from src.falltalk.config import cfg, PitchExtractionAlgorithm, RangeSettingCardScaled, TextSettingCard
+from src.config.config import cfg, PitchExtractionAlgorithm
+from src.ui.cards import RangeSettingCardScaled, TextSettingCard
 
 
 class RVCSettings(ScrollArea):

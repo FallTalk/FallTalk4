@@ -11,12 +11,15 @@ import torchaudio
 from hydra.utils import get_class
 from omegaconf import OmegaConf
 
-from src.falltalk.config import cfg
+from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
+from src.utils.file_utils import get_app_root
+from src.utils import logging_utils
+from src.utils.audio_utils import load_audio
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'f5/src')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'f5/src/f5_tts')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'f5/src/f5_tts/model')))
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'f5/src')))
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'f5/src/f5_tts')))
+sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'f5/src/f5_tts/model')))
 
 from f5.src.f5_tts.model import DiT, CFM
 from f5.src.f5_tts.infer import utils_infer
@@ -57,16 +60,16 @@ class F5Engine(tts_engine):
         self.load_model()
 
     def load_model(self):
-        falltalkutils.logger.debug(f"Loading {self.model_path}")
+        logging_utils.logger.debug(f"Loading {self.model_path}")
 
         if self.mode != cfg.get(cfg.f5_mode):
             self.switch_models()
 
         if self.vocoder is None:
-            self.vocoder = utils_infer.load_vocoder(is_local=True, local_path=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'F5')), device=self.device)
+            self.vocoder = utils_infer.load_vocoder(is_local=True, local_path=os.path.abspath(os.path.join(get_app_root(), 'models', 'F5')), device=self.device)
 
         if self.is_base:
-            ckpt_path = str(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'F5', 'F5TTS_v1_Base', 'model_1250000.safetensors')))
+            ckpt_path = str(os.path.abspath(os.path.join(get_app_root(), 'models', 'F5', 'F5TTS_v1_Base', 'model_1250000.safetensors')))
         else:
             ckpt_path = str(os.path.abspath(self.model_path))
 
@@ -77,7 +80,7 @@ class F5Engine(tts_engine):
         else:
             self.mode = cfg.get(cfg.f5_mode)
             ode_method = "euler"
-            self.model_cfg = OmegaConf.load(str(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'f5', 'src', 'f5_tts', 'configs', 'F5TTS_v1_Base.yaml'))))
+            self.model_cfg = OmegaConf.load(str(os.path.abspath(os.path.join(get_app_root(), 'f5', 'src', 'f5_tts', 'configs', 'F5TTS_v1_Base.yaml'))))
             model_cls = get_class(f"f5_tts.model.{self.model_cfg.model.backbone}")
             model_arc = self.model_cfg.model.arch
 
@@ -136,12 +139,12 @@ class F5Engine(tts_engine):
         if rvc_enabled and self.rvc_model:
             self.run_rvc(output_file)
 
-        rs_data = falltalkutils.load_audio(output_file, 44100)
+        rs_data = load_audio(output_file, 44100)
         sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     @torch.no_grad()
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, cross_fade_duration=0.15, nfe_step=32, speed=1, remove_silence=False):
-        ref_audio, ref_text = utils_infer.preprocess_ref_audio_text(str(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', str(voice)))), transcript)
+        ref_audio, ref_text = utils_infer.preprocess_ref_audio_text(str(os.path.abspath(os.path.join(get_app_root(), str(voice)))), transcript)
 
         final_wave, final_sample_rate, combined_spectrogram = utils_infer.infer_process(
             ref_audio,
@@ -194,7 +197,7 @@ class F5Engine(tts_engine):
             if word["end"] > end_time:
                 target_transcript += (" " if word["word"][-1] != " " else "") + word["word"]
 
-        falltalkutils.logger.debug(f"target_transcript {target_transcript}")
+        logging_utils.logger.debug(f"target_transcript {target_transcript}")
 
         audio_to_edit = os.path.abspath(voice)
 

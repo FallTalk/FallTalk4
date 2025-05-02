@@ -6,8 +6,9 @@ from qfluentwidgets import (
 )
 from qfluentwidgets import ScrollArea, ExpandLayout
 
-from src.falltalk.config import cfg, RangeSettingCardScaled
-from src.falltalk.icons import FallTalkIcons
+from src.config.config import cfg
+from src.ui.cards import RangeSettingCardScaled
+from src.utils.icons import FallTalkIcons
 
 
 class XTTSSettings(ScrollArea):

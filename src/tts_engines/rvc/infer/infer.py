@@ -9,7 +9,7 @@ import numpy as np
 import soundfile as sf
 import torch
 
-import src.falltalk.falltalkutils
+from src.utils import logging_utils
 
 now_dir = os.getcwd()
 sys.path.append(now_dir)
@@ -24,6 +24,7 @@ from ..lib.infer_pack.models import (
 )
 from ..configs.config import Config
 from ..lib.utils import load_embedding
+from src.utils.audio_utils import load_audio
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -192,7 +193,7 @@ class RVCPipeline:
         f0_up_key = int(f0_up_key)
         try:
             print(f"Loading audio from {input_audio_path}") if self.debug_rvc else None
-            audio = falltalkutils.load_audio(input_audio_path, 16000)
+            audio = load_audio(input_audio_path, 16000)
             audio_max = np.abs(audio).max() / 0.95
 
             if audio_max > 1:
@@ -354,7 +355,7 @@ class RVCPipeline:
 
             end_time = time.time()
             elapsed_time = end_time - start_time
-            falltalkutils.logger.debug(f"Conversion completed. Output file: '{audio_output_path}' in {elapsed_time:.2f} seconds.") if debug_rvc else None
+            logging_utils.logger.debug(f"Conversion completed. Output file: '{audio_output_path}' in {elapsed_time:.2f} seconds.") if debug_rvc else None
 
         except Exception as error:
-            falltalkutils.logger.exception(f"Voice conversion failed: {error}")
+            logging_utils.logger.exception(f"Voice conversion failed: {error}")

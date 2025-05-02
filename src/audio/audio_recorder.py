@@ -10,8 +10,8 @@ from PySide6.QtMultimedia import QMediaRecorder, QMediaCaptureSession, QAudioInp
 from PySide6.QtWidgets import QWidget, QGraphicsOpacityEffect, QHBoxLayout, QVBoxLayout
 from qfluentwidgets import TransparentToolButton, ToolTipFilter, CaptionLabel, isDarkTheme, FluentStyleSheet, ComboBox, IndeterminateProgressBar
 
-from src.falltalk.icons import FallTalkIcons
-from src.falltalk.config import cfg
+from src.utils.icons import FallTalkIcons
+from src.config.config import cfg
 
 
 class MediaPlayBarButton(TransparentToolButton):

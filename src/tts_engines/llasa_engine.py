@@ -5,10 +5,10 @@ import soundfile as sf
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from xcodec2.modeling_xcodec2 import XCodec2Model
-import src.falltalk.falltalkutils
-
-from src.falltalk.config import cfg
+from src.utils.file_utils import get_app_root
+from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
+from src.utils.audio_utils import load_audio
 
 
 class LlasaEngine(tts_engine):
@@ -27,16 +27,16 @@ class LlasaEngine(tts_engine):
         if rvc_enabled and self.rvc_model:
             self.run_rvc(output_file)
 
-        rs_data = falltalkutils.load_audio(output_file, 44100)
+        rs_data = load_audio(output_file, 44100)
         sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     def load_model(self):
         print("Loading Llasa Model")
-        self.codec_model = XCodec2Model.from_pretrained(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'Llasa', 'xcodec2')))
+        self.codec_model = XCodec2Model.from_pretrained(os.path.abspath(os.path.join(get_app_root(), 'models', 'Llasa', 'xcodec2')))
 
         if self.is_base:
-            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'Llasa', str(cfg.get(cfg.llasa_mode))))))
-            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models', 'Llasa', str(cfg.get(cfg.llasa_mode))))))
+            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Llasa', str(cfg.get(cfg.llasa_mode))))))
+            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Llasa', str(cfg.get(cfg.llasa_mode))))))
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
             self.model = AutoModelForCausalLM.from_pretrained(self.model_path)

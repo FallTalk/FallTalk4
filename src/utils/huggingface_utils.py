@@ -2,6 +2,7 @@ import logging
 import os
 import glob
 import shutil
+import sys
 
 import PySide6
 import requests
@@ -9,8 +10,9 @@ from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 
 import huggingface_hub
 
-from falltalk import config
-from src.falltalk.config import cfg, REPO
+from src.config import config
+from src.config.config import cfg, REPO
+from src.utils.file_utils import get_app_root
 
 logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)
@@ -28,16 +30,16 @@ def download_model_from_hub(character, model):
                 except Exception as e:
                     logger.exception("Unable to delete old model")
 
-        huggingface_hub.hf_hub_download(REPO, f"models/{filename.replace(os.sep, '/')}", local_dir=os.path.abspath(f"./"))
+        huggingface_hub.hf_hub_download(REPO, f"models/{filename.replace(os.sep, '/')}", local_dir=get_app_root())
 
 
 def downloadXTTS(parent):
     try:
         os.makedirs("models/XTTSv2", exist_ok=True)
-        huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/model.pth", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/config.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/vocab.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/speakers_xtts.pth", local_dir=os.path.abspath(f"./"))
+        huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/model.pth", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/config.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/vocab.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/speakers_xtts.pth", local_dir=get_app_root())
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
@@ -46,11 +48,11 @@ def downloadXTTS(parent):
 def downloadRVC(parent):
     try:
         os.makedirs("models/RVC", exist_ok=True)
-        huggingface_hub.hf_hub_download(REPO, "models/rvc/rmvpe.onnx", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/rvc/rmvpe.pt", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/rvc/hubert_base.pt", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/rvc/fcpe.pt", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/rvc/contentvec_base.pt", local_dir=os.path.abspath(f"./"))
+        huggingface_hub.hf_hub_download(REPO, "models/rvc/rmvpe.onnx", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/rvc/rmvpe.pt", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/rvc/hubert_base.pt", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/rvc/fcpe.pt", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/rvc/contentvec_base.pt", local_dir=get_app_root())
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
@@ -59,9 +61,9 @@ def downloadRVC(parent):
 def downloadFish(parent):
     try:
         os.makedirs("models/fish", exist_ok=True)
-        huggingface_hub.hf_hub_download("fishaudio/fish-speech-1.5", "firefly-gan-vq-fsq-8x1024-21hz-generator.pth", local_dir=os.path.abspath(f"models/fish"))
-        huggingface_hub.hf_hub_download("fishaudio/fish-speech-1.5", "config.json", local_dir=os.path.abspath(f"models/fish"))
-        huggingface_hub.hf_hub_download("fishaudio/fish-speech-1.5", "model.pth", local_dir=os.path.abspath(f"models/fish"))
+        huggingface_hub.hf_hub_download("fishaudio/fish-speech-1.5", "firefly-gan-vq-fsq-8x1024-21hz-generator.pth", local_dir=os.path.join(get_app_root(), "models/fish"))
+        huggingface_hub.hf_hub_download("fishaudio/fish-speech-1.5", "config.json", local_dir=os.path.join(get_app_root(), "models/fish"))
+        huggingface_hub.hf_hub_download("fishaudio/fish-speech-1.5", "model.pth", local_dir=os.path.join(get_app_root(), "models/fish"))
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
@@ -70,15 +72,15 @@ def downloadFish(parent):
 def downloadGPTSoVITS(parent):
     try:
         os.makedirs("models/GPT_SoVITS", exist_ok=True)
-        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s2G2333k.pth", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s2D2333k.pth", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-roberta-wwm-ext-large/pytorch_model.bin", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-roberta-wwm-ext-large/tokenizer.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-roberta-wwm-ext-large/config.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-hubert-base/pytorch_model.bin", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-hubert-base/preprocessor_config.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-hubert-base/config.json", local_dir=os.path.abspath(f"./"))
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s2G2333k.pth", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s2D2333k.pth", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-roberta-wwm-ext-large/pytorch_model.bin", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-roberta-wwm-ext-large/tokenizer.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-roberta-wwm-ext-large/config.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-hubert-base/pytorch_model.bin", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-hubert-base/preprocessor_config.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-hubert-base/config.json", local_dir=get_app_root())
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))

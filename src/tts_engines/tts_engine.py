@@ -3,9 +3,9 @@ import os
 from abc import ABC, abstractmethod
 import torch
 
-import src.falltalk.falltalkutils
+from src.utils import logging_utils
 from src.tts_engines.rvc.infer.infer import RVCPipeline, RVCParameters
-from src.falltalk.config import cfg
+from src.config.config import cfg
 
 
 class tts_engine(ABC):
@@ -140,7 +140,7 @@ class tts_engine(ABC):
 
 
     def run_rvc(self, input_tts_path):
-        falltalkutils.logger.debug(f"Running RVC {input_tts_path}")
+        logging_utils.logger.debug(f"Running RVC {input_tts_path}")
         if self.rvc_preload:
             params = self.rvc_parameters
         else:

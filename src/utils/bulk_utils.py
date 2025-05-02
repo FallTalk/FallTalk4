@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 import PySide6
 
-from src.falltalk.config import cfg
+from src.config.config import cfg
 from src.utils.audio_utils import create_lip_and_fuz
 from src.utils.file_utils import get_bulk_folder
 from src.utils.model_utils import get_character_model, get_trained_character

@@ -2,6 +2,7 @@ import logging
 import os
 import platform
 import shutil
+import sys
 import uuid
 from datetime import datetime
 
@@ -48,3 +49,16 @@ def get_bulk_folder(engine_name):
     output_folder = f"bulk_outputs/{formatted_time_stamp()}_{engine_name}"
     os.makedirs(output_folder, exist_ok=True)
     return output_folder
+
+def get_app_root():
+    """
+    Get the application's root directory.
+    When running from a PyInstaller bundle, this will be sys._MEIPASS.
+    Otherwise, it will be the current directory.
+    """
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # Running from PyInstaller bundle
+        return sys._MEIPASS
+    else:
+        # Running from normal Python environment
+        return os.path.abspath(".")

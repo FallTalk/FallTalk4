@@ -8,8 +8,8 @@ from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, FileResponse
 
-from src.falltalk import falltalkutils, config
-from src.falltalk.config import cfg
+from src.config.config import cfg, VERSION
+from src.utils import gpt_sovits_inference, rvc_inference, styletts2_inference, xtts_inference
 
 app = FastAPI()
 
@@ -46,7 +46,7 @@ class FallTalkAPI:
             return app.openapi_schema
         openapi_schema = get_openapi(
             title="FallTalk",
-            version=config.VERSION,
+            version=VERSION,
             description="FallTalk API",
             routes=app.routes,
         )
@@ -85,13 +85,13 @@ class FallTalkAPI:
         engine = cfg.get(cfg.engine)
         if engine == 'RVC':
             shutil.copy(data['input_file'], data['output_file'])
-            falltalkutils.rvc_inference(self.falltak_app, data['input_file'], None, True)
+            rvc_inference(self.falltak_app, data['input_file'], None, True)
         elif engine == 'GPT_SoVITS':
-            falltalkutils.gpt_sovits_inference(self.falltak_app, data['output_file'], data['text'], data['reference_audio'], None, data['transcript'], True)
+            gpt_sovits_inference(self.falltak_app, data['output_file'], data['text'], data['reference_audio'], None, data['transcript'], True)
         elif engine == 'StyleTTS2':
-            falltalkutils.styletts2_inference(self.falltak_app, data['output_file'], data['text'], data['reference_audio'], None, True)
+            styletts2_inference(self.falltak_app, data['output_file'], data['text'], data['reference_audio'], None, True)
         elif engine == 'XTTS':
-            falltalkutils.xtts_inference(self.falltak_app, data['output_file'], data['text'], data['reference_audio'], None, True)
+            xtts_inference(self.falltak_app, data['output_file'], data['text'], data['reference_audio'], None, True)
 
         if data['stream']:
             return FileResponse(data['output_file'], media_type="audio/wav")

@@ -18,16 +18,18 @@ from einops import rearrange, repeat
 from local_attention import LocalAttention
 from torch import nn
 
+from src.utils import logging_utils
+
 os.environ["LRU_CACHE_CAPACITY"] = "3"
 
-from src.falltalk import falltalkutils
+
 
 def load_wav_to_torch(full_path, target_sr=None, return_empty_on_exception=False):
     sampling_rate = None
     try:
         data, sampling_rate = sf.read(full_path, always_2d=True)  # than soundfile.
     except Exception as error:
-        falltalkutils.logger.debug(f"'{full_path}' failed to load with {error}")
+        logging_utils.logger.debug(f"'{full_path}' failed to load with {error}")
         if return_empty_on_exception:
             return [], sampling_rate or target_sr or 48000
         else:
@@ -1018,7 +1020,7 @@ class FCPEF0Predictor(F0Predictor):
     def compute_f0(self, wav, p_len=None):
         x = torch.FloatTensor(wav).to(self.dtype).to(self.device)
         if p_len is None:
-            falltalkutils.logging.debug("fcpe p_len is None")
+            logging_utils.logging.debug("fcpe p_len is None")
             p_len = x.shape[0] // self.hop_length
         f0 = self.fcpe(x, sr=self.sampling_rate, threshold=self.threshold)[0, :, 0]
         if torch.all(f0 == 0):

@@ -3,12 +3,13 @@ import logging
 import os
 import sys
 
-from src.falltalk.icons import FallTalkIcons
+from src.utils.icons import FallTalkIcons
 from src.utils import setup_logging
+from src.utils import logging_utils
 
 # Configure the logger
 root_logger = setup_logging()
-logger = logging.getLogger('falltalk')
+logger = logging_utils.logger
 
 import ctypes
 import getpass
@@ -27,10 +28,10 @@ from PySide6.QtWidgets import QApplication
 from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, MessageBox
 from qfluentwidgets import Theme, NavigationItemPosition
 from packaging import version
-import src.falltalk.config as config
-import src.falltalk.falltalkapi as falltalkapi
-from src.falltalk.Widgets import StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget, DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, FallTalkFluentWindow, FallTalkWidget, BulkGenerationWidget
-from src.falltalk.config import cfg, DISCLAIMER, REPO
+import src.config.config as config
+import src.api.falltalkapi as falltalkapi
+from src.widgets import StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget, DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, FallTalkFluentWindow, FallTalkWidget, BulkGenerationWidget
+from src.config.config import cfg, DISCLAIMER, REPO
 
 # Import utility functions directly from utility modules
 from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp, formatted_time_stamp_uuid

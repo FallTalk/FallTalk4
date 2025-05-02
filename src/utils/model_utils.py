@@ -4,7 +4,7 @@ import shutil
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 import PySide6
 
-from src.falltalk.config import cfg
+from src.config.config import cfg
 from src.utils.huggingface_utils import (
     downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA,
     downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_models, download_rvc_models
