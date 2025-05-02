@@ -89,16 +89,16 @@ def downloadGPTSoVITS(parent):
 def downloadOrpheus(parent):
     try:
         os.makedirs("models/Orpheus", exist_ok=True)
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00001-of-00004.safetensors", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00002-of-00004.safetensors", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00003-of-00004.safetensors", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00004-of-00004.safetensors", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/generation_config.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/tokenizer_config.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/special_tokens_map.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/tokenizer.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model.safetensors.index.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/config.json", local_dir=os.path.abspath(f"./"))
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00001-of-00004.safetensors", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00002-of-00004.safetensors", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00003-of-00004.safetensors", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00004-of-00004.safetensors", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/generation_config.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/tokenizer_config.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/special_tokens_map.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/tokenizer.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model.safetensors.index.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Orpheus/config.json", local_dir=get_app_root())
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
@@ -107,8 +107,8 @@ def downloadOrpheus(parent):
 def downloadF5(parent):
     try:
         os.makedirs("models/F5", exist_ok=True)
-        huggingface_hub.hf_hub_download(REPO, "models/F5/F5TTS_v1_Base/model_1250000.safetensors", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/F5/F5TTS_v1_Base/vocab.txt", local_dir=os.path.abspath(f"./"))
+        huggingface_hub.hf_hub_download(REPO, "models/F5/F5TTS_v1_Base/model_1250000.safetensors", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/F5/F5TTS_v1_Base/vocab.txt", local_dir=get_app_root())
         huggingface_hub.hf_hub_download("charactr/vocos-mel-24khz", "config.yaml", local_dir=os.path.abspath(f"models/F5"))
         huggingface_hub.hf_hub_download("charactr/vocos-mel-24khz", "pytorch_model.bin", local_dir=os.path.abspath(f"models/F5"))
     except Exception as e:
@@ -127,29 +127,29 @@ def downloadLlasa(parent):
             huggingface_hub.snapshot_download("HKUSTAudio/Llasa-1B", local_dir="models/Llasa/1B")
 
         if(cfg.get(cfg.llasa_mode) == '3B'):
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/config.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/generation_config.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/model.safetensors.index.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/model-00001-of-00002.safetensors", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/model-00002-of-00002.safetensors", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/special_tokens_map.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/tokenizer.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/tokenizer_config.json", local_dir=os.path.abspath(f"./"))
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/config.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/generation_config.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/model.safetensors.index.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/model-00001-of-00002.safetensors", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/model-00002-of-00002.safetensors", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/special_tokens_map.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/tokenizer.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/3B/tokenizer_config.json", local_dir=get_app_root())
 
         if(cfg.get(cfg.llasa_mode) == '8B'):
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/config.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/generation_config.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model.safetensors.index.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model-00001-of-00004.safetensors", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model-00002-of-00004.safetensors", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model-00003-of-00004.safetensors", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model-00004-of-00004.safetensors", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/special_tokens_map.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/tokenizer.json", local_dir=os.path.abspath(f"./"))
-            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/tokenizer_config.json", local_dir=os.path.abspath(f"./"))
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/config.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/generation_config.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model.safetensors.index.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model-00001-of-00004.safetensors", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model-00002-of-00004.safetensors", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model-00003-of-00004.safetensors", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/model-00004-of-00004.safetensors", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/special_tokens_map.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/tokenizer.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "models/Llasa/8B/tokenizer_config.json", local_dir=get_app_root())
 
-        huggingface_hub.hf_hub_download(REPO, "models/Llasa/xcodec2/config.json", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/Llasa/xcodec2/model.safetensors", local_dir=os.path.abspath(f"./"))
+        huggingface_hub.hf_hub_download(REPO, "models/Llasa/xcodec2/config.json", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/Llasa/xcodec2/model.safetensors", local_dir=get_app_root())
 
     except Exception as e:
         logger.exception(f"Error: {e}")
@@ -159,8 +159,8 @@ def downloadLlasa(parent):
 def downloadDIA(parent):
     try:
         os.makedirs("models/DIA", exist_ok=True)
-        huggingface_hub.hf_hub_download(REPO, "models/DIA/dia-v0_1.pth", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/DIA/config.json", local_dir=os.path.abspath(f"./"))
+        huggingface_hub.hf_hub_download(REPO, "models/DIA/dia-v0_1.pth", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/DIA/config.json", local_dir=get_app_root())
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
@@ -169,13 +169,13 @@ def downloadDIA(parent):
 def downloadStyleTTS2(parent):
     try:
         os.makedirs("models/StyleTTS2", exist_ok=True)
-        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/ASR/config.yml", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/ASR/epoch_00080.pth", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/JDC/bst.t7", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/PLBERT/config.yml", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/PLBERT/step_1000000.t7", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/Models/Vokan/epoch_2nd_00012.pth", local_dir=os.path.abspath(f"./"))
-        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/Models/Vokan/config.yml", local_dir=os.path.abspath(f"./"))
+        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/ASR/config.yml", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/ASR/epoch_00080.pth", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/JDC/bst.t7", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/PLBERT/config.yml", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/PLBERT/step_1000000.t7", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/Models/Vokan/epoch_2nd_00012.pth", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/Models/Vokan/config.yml", local_dir=get_app_root())
     except Exception as e:
         logger.exception(f"Error: {e}")
         QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
