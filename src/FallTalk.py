@@ -90,6 +90,8 @@ class ModelApp(FallTalkFluentWindow):
         if cfg.get(cfg.check_for_updates):
             self.checkForRelease()
 
+        # Load static JSON data once at startup
+        self._load_static_json_data()
         self.load_models_config()
 
         self.splashScreen.finish()
@@ -108,6 +110,24 @@ class ModelApp(FallTalkFluentWindow):
 
         if cfg.get(cfg.api_only_mode):
             self.setVisible(False)
+
+    def _load_static_json_data(self):
+        """Load static JSON data from files and cache it in memory"""
+        if self.characters_data is None:
+            with open(os.path.join(get_app_root(), 'config/characters.json'), 'r', encoding='utf-8') as file:
+                self.characters_data = {character['name']: character for character in json.load(file)}
+        
+        if self.models is None:
+            with open(os.path.join(get_app_root(), 'config/models.json'), 'r', encoding='utf-8') as file:
+                self.models = {model['name']: model for model in json.load(file)['characters']}
+
+    def _load_custom_models(self):
+        """Load custom models from file - this can change during runtime"""
+        if os.path.exists('config/custom_models.json'):
+            with open(os.path.join(get_app_root(), 'config/custom_models.json'), 'r', encoding="utf-8") as file:
+                self.custom_models = {model['name']: model for model in json.load(file)}
+        else:
+            self.custom_models = None
 
     def checkForRelease(self):
         try:
@@ -448,16 +468,9 @@ class ModelApp(FallTalkFluentWindow):
         return None
 
     def load_models_config(self):
-        if self.characters_data is None:
-            with open(os.path.join(get_app_root(), 'config/characters.json'), 'r', encoding='utf-8') as file:
-                self.characters_data = {character['name']: character for character in json.load(file)}
-        if self.models is None:
-            with open(os.path.join(get_app_root(), 'config/models.json'), 'r', encoding='utf-8') as file:
-                self.models = {model['name']: model for model in json.load(file)['characters']}
-
-        if os.path.exists('config/custom_models.json'):
-            with open(os.path.join(get_app_root(), 'config/custom_models.json'), 'r', encoding="utf-8") as file:
-                self.custom_models = {model['name']: model for model in json.load(file)}
+        """Load models configuration using cached JSON data"""
+        # Reload custom models since they can change during runtime
+        self._load_custom_models()
 
         trained_characters = []
         untrained_characters = []
