@@ -12,7 +12,7 @@ import huggingface_hub
 
 from src.config import config
 from src.config.config import cfg, REPO
-from src.utils.file_utils import get_app_root
+from src.utils.filesystem_utils import get_app_root
 
 logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)
@@ -35,7 +35,7 @@ def download_model_from_hub(character, model):
 
 def downloadXTTS(parent):
     try:
-        os.makedirs("models/XTTSv2", exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(), "models/XTTSv2"), exist_ok=True)
         huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/model.pth", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/config.json", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/XTTSv2/vocab.json", local_dir=get_app_root())
@@ -47,7 +47,7 @@ def downloadXTTS(parent):
 
 def downloadRVC(parent):
     try:
-        os.makedirs("models/RVC", exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(), "models/RVC"), exist_ok=True)
         huggingface_hub.hf_hub_download(REPO, "models/rvc/rmvpe.onnx", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/rvc/rmvpe.pt", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/rvc/hubert_base.pt", local_dir=get_app_root())
@@ -60,7 +60,7 @@ def downloadRVC(parent):
 
 def downloadFish(parent):
     try:
-        os.makedirs("models/fish", exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/fish"), exist_ok=True)
         huggingface_hub.hf_hub_download("fishaudio/fish-speech-1.5", "firefly-gan-vq-fsq-8x1024-21hz-generator.pth", local_dir=os.path.join(get_app_root(), "models/fish"))
         huggingface_hub.hf_hub_download("fishaudio/fish-speech-1.5", "config.json", local_dir=os.path.join(get_app_root(), "models/fish"))
         huggingface_hub.hf_hub_download("fishaudio/fish-speech-1.5", "model.pth", local_dir=os.path.join(get_app_root(), "models/fish"))
@@ -71,7 +71,7 @@ def downloadFish(parent):
 
 def downloadGPTSoVITS(parent):
     try:
-        os.makedirs("models/GPT_SoVITS", exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/GPT_SoVITS"), exist_ok=True)
         huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s2G2333k.pth", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s2D2333k.pth", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt", local_dir=get_app_root())
@@ -88,7 +88,16 @@ def downloadGPTSoVITS(parent):
 
 def downloadOrpheus(parent):
     try:
-        os.makedirs("models/Orpheus", exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/Orpheus"), exist_ok=True)
+        # snapshot_download(
+        #     repo_id="canopylabs/orpheus-tts-0.1-pretrained",
+        #     allow_patterns=[
+        #         "config.json",
+        #         "*.safetensors",
+        #         "*.json",
+        #         "tokenizer.*"
+        #     ]
+        # )
         huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00001-of-00004.safetensors", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00002-of-00004.safetensors", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/Orpheus/model-00003-of-00004.safetensors", local_dir=get_app_root())
@@ -106,7 +115,7 @@ def downloadOrpheus(parent):
 
 def downloadF5(parent):
     try:
-        os.makedirs("models/F5", exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/F5"), exist_ok=True)
         huggingface_hub.hf_hub_download(REPO, "models/F5/F5TTS_v1_Base/model_1250000.safetensors", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/F5/F5TTS_v1_Base/vocab.txt", local_dir=get_app_root())
         huggingface_hub.hf_hub_download("charactr/vocos-mel-24khz", "config.yaml", local_dir=os.path.abspath(f"models/F5"))
@@ -118,10 +127,10 @@ def downloadF5(parent):
 
 def downloadLlasa(parent):
     try:
-        os.makedirs("models/Llasa/3B", exist_ok=True)
-        os.makedirs("models/Llasa/1B", exist_ok=True)
-        os.makedirs("models/Llasa/8B", exist_ok=True)
-        os.makedirs("models/Llasa/xcodec2", exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/Llasa/3B"), exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/Llasa/1B"), exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/Llasa/8B"), exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/Llasa/xcodec2"), exist_ok=True)
 
         if(cfg.get(cfg.llasa_mode) == '1B'):
             huggingface_hub.snapshot_download("HKUSTAudio/Llasa-1B", local_dir="models/Llasa/1B")
@@ -158,7 +167,7 @@ def downloadLlasa(parent):
 
 def downloadDIA(parent):
     try:
-        os.makedirs("models/DIA", exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/DIA"), exist_ok=True)
         huggingface_hub.hf_hub_download(REPO, "models/DIA/dia-v0_1.pth", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/DIA/config.json", local_dir=get_app_root())
     except Exception as e:
@@ -168,7 +177,7 @@ def downloadDIA(parent):
 
 def downloadStyleTTS2(parent):
     try:
-        os.makedirs("models/StyleTTS2", exist_ok=True)
+        os.makedirs(os.path.join(get_app_root(),"models/StyleTTS2"), exist_ok=True)
         huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/ASR/config.yml", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/ASR/epoch_00080.pth", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/StyleTTS2/JDC/bst.t7", local_dir=get_app_root())

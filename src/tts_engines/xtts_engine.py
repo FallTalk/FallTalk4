@@ -5,7 +5,9 @@ import torch
 import torchaudio
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
-
+from TTS.tts.models.xtts import XttsAudioConfig
+from TTS.config.shared_configs import BaseDatasetConfig
+from TTS.tts.models.xtts import XttsArgs
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
@@ -13,7 +15,7 @@ from src.utils.audio_utils import load_audio
 
 import soundfile as sf
 
-
+from src.utils.filesystem_utils import get_app_root
 
 try:
     import deepspeed
@@ -22,6 +24,12 @@ except ImportError:
     deepspeed_available = False
     pass
 
+import torch
+
+torch.serialization.add_safe_globals([XttsConfig])
+torch.serialization.add_safe_globals([XttsAudioConfig])
+torch.serialization.add_safe_globals([BaseDatasetConfig])
+torch.serialization.add_safe_globals([XttsArgs])
 
 class XTTS_Engine(tts_engine):
     def __init__(self):
@@ -96,15 +104,15 @@ class XTTS_Engine(tts_engine):
             self.handle_lowvram_change()
 
     def load_base_model(self):
-        self.model_path = os.path.join("models", "XTTSv2", "model.pth")
+        self.model_path = os.path.join(get_app_root(), "models", "XTTSv2", "model.pth")
         self.load_model()
 
     def load_model(self):
         logging_utils.logger.debug(f"Loading {self.model_path}")
         config = XttsConfig()
-        config_path = os.path.join("models", "XTTSv2", "config.json")
-        vocab_path_dir = os.path.join("models", "XTTSv2", "vocab.json")
-        speaker_file_path = os.path.join("models", "XTTSv2", "speakers_xtts.json")
+        config_path = os.path.join(get_app_root(),"models", "XTTSv2", "config.json")
+        vocab_path_dir = os.path.join(get_app_root(),"models", "XTTSv2", "vocab.json")
+        speaker_file_path = os.path.join(get_app_root(),"models", "XTTSv2", "speakers_xtts.json")
 
         checkpoint_path = os.path.abspath(self.model_path)
         config.load_json(config_path)

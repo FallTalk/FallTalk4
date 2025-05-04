@@ -1,13 +1,13 @@
 import logging
 import os
 import shutil
-from PySide6.QtCore import QMetaObject, Qt, Q_ARG
-import PySide6
 
-from src.config.config import cfg
+import PySide6
+from PySide6.QtCore import QMetaObject, Qt, Q_ARG
+
 from src.utils.huggingface_utils import (
     downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA,
-    downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_models, download_rvc_models
+    downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models
 )
 
 logger = logging.getLogger('falltalk')

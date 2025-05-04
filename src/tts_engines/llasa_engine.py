@@ -5,7 +5,7 @@ import soundfile as sf
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from xcodec2.modeling_xcodec2 import XCodec2Model
-from src.utils.file_utils import get_app_root
+from src.utils.filesystem_utils import get_app_root
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
 from src.utils.audio_utils import load_audio
@@ -105,6 +105,7 @@ class LlasaEngine(tts_engine):
             return_tensors='pt',
             continue_final_message=True
         )
+
         input_ids = input_ids.to(self.device)
         speech_end_id =  self.tokenizer.convert_tokens_to_ids('<|SPEECH_GENERATION_END|>')
 

@@ -1,131 +1,127 @@
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QFileDialog
-from qfluentwidgets import MessageBoxBase, FluentIcon as FIF
+import os
 
-from ui.cards import TextSettingCard
+from PySide6.QtGui import QFont, Qt
+from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QFileDialog, QLabel
+from qfluentwidgets import FluentIcon as FIF, RangeSettingCard, TextEdit, PrimaryPushButton, ConfigItem, SwitchSettingCard, ConfigValidator, PushSettingCard, MessageBoxBase
+
+from audio.audio_player import StandardAudioPlayerBar
+from src.config.config import cfg, FileValidator
+from src.utils.icons import FallTalkStrokeIcons
+from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, TextSettingCard, SpinSettingCard, ComboBoxWordsCard
+from src.widgets import GenerationWidget
+
+from src.utils.logging_utils import logger
 
 
 class CustomMessageBox(MessageBoxBase):
-    """
-    Custom message box with additional settings.
-    """
+    """ Custom message box """
+
     def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self.titleLabel.setText(self.tr('Add Custom Character'))
-        
-        # Create layout for content
-        self.vBoxLayout = QVBoxLayout(self.widget)
-        self.vBoxLayout.setContentsMargins(20, 20, 20, 20)
-        
-        # Add title label
-        self.vBoxLayout.addWidget(self.titleLabel)
-        
-        # Add name input
-        self.name_label = QLabel(self.tr("Character Name:"), self)
-        self.name_input = QLineEdit(self)
-        self.name_input.setPlaceholderText(self.tr("Enter character name"))
-        
-        self.name_layout = QHBoxLayout()
-        self.name_layout.addWidget(self.name_label)
-        self.name_layout.addWidget(self.name_input)
-        
-        self.vBoxLayout.addLayout(self.name_layout)
-        
-        # Add display name input
-        self.display_name_label = QLabel(self.tr("Display Name:"), self)
-        self.display_name_input = QLineEdit(self)
-        self.display_name_input.setPlaceholderText(self.tr("Enter display name"))
-        
-        self.display_name_layout = QHBoxLayout()
-        self.display_name_layout.addWidget(self.display_name_label)
-        self.display_name_layout.addWidget(self.display_name_input)
-        
-        self.vBoxLayout.addLayout(self.display_name_layout)
-        
-        # Add index path card
-        self.index_card = TextSettingCard(
-            None,
-            FIF.FOLDER,
-            self.tr('Index Path'),
-            self.tr('Path to the index file'),
-            parent=self
+        super().__init__(parent)
+        self.titleLabel = QLabel(f'Import {cfg.get(cfg.engine)} Model', self)
+        self.viewLayout.insertWidget(0, self.titleLabel, 0, Qt.AlignmentFlag.AlignTop)
+
+        self.ckpt_file = ConfigItem("custom", "ckpt_file", "Please Select a 'ckpt' File", FileValidator(allowed_file_types=['.pth']))
+
+        self.ckpt_file_card = PushSettingCard(
+            self.tr('Select .ckpt File'),
+            FIF.DOCUMENT,
+            self.tr("Checkpoint File"),
+            self.ckpt_file.value,
         )
-        self.index_card.clicked.connect(self.__onIndexCardClicked)
-        
-        self.vBoxLayout.addWidget(self.index_card)
-        
-        # Add model path card
-        self.path_card = TextSettingCard(
-            None,
-            FIF.FOLDER,
-            self.tr('Model Path'),
-            self.tr('Path to the model file'),
-            parent=self
+
+        self.pth_file = ConfigItem("custom", "pth_file", "Please Select a 'pth' File", FileValidator(allowed_file_types=['.pth']))
+
+        self.pth_file_card = PushSettingCard(
+            self.tr('Select .pth File'),
+            FIF.DOCUMENT,
+            self.tr("Path File"),
+            self.pth_file.value,
         )
-        self.path_card.clicked.connect(self.__onPathCardClicked)
-        
-        self.vBoxLayout.addWidget(self.path_card)
-        
-        # Add checkpoint path card
-        self.ckpt_card = TextSettingCard(
-            None,
-            FIF.FOLDER,
-            self.tr('Checkpoint Path'),
-            self.tr('Path to the checkpoint file'),
-            parent=self
+
+        self.index_file = ConfigItem("custom", "index_file", "Please Select an 'index' File", FileValidator(allowed_file_types=['.index']))
+
+        self.index_file_card = PushSettingCard(
+            self.tr('Select .index File'),
+            FIF.DOCUMENT,
+            self.tr("Index file"),
+            self.index_file.value,
         )
-        self.ckpt_card.clicked.connect(self.__onCkptCardClicked)
-        
-        self.vBoxLayout.addWidget(self.ckpt_card)
-        
-        # Add buttons
-        self.vBoxLayout.addLayout(self.hBoxLayout)
-        
-        # Set size
-        self.widget.setFixedSize(500, 400)
+
+        self.custom_name = ConfigItem("custom", "custom_name", None, ConfigValidator())
+
+        self.custom_name_card = TextSettingCard(
+            self.custom_name,
+            FIF.SAVE_AS,
+            self.tr('Name'),
+            self.tr('Name of Custom Model'),
+            placeholder="Required"
+        )
+
+        self.start_dir = "./"
+
+        # add widget to view layout
+        self.viewLayout.addWidget(self.custom_name_card)
+        self.viewLayout.addWidget(self.ckpt_file_card)
+        self.viewLayout.addWidget(self.index_file_card)
+        self.viewLayout.addWidget(self.pth_file_card)
+
+        self.index_file_card.setVisible(cfg.get(cfg.engine) == 'RVC')
+        self.ckpt_file_card.setVisible(cfg.get(cfg.engine) == 'GPT_SoVITS')
+
+        self.setMinimumWidth(600)
+
+        self.yesButton.setDisabled(True)
+
+        self.pth_file_card.clicked.connect(self.__onPathCardClicked)
+        self.index_file_card.clicked.connect(self.__onIndexCardClicked)
+        self.ckpt_file_card.clicked.connect(self.__onCkptCardClicked)
+        self.custom_name_card.lineEdit.textChanged.connect(self.enableYesButton)
+        self.custom_name_card.lineEdit.textEdited.connect(self.enableYesButton)
 
     def enableYesButton(self):
-        """Enable the Yes button if all fields are filled"""
-        if (self.name_input.text() and 
-            self.display_name_input.text() and 
-            self.index_card.configItem.text() and 
-            self.path_card.configItem.text() and 
-            self.ckpt_card.configItem.text()):
-            self.yesButton.setEnabled(True)
-        else:
-            self.yesButton.setEnabled(False)
+        if self.custom_name.value and self.custom_name.value != '':
+            if cfg.get(cfg.engine) == 'RVC' and self.index_file.value != "Please Select an 'index' File" and self.pth_file.value != "Please Select a 'pth' File":
+                self.yesButton.setEnabled(True)
+            elif cfg.get(cfg.engine) == 'GPT_SoVITS' and self.ckpt_file.value != "Please Select a 'ckpt' File" and self.pth_file.value != "Please Select a 'pth' File":
+                self.yesButton.setEnabled(True)
+            elif not cfg.get(cfg.engine) == 'GPT_SoVITS' and not cfg.get(cfg.engine) == 'RVC' and self.pth_file.value != "Please Select a 'pth' File":
+                self.yesButton.setEnabled(True)
+            else:
+                self.yesButton.setEnabled(False)
 
     def __onIndexCardClicked(self):
-        """Handle index card click to select index file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            self.tr("Select Index File"),
-            "",
-            self.tr("Index Files (*.index)")
-        )
-        if file_path:
-            self.index_card.configItem.setText(file_path)
-            self.enableYesButton()
+        allowed_file_types = "Index File (*.index)"
+        folder = QFileDialog.getOpenFileName(
+            self, self.tr("Select Index File"), self.start_dir, allowed_file_types)
+        if not folder or folder[0] == "":
+            return
+
+        self.index_file.value = folder[0]
+        self.start_dir = os.path.dirname(folder[0])
+        self.index_file_card.setContent(folder[0])
+        self.enableYesButton()
 
     def __onPathCardClicked(self):
-        """Handle path card click to select model file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            self.tr("Select Model File"),
-            "",
-            self.tr("Model Files (*.pth)")
-        )
-        if file_path:
-            self.path_card.configItem.setText(file_path)
-            self.enableYesButton()
+        allowed_file_types = "Path File (*.pth)"
+        folder = QFileDialog.getOpenFileName(
+            self, self.tr("Select Path File"), self.start_dir, allowed_file_types)
+        if not folder or folder[0] == "":
+            return
+
+        self.pth_file.value = folder[0]
+        self.start_dir = os.path.dirname(folder[0])
+        self.pth_file_card.setContent(folder[0])
+        self.enableYesButton()
 
     def __onCkptCardClicked(self):
-        """Handle checkpoint card click to select checkpoint file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            self.tr("Select Checkpoint File"),
-            "",
-            self.tr("Checkpoint Files (*.pth)")
-        )
-        if file_path:
-            self.ckpt_card.configItem.setText(file_path)
-            self.enableYesButton()
+        allowed_file_types = "Checkpoint File (*.ckpt)"
+        folder = QFileDialog.getOpenFileName(
+            self, self.tr("Select Checkpoint File"), self.start_dir, allowed_file_types)
+        if not folder or folder[0] == "":
+            return
+
+        self.ckpt_file.value = folder[0]
+        self.start_dir = os.path.dirname(folder[0])
+        self.ckpt_file_card.setContent(folder[0])
+        self.enableYesButton()

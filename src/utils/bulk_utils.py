@@ -12,6 +12,7 @@ import PySide6
 from src.config.config import cfg
 from src.utils.audio_utils import create_lip_and_fuz
 from src.utils.file_utils import get_bulk_folder
+from src.utils.filesystem_utils import get_app_root
 from src.utils.model_utils import get_character_model, get_trained_character
 from src.utils.huggingface_utils import download_models, download_rvc_models
 from src.utils.inference_utils import (
@@ -38,11 +39,11 @@ def get_reference(parent, character, reference):
         for voice_file in character_model['voicefiles']:
             if reference in voice_file['filename']:
                 filename = f"{voice_file['filename']}".replace('.fuz', '')
-                if not os.path.exists(f"temp/{filename}.wav"):
+                if not os.path.exists(os.path.join(get_app_root(), f"temp/{filename}.wav")):
                     voice_file['folder'] = character
                     from src.utils.audio_utils import extra_audio_from_bsa
                     extra_audio_from_bsa(voice_file, filename)
-                return f"temp/{filename}.wav"
+                return os.path.join(get_app_root(), f"temp/{filename}.wav")
 
 
 def process_xwm_file(xwm_file, cfg, files, use_existing_lip=False):

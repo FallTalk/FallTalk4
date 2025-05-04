@@ -4,6 +4,8 @@ import re
 import unicodedata
 from fairseq import checkpoint_utils
 
+from src.utils.filesystem_utils import get_app_root
+
 logging.getLogger("fairseq").setLevel(logging.WARNING)
 import os
 from fairseq.data.dictionary import Dictionary
@@ -29,7 +31,7 @@ def load_embedding(embedder_model):
     }
     
     try:
-        model_path = os.path.abspath(os.path.join("models", "RVC", embedding_list[embedder_model]))
+        model_path = os.path.join(get_app_root(), "models", "RVC", embedding_list[embedder_model])
         #print("MODEL PATH IS", model_path)
         
         # Load model ensemble and task

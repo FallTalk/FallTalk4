@@ -13,17 +13,17 @@ from omegaconf import OmegaConf
 
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
-from src.utils.file_utils import get_app_root
+from src.utils.filesystem_utils import get_app_root, get_app_code_root
 from src.utils import logging_utils
 from src.utils.audio_utils import load_audio
 
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'f5/src')))
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'f5/src/f5_tts')))
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'f5/src/f5_tts/model')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5/src')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5/src/f5_tts')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5/src/f5_tts/model')))
 
-from f5.src.f5_tts.model import DiT, CFM
-from f5.src.f5_tts.infer import utils_infer
-from f5.src.f5_tts.model.utils import convert_char_to_pinyin, get_tokenizer
+from third_party.f5.src.f5_tts.model import DiT, CFM
+from third_party.f5.src.f5_tts.infer import utils_infer
+from third_party.f5.src.f5_tts.model.utils import convert_char_to_pinyin, get_tokenizer
 
 
 class F5Engine(tts_engine):
@@ -66,7 +66,7 @@ class F5Engine(tts_engine):
             self.switch_models()
 
         if self.vocoder is None:
-            self.vocoder = utils_infer.load_vocoder(is_local=True, local_path=os.path.abspath(os.path.join(get_app_root(), 'models', 'F5')), device=self.device)
+            self.vocoder = utils_infer.load_vocoder(is_local=True, local_path=os.path.join(get_app_root(), 'models', 'F5'), device=self.device)
 
         if self.is_base:
             ckpt_path = str(os.path.abspath(os.path.join(get_app_root(), 'models', 'F5', 'F5TTS_v1_Base', 'model_1250000.safetensors')))
@@ -80,7 +80,7 @@ class F5Engine(tts_engine):
         else:
             self.mode = cfg.get(cfg.f5_mode)
             ode_method = "euler"
-            self.model_cfg = OmegaConf.load(str(os.path.abspath(os.path.join(get_app_root(), 'f5', 'src', 'f5_tts', 'configs', 'F5TTS_v1_Base.yaml'))))
+            self.model_cfg = OmegaConf.load(str(os.path.join(get_app_root(), 'f5', 'src', 'f5_tts', 'configs', 'F5TTS_v1_Base.yaml')))
             model_cls = get_class(f"f5_tts.model.{self.model_cfg.model.backbone}")
             model_arc = self.model_cfg.model.arch
 

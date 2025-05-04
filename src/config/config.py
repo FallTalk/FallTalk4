@@ -1,5 +1,6 @@
 # coding:utf-8
 import os
+import sys
 from enum import Enum
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from qfluentwidgets import (QConfig, ConfigItem, OptionsConfigItem, BoolValidato
                             ColorConfigItem, OptionsValidator, RangeConfigItem, RangeValidator,
                             EnumSerializer, FolderValidator, ConfigSerializer, ConfigValidator, qconfig)
 
+from src.utils.filesystem_utils import get_app_root
 
 class Language(Enum):
     """ Language enumeration """
@@ -158,8 +160,8 @@ class Config(QConfig):
         "App", "fallout_4_directory", find_fallout4_exe(), Fallout4FolderValidator())
     fallout_4_directory_check = ConfigItem("App", "fallout_4_directory_check", True, BoolValidator())
     custom_references = ConfigItem(
-        "App", "custom_references", "references/", FolderValidator())
-    output_dir = ConfigItem("App", "output_dir", "output/", FolderValidator())
+        "App", "custom_references", os.path.join(get_app_root(), "references"), FolderValidator())
+    output_dir = ConfigItem("App", "output_dir", os.path.join(get_app_root(), "output"), FolderValidator())
     rvc_enabled = ConfigItem("App", "rvc_enabled", True, BoolValidator())
     keep_only_fuz = ConfigItem("App", "keep_only_fuz", True, BoolValidator())
     use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
@@ -333,7 +335,7 @@ HUGGING_FACE = "https://huggingface.co/falltalk/falltalk4"
 REPO = "falltalk/falltalk4"
 
 cfg = Config()
-qconfig.load('config/config.json', cfg)
+qconfig.load(os.path.join(get_app_root(),'config', 'config.json'), cfg)
 
 DISCLAIMER = """
 This code and the accompanying FallTalk AI models are provided subject to the terms and conditions of the End User License Agreement (EULA) of Zenimax Media, Inc., the original rights holder of the Fallout franchise. By using this code or the FallTalk AI models, you agree to comply with the following permitted and prohibited uses, as well as all terms outlined in the Zenimax Media EULA.

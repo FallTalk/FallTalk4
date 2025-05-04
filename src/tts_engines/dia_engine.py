@@ -7,13 +7,13 @@ import torch
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
 
-from src.utils.file_utils import get_app_root
+from src.utils.filesystem_utils import get_app_root, get_app_code_root
 from src.utils import logging_utils
 from src.utils.audio_utils import load_audio
 
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'dia/dia')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'dia/dia')))
 
-from dia.dia.model import Dia
+from third_party.dia.dia.model import Dia
 
 class DIA_Engine(tts_engine):
 

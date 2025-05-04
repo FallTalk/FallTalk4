@@ -8,28 +8,35 @@ import numpy as np
 import soundfile as sf
 import torch
 from transformers import AutoModelForMaskedLM, AutoTokenizer
-from src.utils.file_utils import get_app_root
+from src.utils.filesystem_utils import get_app_root, get_app_code_root
 
 import sys
 import os
 
 from src.utils import logging_utils
 
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'GPT_SoVITS/tools')))
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'GPT_SoVITS/GPT_SoVITS/AR')))
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'GPT_SoVITS/GPT_SoVITS/module')))
-
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS/tools')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS/GPT_SoVITS')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS/GPT_SoVITS/AR')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS/GPT_SoVITS/module')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5/src')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5/src/f5_tts')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5/src/f5_tts/model')))
 
 from src.config.config import cfg
-from GPT_SoVITS.GPT_SoVITS.AR.models.t2s_lightning_module import Text2SemanticLightningModule
-from GPT_SoVITS.GPT_SoVITS.feature_extractor import cnhubert
-from GPT_SoVITS.GPT_SoVITS.module.mel_processing import spectrogram_torch
-from GPT_SoVITS.GPT_SoVITS.module.models import SynthesizerTrn
-from GPT_SoVITS.GPT_SoVITS.text import cleaned_text_to_sequence
-from GPT_SoVITS.GPT_SoVITS.text.cleaner import clean_text
+from third_party.GPT_SoVITS.GPT_SoVITS.AR.models.t2s_lightning_module import Text2SemanticLightningModule
+from third_party.GPT_SoVITS.GPT_SoVITS.feature_extractor import cnhubert
+from third_party.GPT_SoVITS.GPT_SoVITS.module.mel_processing import spectrogram_torch
+from third_party.GPT_SoVITS.GPT_SoVITS.module.models import SynthesizerTrn
+from third_party.GPT_SoVITS.GPT_SoVITS.text import cleaned_text_to_sequence
+from third_party.GPT_SoVITS.GPT_SoVITS.text.cleaner import clean_text
+from third_party.GPT_SoVITS.GPT_SoVITS.utils import HParams
 from src.utils.audio_utils import load_audio
 from src.tts_engines.tts_engine import tts_engine
 
+import torch
+
+torch.serialization.add_safe_globals([HParams])
 
 class DictToAttrRecursive(dict):
     def __init__(self, input_dict):
@@ -491,6 +498,8 @@ class GPT_SoVITS_Engine(tts_engine):
 
     def change_sovits_weights(self, sovits_path):
         logging_utils.logger.debug(f"change_sovits_weights {sovits_path}")
+        from utils import HParams
+        torch.serialization.add_safe_globals([HParams])
         self.dict_s2 = torch.load(sovits_path, map_location="cpu")
         self.hps = self.dict_s2["config"]
         self.hps = DictToAttrRecursive(self.hps)
@@ -625,7 +634,7 @@ class GPT_SoVITS_Engine(tts_engine):
 
     def loadSsl(self):
         if not self.ssl_model:
-            cnhubert.cnhubert_base_path = "models/GPT_SoVITS/chinese-hubert-base"
+            cnhubert.cnhubert_base_path = os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-hubert-base")
             self.ssl_model = cnhubert.get_model()
             if self.is_half:
                 self.ssl_model = self.ssl_model.half().to(self.device)
@@ -634,7 +643,7 @@ class GPT_SoVITS_Engine(tts_engine):
 
     def loadBert(self):
         if not self.bert_model:
-            bert_path = "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"
+            bert_path = os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large")
             self.tokenizer = AutoTokenizer.from_pretrained(bert_path)
             self.bert_model = AutoModelForMaskedLM.from_pretrained(bert_path)
             if self.is_half:
@@ -647,5 +656,5 @@ class GPT_SoVITS_Engine(tts_engine):
             self.change_sovits_weights(os.path.abspath(self.model_path))
             self.change_gpt_weights(os.path.abspath(self.get_model(self.engine_name, "ckpt")))
         else:
-            self.change_sovits_weights(os.path.abspath("models/GPT_SoVITS/v2/s2G2333k.pth"))
-            self.change_gpt_weights(os.path.abspath("models/GPT_SoVITS/v2/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"))
+            self.change_sovits_weights(os.path.join(get_app_root(), "models/GPT_SoVITS/v2/s2G2333k.pth"))
+            self.change_gpt_weights(os.path.join(get_app_root(), "models/GPT_SoVITS/v2/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"))

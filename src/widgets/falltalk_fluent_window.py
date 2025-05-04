@@ -1,151 +1,252 @@
-from typing import Union
+from typing import Union, List
 
+import torch
+from typing import Union, List
+
+import torch
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QWidget
-from qfluentwidgets import FluentIconBase, NavigationItemPosition, NavigationInterface, FluentTitleBar
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
+from qfluentwidgets import FluentIcon as FIF, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, NavigationTreeWidget, BodyLabel
 from qfluentwidgets.window.fluent_window import FluentWindowBase
-from qfluentwidgets import CheckableMenu, MenuIndicatorType, Action, CommandBar
+
+from src.utils.icons import FallTalkStrokeIcons, FallTalkIcons
+
+from src.config.config import cfg
+
 
 class CustomCommandBar(CommandBar):
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 
-    def _visibleWidgets(self):
-        return [a for a in self.actions() if not a.isSeparator() and a.isVisible()]
+    def _visibleWidgets(self) -> List[QWidget]:
+        """ return the visible widgets in layout """
+        # have enough spacing to show all widgets
+        return self._widgets
 
 class FallTalkFluentWindow(FluentWindowBase):
+    """ Fluent window """
+
     def __init__(self, parent=None):
-        super().__init__(parent=parent)
+        super().__init__(parent)
         self.setTitleBar(FluentTitleBar(self))
-        self.navigationInterface = NavigationInterface(self)
-        self.navigationInterface.setExpandWidth(250)
-        self.stackedWidget = QWidget(self)
-        self.initLayout()
 
-        self.toolbar_1 = CustomCommandBar(self)
-        self.titleBar.customTitleBar.addWidget(self.toolbar_1)
+        self.navigationInterface = NavigationInterface(self, showReturnButton=True)
 
-        self.engine_menu = CheckableMenu(self.toolbar_1)
-        self.engine_menu.setIndicatorType(MenuIndicatorType.CHECK)
+        self.toolbar = QHBoxLayout()
+        self.toolbar.stretch(1)
+        self.widgetLayout = QVBoxLayout()
+        self.label = BodyLabel(self.tr("Character Models"))
+        self.label.setFixedWidth(125)
 
-        self.device_menu = CheckableMenu(self.toolbar_1)
-        self.device_menu.setIndicatorType(MenuIndicatorType.CHECK)
+        self.character_label = BodyLabel(self.tr("Please Load Model"))
+        self.character_label.setFixedWidth(150)
 
-        self.rvc_action = Action(self.tr('RVC'), self.toolbar_1)
-        self.rvc_action.setCheckable(True)
-        self.xtts_action = Action(self.tr('XTTS v2'), self.toolbar_1)
-        self.xtts_action.setCheckable(True)
-        self.styletts2_action = Action(self.tr('StyleTTS2'), self.toolbar_1)
-        self.styletts2_action.setCheckable(True)
-        self.dia_action = Action(self.tr('DIA'), self.toolbar_1)
-        self.dia_action.setCheckable(True)
-        self.f5_action = Action(self.tr('F5'), self.toolbar_1)
-        self.f5_action.setCheckable(True)
-        self.fish_action = Action(self.tr('FishSpeech'), self.toolbar_1)
-        self.fish_action.setCheckable(True)
-        self.orpheus_action = Action(self.tr('Orpheus'), self.toolbar_1)
-        self.orpheus_action.setCheckable(True)
-        self.llasa_action = Action(self.tr('Llasa'), self.toolbar_1)
-        self.llasa_action.setCheckable(True)
-        self.gpt_sovits_action = Action(self.tr('GPT-SoVITS'), self.toolbar_1)
-        self.gpt_sovits_action.setCheckable(True)
+        self.reference_label = BodyLabel(self.tr("Reference:"))
+        self.reference_time_label = BodyLabel(self.tr("00:00"))
+        self.reference_time_label.setFixedWidth(45)
 
-        self.cpu_action = Action(self.tr('CPU'), self.toolbar_1)
-        self.cpu_action.setCheckable(True)
-        self.gpu_action = Action(self.tr('GPU 0'), self.toolbar_1)
-        self.gpu_action.setCheckable(True)
-        self.gpu2_action = Action(self.tr('GPU 1'), self.toolbar_1)
-        self.gpu2_action.setCheckable(True)
+        self.rvc_action = Action(FallTalkStrokeIcons.VOICE_SQUARE.icon(), self.tr('RVC'), checkable=True, checked=cfg.get(cfg.engine) == 'RVC')
+        self.gpt_sovits_action = Action(FallTalkIcons.G.icon(), self.tr('GPT_SoVITS'), checkable=True, checked=cfg.get(cfg.engine) == 'GPT_SoVITS')
+        self.xtts_action = Action(FallTalkIcons.FROG.icon(), self.tr('XTTSv2'), checkable=True, checked=cfg.get(cfg.engine) == 'XTTSv2')
+        self.styletts2_action = Action(FallTalkIcons.STYLE.icon(), self.tr('StyleTTS2'), checkable=True, checked=cfg.get(cfg.engine) == 'StyleTTS2')
+        self.fish_action = Action(FallTalkIcons.FISH.icon(), self.tr('FishSpeech'), checkable=True, checked=cfg.get(cfg.engine) == 'FishSpeech')
+        self.f5_action = Action(FallTalkIcons.F5.icon(), self.tr('F5'), checkable=True, checked=cfg.get(cfg.engine) == 'F5')
+        self.dia_action = Action(FallTalkStrokeIcons.DIA.icon(), self.tr('DIA'), checkable=True, checked=cfg.get(cfg.engine) == 'DIA')
+        self.llasa_action = Action(FallTalkIcons.LLAMA.icon(), self.tr('Llasa'), checkable=True, checked=cfg.get(cfg.engine) == 'Llasa')
+        self.orpheus_action = Action(FallTalkIcons.TRIANGLE.icon(), self.tr('Orpheus'), checkable=True, checked=cfg.get(cfg.engine) == 'Orpheus')
+        self.cpu_action = Action(FallTalkIcons.CPU.icon(), self.tr('CPU'), checkable=True, checked=cfg.get(cfg.device) == 'cpu')
+        self.gpu_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU'), checkable=True, checked=cfg.get(cfg.device) == 'cuda')
+        self.gpu2_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU 2'), checkable=True, checked=cfg.get(cfg.device) == 'cuda:1')
+        #self.clean_action = Action(FIF.BROOM, self.tr('Clean'))
 
-        self.update_action = Action(self.tr('Update Available'), self.toolbar_1)
-        self.new_models_action = Action(self.tr('New Models Available'), self.toolbar_1)
+        self.update_action = Action(FallTalkIcons.IMPORTANT.icon(color=cfg.get(cfg.themeColor)), self.tr('Update Available'))
+        self.new_models_action = Action(FallTalkIcons.NEW.icon(color=cfg.get(cfg.themeColor)), self.tr('New Models Added'))
 
-        self.character_label = Action(self.tr('Please Load Model'), self.toolbar_1)
-        self.character_label.setEnabled(False)
+        # initialize layout
+        self.toolbar_1 = self.createCommandBar()
+        self.toolbar.addWidget(self.toolbar_1, stretch=1)
+
+        self.widgetLayout.addLayout(self.toolbar)
+
+        self.hBoxLayout.addWidget(self.navigationInterface)
+        self.hBoxLayout.addLayout(self.widgetLayout)
+        self.hBoxLayout.setStretchFactor(self.widgetLayout, 1)
+
+        self.widgetLayout.addWidget(self.stackedWidget)
+        self.widgetLayout.setContentsMargins(0, 48, 0, 0)
+
+        self.navigationInterface.displayModeChanged.connect(self.titleBar.raise_)
+        self.titleBar.raise_()
 
     def _onCurrentInterfaceChanged(self, index: int):
-        widget = self.stackedWidget.widget(index)
-        self.stackedWidget.setCurrentWidget(widget)
+        super()._onCurrentInterfaceChanged(index)
+        self.label.setText(self.stackedWidget.currentWidget().title)
 
-    def addSubInterface(self, interface: QWidget, icon: Union[FluentIconBase, QIcon, str], text: str, position=NavigationItemPosition.TOP, parent=None, isTransparent=False):
-        """Add sub interface to window
+    def addSubInterface(self, interface: QWidget, icon: Union[FluentIconBase, QIcon, str], text: str,
+                        position=NavigationItemPosition.TOP, parent=None, isTransparent=False) -> NavigationTreeWidget:
 
-        Parameters
-        ----------
-        interface: QWidget
-            the sub interface to be added
+        if not interface.objectName():
+            raise ValueError("The object name of `interface` can't be empty string.")
+        if parent and not parent.objectName():
+            raise ValueError("The object name of `parent` can't be empty string.")
 
-        icon: FluentIconBase | QIcon | str
-            the icon of navigation item
-
-        text: str
-            the text of navigation item
-
-        position: NavigationItemPosition
-            the position of navigation item
-
-        parent: str
-            the text of parent item
-
-        isTransparent: bool
-            whether to use transparent background
-        """
+        interface.setProperty("isStackedTransparent", isTransparent)
         self.stackedWidget.addWidget(interface)
-        self.navigationInterface.addItem(
-            routeKey=interface.objectName(),
+
+        # add navigation item
+        routeKey = interface.objectName()
+        item = self.navigationInterface.addItem(
+            routeKey=routeKey,
             icon=icon,
             text=text,
-            onClick=lambda: self._onCurrentInterfaceChanged(self.stackedWidget.indexOf(interface)),
+            onClick=lambda: self.switchTo(interface),
             position=position,
             tooltip=text,
-            parentRouteKey=parent,
-            isTransparent=isTransparent
+            parentRouteKey=parent.objectName() if parent else None
         )
 
+        # initialize selected item
+        if self.stackedWidget.count() == 1:
+            self.stackedWidget.currentChanged.connect(self._onCurrentInterfaceChanged)
+            self.navigationInterface.setCurrentItem(routeKey)
+            qrouter.setDefaultRouteKey(self.stackedWidget, routeKey)
+
+        self._updateStackedBackground()
+
+        return item
+
     def resizeEvent(self, e):
-        super().resizeEvent(e)
-        self.titleBar.move(0, 0)
+        self.titleBar.move(46, 0)
+        self.titleBar.resize(self.width() - 46, self.titleBar.height())
 
     def createEngineMenu(self, pos=None):
-        self.engine_menu.clear()
-        self.engine_menu.addAction(self.rvc_action)
-        self.engine_menu.addAction(self.xtts_action)
-        self.engine_menu.addAction(self.styletts2_action)
-        self.engine_menu.addAction(self.dia_action)
-        self.engine_menu.addAction(self.f5_action)
-        self.engine_menu.addAction(self.fish_action)
-        self.engine_menu.addAction(self.orpheus_action)
-        self.engine_menu.addAction(self.llasa_action)
-        self.engine_menu.addAction(self.gpt_sovits_action)
-        return self.engine_menu
+        menu = CheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
+        menu.addActions([
+            self.f5_action,
+            self.rvc_action,
+            self.fish_action,
+            self.dia_action,
+            self.llasa_action,
+            self.orpheus_action,
+            self.gpt_sovits_action,
+            self.xtts_action,
+            self.styletts2_action,
+
+        ])
+        if pos is not None:
+            menu.exec(pos, ani=True)
+        return menu
 
     def createDeviceMenu(self, pos=None):
-        self.device_menu.clear()
-        self.device_menu.addAction(self.cpu_action)
-        self.device_menu.addAction(self.gpu_action)
-        self.device_menu.addAction(self.gpu2_action)
-        return self.device_menu
+        menu = CheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
+        if torch.cuda.is_available():
+            num_gpus = torch.cuda.device_count()
+            if num_gpus > 1:
+                menu.addActions([
+                    self.cpu_action,
+                    self.gpu_action,
+                    self.gpu2_action,
+                    #self.clean_action
+                ])
+            else:
+                menu.addActions([
+                    self.cpu_action,
+                    self.gpu_action,
+                    #self.clean_action
+                ])
+        else:
+            menu.addActions([
+                self.cpu_action
+            ])
+        if pos is not None:
+            menu.exec(pos, ani=True)
+        return menu
 
     def createCommandBar_2(self):
-        self.toolbar_2 = CustomCommandBar(self)
-        self.titleBar.customTitleBar.addWidget(self.toolbar_2)
-        return self.toolbar_2
+        bar = CustomCommandBar(self)
+        bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        # add custom widget
+
+        return bar
 
     def __reset(self):
-        self.toolbar_1.clear()
-        self.toolbar_1.addAction(self.character_label)
-        self.toolbar_1.addSeparator()
+        if cfg.get(cfg.engine) == "XTTSv2":
+            cfg.resetXtts()
+        elif cfg.get(cfg.engine) == "GPT_SoVITS":
+            cfg.resetGPT()
+        elif cfg.get(cfg.engine) == "StyleTTS2":
+            cfg.resetStyleTTS()
+        elif cfg.get(cfg.engine) == "F5":
+            cfg.resetF5()
+        elif cfg.get(cfg.engine) == "DIA":
+            cfg.resetDIA()
+        elif cfg.get(cfg.engine) == "FishSpeech":
+            cfg.resetDIA()
+        elif cfg.get(cfg.engine) == "Llasa":
+            cfg.resetLlasa()
+        elif cfg.get(cfg.engine) == "Orpheus":
+            cfg.resetOpheus()
 
-        self.engine_button = self.toolbar_1.addDropDownAction('Engine', self.createEngineMenu)
-        self.engine_button.setToolTip('Select Engine')
-        self.engine_button.setIcon(QIcon('resource/icons/engine.svg'))
-
-        self.device_button = self.toolbar_1.addDropDownAction('Device', self.createDeviceMenu)
-        self.device_button.setToolTip('Select Device')
-        self.device_button.setIcon(QIcon('resource/icons/device.svg'))
+        cfg.resetRvc()
 
     def createCommandBar(self):
-        self.__reset()
-        return self.toolbar_1
+        bar = CommandBar(self)
+
+        bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        bar.addWidget(self.label)
+        bar.addSeparator()
+        bar.addWidget(self.character_label)
+        bar.addSeparator()
+        bar.addWidget(self.reference_label)
+        bar.addWidget(self.reference_time_label)
+        bar.addSeparator()
+        reset = Action(FIF.ROTATE, self.tr('Reset Generation Settings'))
+        bar.addActions([reset])
+        bar.addSeparator()
+        reset.triggered.connect(self.__reset)
+        button = TransparentDropDownPushButton(self.tr('Engine'), self, FIF.DEVELOPER_TOOLS)
+        button.setMenu(self.createEngineMenu())
+        button.setFixedHeight(34)
+        setFont(button, 12)
+        bar.addWidget(button)
+        bar.addSeparator()
+
+        cpu_button = TransparentDropDownPushButton(self.tr('Device'), self, FallTalkIcons.GPU.icon())
+        cpu_button.setMenu(self.createDeviceMenu())
+        cpu_button.setFixedHeight(34)
+        setFont(cpu_button, 12)
+        bar.addWidget(cpu_button)
+
+        # spacer = QWidget()
+        # spaceLayout = QVBoxLayout()
+        # spaceLayout.addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+        # spacer.setLayout(spaceLayout)
+        # bar.addWidget(StretchingWidget())
+
+        # bar.addActions([
+        #     Action(FIF.ADD, self.tr('Add')),
+        #     Action(FIF.ROTATE, self.tr('Rotate')),
+        #     Action(FIF.ZOOM_IN, self.tr('Zoom in')),
+        #     Action(FIF.ZOOM_OUT, self.tr('Zoom out')),
+        # ])
+        # bar.addSeparator()
+        # bar.addActions([
+        #     Action(FIF.EDIT, self.tr('Edit'), checkable=True),
+        #     Action(FIF.INFO, self.tr('Info')),
+        #     Action(FIF.DELETE, self.tr('Delete')),
+        #     Action(FIF.SHARE, self.tr('Share'))
+        # ])
+
+        # add custom widget
+        # button = TransparentDropDownPushButton(self.tr('Sort'), self, FIF.SCROLL)
+        # button.setMenu(self.createCheckableMenu())
+        # button.setFixedHeight(34)
+        # setFont(button, 12)
+        # bar.addWidget(button)
+
+        # bar.addHiddenActions([
+        #     Action(FIF.SETTING, self.tr('Settings'), shortcut='Ctrl+I'),
+        # ])
+        return bar

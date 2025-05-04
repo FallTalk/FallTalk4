@@ -3,8 +3,9 @@ import os
 import sys
 import shutil
 
-from src.utils.file_utils import get_app_root
+from src.utils.filesystem_utils import get_app_root
 from logging.handlers import RotatingFileHandler
+
 
 def rotate_logs():
     log_dir = os.path.join(get_app_root(),"logs")
@@ -52,14 +53,14 @@ def setup_logging():
     # Configure the logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs(os.path.join(get_app_root(),"logs"), exist_ok=True)
 
     # Rotate logs before creating new handler
     rotate_logs()
 
     # Create rotating handler with large file size limit
     handler = logging.handlers.RotatingFileHandler(
-        'logs/falltalk.log',
+        os.path.join(get_app_root(), 'logs/falltalk.log'),
         maxBytes=1024 * 1024 * 50,  # 50MB (safety net for single-run logging)
         backupCount=20,  # Should match our manual rotation
         encoding='utf-8'

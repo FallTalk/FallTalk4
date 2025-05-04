@@ -17,6 +17,8 @@ torchaudio_hiddenimports = collect_submodules('torchaudio')
 torio_hiddenimports = collect_submodules('torio')
 ffmpeg_hiddenimports = collect_submodules('ffmpeg')
 phonemizer_hiddenimports = collect_submodules('phonemizer')
+triton_hiddenimports = collect_submodules('triton')
+monotonic_align_hiddenimports = collect_submodules('monotonic_align')
 
 scipy_datas = collect_data_files('scipy')
 py3langid_datas = collect_data_files('py3langid')
@@ -44,53 +46,53 @@ def collect_module_data(module_path):
         for file in files:
             full_path = os.path.join(root, file)
             relative_path = os.path.relpath(full_path, module_path)
-            data_files.append((full_path, os.path.join('tts_engines', os.path.dirname(relative_path))))
+            data_files.append((full_path, os.path.join('src', 'tts_engines', os.path.dirname(relative_path))))
     return data_files
 
 # Manually specify the data files to be included
 module_path = os.path.abspath('src/tts_engines/')
 tts_engines_datas_modules = collect_module_data(module_path)
 
-def collect_upscaler(module_path):
+def collect_submodules(module_path, dest_name=None, exclude_exts=None):
+    if exclude_exts is None:
+        exclude_exts = {'.mp3', '.toml', '.ipynb'}
+
     data_files = []
+    if dest_name is None:
+        dest_name = os.path.basename(module_path)
+
     for root, dirs, files in os.walk(module_path):
-        if '__pycache__' in dirs:
-            dirs.remove('__pycache__')
+        for skip in ('__pycache__', '.git', '.github', 'docs'):
+            if skip in dirs:
+                dirs.remove(skip)
         for file in files:
+            _, ext = os.path.splitext(file)
+            if ext.lower() in exclude_exts:
+                continue
+
             full_path = os.path.join(root, file)
             relative_path = os.path.relpath(full_path, module_path)
-            data_files.append((full_path, os.path.join('audio_upscaler', os.path.dirname(relative_path))))
+            target_path = os.path.join(dest_name, os.path.dirname(relative_path))
+            data_files.append((full_path, target_path))
+
+    print(f'Collected data files for {module_path}:')
+    for src, dest in data_files:
+        print(f'  {src} -> {dest}')
+
     return data_files
 
 # Manually specify the data files to be included
-upscale_module_path = os.path.abspath('audio_upscaler/')
-audio_upscaler_datas = collect_upscaler(upscale_module_path)
+third_party_datas = collect_submodules('third_party')
+
 
 lightning_fabric_data = collect_data_files('lightning_fabric', include_py_files=True)
 language_tags_data = collect_data_files('language_tags', include_py_files=True)
 TTS_datas = collect_data_files('TTS', include_py_files=True)
 
 a = Analysis(
-    ['FallTalk.py'],
-    pathex=['src/falltalk',
-    'src/tts_engines',
-    'src/tts_engines/GPT_SoVITS',
-    'src/tts_engines/rvc',
-    'src/tts_engines/styletts2',
-    'src/tts_engines/voicecraft',
-    'src/tts_engines/rvc/lib/infer_pack',
-    'src/tts_engines/rvc/lib/infer_pack/modules/F0Predictor',
-    'src/tts_engines/styletts2/Modules',
-    'src/tts_engines/styletts2/Utils',
-    'src/tts_engines/styletts2/Utils/ASR',
-    'src/tts_engines/styletts2/Utils/JDC',
-    'src/tts_engines/voicecraft/modules',
-    'src/tts_engines/GPT_SoVITS/text',
-    'src/tts_engines/GPT_SoVITS/text/g2pw',
-    'kokoro',
-    'fish-speech',
-    'GPT-SoVITS',
-    'StyleTTS2'
+    ['main.py'],
+    pathex=['src',
+    'third_party',
     ],
     binaries=[],
     datas=[('utils.py', '.')]
@@ -107,7 +109,7 @@ a = Analysis(
     +inflect_datas
     +torchaudio_datas
     +re_datas
-    +audio_upscaler_datas
+    +third_party_datas
     +phonemizer_datas
     +config_datas
     +demucs_datas
@@ -125,7 +127,9 @@ a = Analysis(
     +re_hiddenimports
     +phonemizer_hiddenimports
     +torchaudio_hiddenimports
-    +wordsegment_hiddenimports,
+    +wordsegment_hiddenimports
+    +monotonic_align_hiddenimports
+    +triton_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

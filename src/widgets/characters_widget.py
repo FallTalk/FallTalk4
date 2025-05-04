@@ -1,337 +1,446 @@
 import json
 import os
+import re
+import shutil
 
-from PySide6.QtWidgets import QVBoxLayout, QStackedWidget, QGroupBox, QHeaderView, QAbstractItemView, QWidget
+from PySide6.QtCore import QTimer
+from PySide6.QtGui import Qt
+from PySide6.QtWidgets import QHBoxLayout
+from PySide6.QtWidgets import QVBoxLayout, QStackedWidget, QHeaderView, QWidget
+from qfluentwidgets import FluentIcon as FIF
 from qfluentwidgets import (
-    FluentIcon as FIF, SearchLineEdit, TableView, PushButton, SegmentedWidget,
-    TransparentDropDownPushButton, Action
+    SearchLineEdit, TableView, PushButton, SegmentedWidget,
+    IconWidget, MessageBox, CheckBox
 )
 
+from src.config.config import cfg, CUSTOM_DISCLAIMER
+from src.utils.icons import FallTalkStrokeIcons
 from src.widgets.custom_message_box import CustomMessageBox
-from src.widgets.falltalk_widget import FallTalkWidget
 from src.widgets.table_models import CharacterTableModel
+from src.widgets import FallTalkWidget
 
 
 class CharactersWidget(FallTalkWidget):
-    """
-    Widget for managing character models.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(text="Character Models", parent=parent, vertical=True)
-        
-        self.segmented_widget = SegmentedWidget(self)
-        self.segmented_widget.setObjectName("charactersSegmentedWidget")
-        
+        super().__init__(parent=parent, text="Character Models", vertical=True)
+        self.parent = parent
+        # Create a TabView instance
+        self.pivot = SegmentedWidget(self)
         self.stackedWidget = QStackedWidget(self)
-        self.stackedWidget.setObjectName("charactersStackedWidget")
-        
-        # Create trained characters widget
-        self.trained_widget = QGroupBox(self)
-        self.trained_layout = QVBoxLayout(self.trained_widget)
-        
-        self.trained_search = SearchLineEdit(self)
-        self.trained_search.setPlaceholderText(self.tr("Search trained characters"))
-        self.trained_search.textChanged.connect(self.apply_filter)
-        
-        self.trained_table = TableView(self)
-        self.trained_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.trained_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.trained_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.trained_table.horizontalHeader().sectionClicked.connect(self.on_header_clicked)
-        self.trained_table.doubleClicked.connect(self.select_row)
-        
-        self.trained_layout.addWidget(self.trained_search)
-        self.trained_layout.addWidget(self.trained_table)
-        
-        # Create untrained characters widget
-        self.untrained_widget = QGroupBox(self)
-        self.untrained_layout = QVBoxLayout(self.untrained_widget)
-        
-        self.untrained_search = SearchLineEdit(self)
-        self.untrained_search.setPlaceholderText(self.tr("Search untrained characters"))
-        self.untrained_search.textChanged.connect(self.apply_filter)
-        
-        self.untrained_table = TableView(self)
-        self.untrained_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.untrained_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.untrained_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.untrained_table.horizontalHeader().sectionClicked.connect(self.on_header_clicked)
-        self.untrained_table.doubleClicked.connect(self.select_row)
-        
-        self.untrained_layout.addWidget(self.untrained_search)
-        self.untrained_layout.addWidget(self.untrained_table)
-        
-        # Create custom characters widget
-        self.custom_widget = QGroupBox(self)
-        self.custom_layout = QVBoxLayout(self.custom_widget)
-        
-        self.custom_search = SearchLineEdit(self)
-        self.custom_search.setPlaceholderText(self.tr("Search custom characters"))
-        self.custom_search.textChanged.connect(self.apply_filter)
-        
-        self.custom_table = TableView(self)
-        self.custom_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.custom_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.custom_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.custom_table.horizontalHeader().sectionClicked.connect(self.on_header_clicked)
-        self.custom_table.doubleClicked.connect(self.select_row)
-        
-        self.add_custom_button = PushButton(self.tr("Add Custom"), self, FIF.ADD)
-        self.add_custom_button.clicked.connect(self.add_custom)
-        
-        self.custom_layout.addWidget(self.custom_search)
-        self.custom_layout.addWidget(self.custom_table)
-        self.custom_layout.addWidget(self.add_custom_button)
-        
-        # Add widgets to stacked widget
-        self.addSubInterface(self.trained_widget, "trainedWidget", "Trained")
-        self.addSubInterface(self.untrained_widget, "untrainedWidget", "Untrained")
-        self.addSubInterface(self.custom_widget, "customWidget", "Custom")
-        
-        self.segmented_widget.setCurrentItem("trainedWidget")
-        self.segmented_widget.currentItemChanged.connect(self.onCurrentIndexChanged)
-        
-        self.main_layout.addWidget(self.segmented_widget)
-        self.main_layout.addWidget(self.stackedWidget)
+        self.trained_table = TableView()
+        self.trained_table.setBorderVisible(True)
+        self.trained_table.setBorderRadius(8)
+        self.trained_table.setAlternatingRowColors(True)
+        self.trained_table.setWordWrap(False)
+        self.trained_table.verticalHeader().setVisible(False)
+        headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
+        model = CharacterTableModel([], headers)
+        self.trained_table.setModel(model)
+        self.trained_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.trained_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.trained_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        self.trained_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.trained_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        self.trained_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.trained_table.setSortingEnabled(True)
+        self.trained_table.setColumnWidth(5, 40)
+        self.trained_table.setColumnWidth(4, 125)
+        self.trained_table.setColumnWidth(3, 125)
+        self.trained_table.setColumnWidth(0, 125)
+
+        self.untrained_table = TableView()
+        self.untrained_table.setBorderVisible(True)
+        self.untrained_table.setBorderRadius(8)
+        self.untrained_table.setAlternatingRowColors(True)
+        self.untrained_table.verticalHeader().setVisible(False)
+        self.untrained_table.setModel(CharacterTableModel([], ["Load", "Name", "Directory", "RVC"]))
+        self.untrained_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.untrained_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.untrained_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        self.untrained_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.untrained_table.setSortingEnabled(True)
+        self.untrained_table.setColumnWidth(3, 40)
+        self.untrained_table.setColumnWidth(0, 125)
+
+        self.custom_widget = QWidget()
+        self.custom_widget.setContentsMargins(0, 0, 0, 0)
+
+        self.custom_view = QVBoxLayout(self.custom_widget)
+        self.custom_view.setContentsMargins(0, 0, 0, 0)
+        self.custom_table = TableView()
+        self.custom_table.setBorderVisible(True)
+        self.custom_table.setBorderRadius(8)
+        self.custom_table.setAlternatingRowColors(True)
+        self.custom_table.verticalHeader().setVisible(False)
+        self.custom_table.setModel(CharacterTableModel([], ["Load", "Name", "Directory", "Delete", "RVC"]))
+        self.custom_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.custom_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.custom_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.custom_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        self.custom_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.custom_table.setSortingEnabled(True)
+        self.custom_table.setColumnWidth(4, 40)
+        self.custom_table.setColumnWidth(0, 125)
+        self.custom_table.setColumnWidth(3, 125)
+
+        # self.stackedWidget.currentChanged.connect(self.verify)
+
+        self.add_button = PushButton("Add")
+        self.add_button.setMaximumWidth(200)
+        self.add_button.clicked.connect(self.add_custom)
+        self.add_button.setIcon(FIF.ADD_TO)
+
+        self.custom_view.addWidget(self.custom_table)
+        self.custom_view.addWidget(self.add_button)
+
+        self.filter_line_edit = SearchLineEdit()
+        self.filter_line_edit.setPlaceholderText("Filter...")
+        self.filter_line_edit.textChanged.connect(self.apply_filter)
+        self.controlsBox = QHBoxLayout()
+        self.rvc_checkbox = CheckBox("RVC Only")
+        self.rvc_checkbox.setMinimumWidth(200)
+        self.rvc_checkbox.stateChanged.connect(self.apply_filter)
+        self.controlsBox.addWidget(self.filter_line_edit)
+        self.controlsBox.addWidget(self.rvc_checkbox)
+
+        # add items to pivot
+        self.addSubInterface(self.trained_table, 'trained_table', 'Trained')
+        self.addSubInterface(self.untrained_table, 'untrained_table', 'Untrained')
+        self.addSubInterface(self.custom_widget, 'custom_table', 'Custom')
+
+        self.boxLayout.addWidget(self.pivot, 0, Qt.AlignmentFlag.AlignLeft)
+        self.boxLayout.addWidget(self.stackedWidget)
+        self.boxLayout.addLayout(self.controlsBox)
+
+        self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
+        self.stackedWidget.setCurrentWidget(self.trained_table)
+        self.pivot.setCurrentItem(self.trained_table.objectName())
 
     def onCurrentIndexChanged(self, index):
-        """Handle change of current tab"""
-        if index == "trainedWidget":
-            self.stackedWidget.setCurrentWidget(self.trained_widget)
-        elif index == "untrainedWidget":
-            self.stackedWidget.setCurrentWidget(self.untrained_widget)
-        elif index == "customWidget":
-            self.stackedWidget.setCurrentWidget(self.custom_widget)
+        widget = self.stackedWidget.widget(index)
+        self.pivot.setCurrentItem(widget.objectName())
 
     def verify(self, obj):
-        """Verify if an object is valid"""
-        if obj is None:
-            return False
-        if isinstance(obj, str) and obj == "":
-            return False
-        if isinstance(obj, list) and len(obj) == 0:
-            return False
-        if isinstance(obj, dict) and len(obj) == 0:
-            return False
-        return True
+        if obj == 2 and not cfg.get(cfg.accepts_custom_disclaimer):
+            title = 'Disclaimer for Use for Custom Imports'
+            content = CUSTOM_DISCLAIMER
+            w = MessageBox(title, content, self.parent.window())
+            w.yesButton.setText(self.tr('Agree'))
+            if w.exec():
+                cfg.set(cfg.accepts_custom_disclaimer, True)
 
     def add_custom(self):
-        """Add a custom character"""
-        dialog = CustomMessageBox(self)
-        dialog.yesButton.setText(self.tr("Add"))
-        dialog.yesButton.setEnabled(False)
-        
-        if dialog.exec():
-            name = dialog.name_input.text()
-            display_name = dialog.display_name_input.text()
-            index_path = dialog.index_card.configItem.text()
-            model_path = dialog.path_card.configItem.text()
-            ckpt_path = dialog.ckpt_card.configItem.text()
-            
-            # Create model directory
-            os.makedirs(f"models/{name}/RVC", exist_ok=True)
-            
-            # Create custom model entry
-            custom_model = {
-                "name": name,
-                "display_name": display_name,
-                "RVC": {
-                    "index": index_path,
-                    "model": model_path,
-                    "ckpt": ckpt_path
+        if cfg.get(cfg.accepts_custom_disclaimer):
+            m = CustomMessageBox(self.parent.window())
+            if m.exec():
+                custom_dir = os.path.join("models", f"custom_{m.custom_name.value}", f"{cfg.get(cfg.engine)}")
+
+                if os.path.exists(custom_dir):
+                    shutil.rmtree(custom_dir)
+
+                os.makedirs(custom_dir, exist_ok=True)
+                custom_name = f"custom_{m.custom_name.value}"
+
+                if m.pth_file.value != "Please Select a 'pth' File":
+                    shutil.copy(m.pth_file.value, os.path.join(custom_dir, f"{custom_name}_v1.pth"))
+
+                if m.ckpt_file.value != "Please Select a 'ckpt' File":
+                    shutil.copy(m.ckpt_file.value, os.path.join(custom_dir, f"{custom_name}_v1.cpkt"))
+
+                if m.index_file.value != "Please Select an 'index' File":
+                    shutil.copy(m.index_file.value, os.path.join(custom_dir, f"{custom_name}_v1.index"))
+
+                custom_model = {
+                    'name': f"custom_{m.custom_name.value}",
+                    'display_name': m.custom_name.value,
+                    f"{cfg.get(cfg.engine)}": {
+                        "version": "1",
+                        "engine_version": "2" if cfg.get(cfg.engine) == 'RVC' or cfg.get(cfg.engine) == 'GPT_SoVITS' else '1',
+                        "engine": f"{cfg.get(cfg.engine)}",
+                        "type": "pth"
+                    }
                 }
-            }
-            
-            # Load existing custom models or create new list
-            if os.path.exists('config/custom_models.json'):
-                with open('config/custom_models.json', 'r', encoding="utf-8") as file:
-                    custom_models = json.load(file)
-            else:
-                custom_models = []
-            
-            # Add new model and save
-            custom_models.append(custom_model)
-            with open('config/custom_models.json', 'w', encoding="utf-8") as file:
-                json.dump(custom_models, file)
-            
-            # Reload models
-            self.parent().load_models_config()
+
+                if os.path.exists('config/custom_models.json'):
+                    with open('config/custom_models.json', 'r', encoding="utf-8") as file:
+                        custom_models = json.load(file)
+                else:
+                    custom_models = []
+
+                custom_models.append(custom_model)
+
+                with open('config/custom_models.json', 'w', encoding="utf-8") as file:
+                    json.dump(custom_models, file)
+
+                QTimer.singleShot(0, lambda: (
+                    self.parent.load_models_config()
+                ))
+        else:
+            title = 'Disclaimer for Use for Custom Imports'
+            content = CUSTOM_DISCLAIMER
+            w = MessageBox(title, content, self.parent.window())
+            w.yesButton.setText(self.tr('Agree'))
+            if w.exec():
+                cfg.set(cfg.accepts_custom_disclaimer, True)
+                self.add_custom()
 
     def find_versions(self, directory_path, character_model_name, model_type):
-        """Find versions of a model"""
-        versions = []
+        # Construct the pattern dynamically
+        pattern_str = fr"^{character_model_name}.*_v(\d+)\.{model_type}$"
+        pattern = re.compile(pattern_str)
+
         if os.path.exists(directory_path):
-            for file in os.listdir(directory_path):
-                if file.endswith(".pth") and character_model_name in file and model_type in file:
-                    versions.append(file)
-        return versions
+            # Get a list of all files in the directory
+            all_files = [f for f in os.listdir(directory_path) if os.path.exists(directory_path) and os.path.isfile(os.path.join(directory_path, f))]
+
+            # Extract version numbers from matching files
+            versions = set()
+            for file_name in all_files:
+                match = pattern.match(file_name)
+                if match:
+                    version = int(match.group(1))
+                    versions.add(version)
+
+            return versions
+        else:
+            return None
 
     def clear(self):
-        """Clear all tables"""
-        # Clear trained table
-        if hasattr(self, 'trained_table') and self.trained_table.model():
-            self.trained_table.setModel(None)
-        
-        # Clear untrained table
-        if hasattr(self, 'untrained_table') and self.untrained_table.model():
-            self.untrained_table.setModel(None)
-        
-        # Clear custom table
-        if hasattr(self, 'custom_table') and self.custom_table.model():
-            self.custom_table.setModel(None)
+        self.filter_line_edit.clear()
+        self.rvc_checkbox.setChecked(False)
+        headers = ["Load", "Name", "Directory", "RVC"]
+        model = CharacterTableModel([], headers)
+        self.untrained_table.setModel(model)
+        headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
+        model = CharacterTableModel([], headers)
+        self.trained_table.setModel(model)
 
     def loadTrained(self, parent, trained_characters):
-        """Load trained characters into the table"""
-        headers = ["Name", "Engine", "Actions"]
-        data = []
-        
-        for character in trained_characters:
-            if not self.verify(character):
-                continue
-            
-            # Create actions button
-            actions_button = TransparentDropDownPushButton(self.tr('Actions'), self.trained_table)
-            
-            # Create actions menu
-            load_action = Action(FIF.PLAY, self.tr('Load'))
-            load_action.triggered.connect(lambda checked=False, c=character: parent.load_trained_model(c['name'], c, c['RVC']))
-            
-            download_action = Action(FIF.DOWNLOAD, self.tr('Download'))
-            download_action.triggered.connect(lambda checked=False, c=character: parent.download_model(c['name'], c[parent.cfg.get(parent.cfg.engine)], c['RVC']))
-            
-            update_action = Action(FIF.UPDATE, self.tr('Update'))
-            update_action.triggered.connect(lambda checked=False, c=character: parent.update_model(c['name'], c[parent.cfg.get(parent.cfg.engine)], c['RVC']))
-            
-            delete_action = Action(FIF.DELETE, self.tr('Delete'))
-            delete_action.triggered.connect(lambda checked=False, c=character, d=character['display_name']: parent.delete_model(c['name'], c[parent.cfg.get(parent.cfg.engine)], d))
-            
-            # Add actions to button
-            actions_button.addAction(load_action)
-            actions_button.addAction(download_action)
-            actions_button.addAction(update_action)
-            actions_button.addAction(delete_action)
-            
-            # Add row to data
-            data.append([character['display_name'], parent.cfg.get(parent.cfg.engine).value, actions_button])
-        
-        # Create model and set it to table
-        model = CharacterTableModel(data, headers, self)
-        self.trained_table.setModel(model)
-        
-        # Set row height for buttons
-        for row in range(len(data)):
-            self.trained_table.setRowHeight(row, 40)
-            if data[row][2] is not None:
-                self.trained_table.setIndexWidget(model.index(row, 2), data[row][2])
+        d = []
+        for row, cm in enumerate(trained_characters):
+            d.append([f'load', f'{cm["display_name"]}', f'{cm["name"]}', f'rvc', f'delete', f'dl', cm])
+
+        headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
+        table_model = CharacterTableModel(d, headers)
+        self.trained_table.setModel(table_model)
+
+        for row in range(table_model.rowCount()):
+            character_model = table_model.full_data(row, 6)
+            if character_model['RVC']:
+                widget = QWidget()
+                icon_widget = IconWidget()
+                icon_widget.setFixedSize(20, 20)
+                icon_widget.setIcon(FIF.CHECKBOX)
+                rvc_layout = QHBoxLayout(widget)
+                rvc_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                rvc_layout.setContentsMargins(1, 1, 1, 1)
+                rvc_layout.addWidget(icon_widget)
+                index = table_model.index(row, 5)
+                self.trained_table.setIndexWidget(index, widget)
+
+            model = character_model[cfg.get(cfg.engine)]
+            model_dir = os.path.join("models", character_model["name"], cfg.get(cfg.engine))
+            model_files = os.listdir(model_dir) if os.path.isdir(model_dir) else []
+            pattern_str = fr"^{character_model['name']}.*_v.*\.{model['type']}$"
+            pattern = re.compile(pattern_str)
+            downloaded = any(f for f in model_files if pattern.match(f))
+
+            if downloaded:
+                delete_button = PushButton('Delete')
+                delete_button.setIcon(FallTalkStrokeIcons.DELETE.icon())
+                delete_button.setMinimumWidth(115)
+                delete_widget = QWidget()
+                delete_layout = QHBoxLayout(delete_widget)
+                delete_layout.addWidget(delete_button)
+                delete_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                delete_layout.setContentsMargins(1, 1, 1, 1)
+                delete_button.clicked.connect(
+                    lambda _, dn=character_model["display_name"], c=character_model['name'], m=model: parent.delete_model(c, m, dn))
+                index = table_model.index(row, 4)
+                self.trained_table.setIndexWidget(index, delete_widget)
+
+                load_button = PushButton('Load')
+                load_button.setIcon(FIF.SEND)
+                load_button.setMinimumWidth(115)
+                widget = QWidget()
+                layout = QHBoxLayout(widget)
+                layout.addWidget(load_button)
+                layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                layout.setContentsMargins(1, 1, 1, 1)
+                load_button.clicked.connect(
+                    lambda _, rvc=character_model['RVC'], c=character_model['name'], r=row, m=model, cm=character_model: parent.load_trained_model(c, cm, rvc))
+                index = table_model.index(row, 0)
+                self.trained_table.setIndexWidget(index, widget)
+
+                # Check if there is a different version locally
+                versions = self.find_versions(os.path.join("models", character_model["name"], cfg.get(cfg.engine)), character_model["name"], model['type'])
+                different_version_found = int(model['version']) not in versions
+                if not different_version_found and character_model['RVC']:
+                    versions = self.find_versions(os.path.join("models", character_model["name"], "RVC"), character_model["name"], character_model['RVC']['type'])
+                    different_version_found = versions is None or int(character_model['RVC']['version']) not in versions
+
+                if different_version_found:
+                    update_button = PushButton('Update')
+                    update_button.setMinimumWidth(115)
+                    update_button.setIcon(FIF.UPDATE.icon(color=cfg.get(cfg.themeColor)))
+
+                    widget = QWidget()
+                    layout = QHBoxLayout(widget)
+                    layout.addWidget(update_button)
+                    layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                    layout.setContentsMargins(1, 1, 1, 1)
+                    update_button.clicked.connect(
+                        lambda _, rvc=character_model['RVC'], c=character_model['name'], r=row, m=model: parent.update_model(c, m, rvc))
+                    index = table_model.index(row, 3)
+                    self.trained_table.setIndexWidget(index, widget)
+
+            else:
+                download_button = PushButton('Download')
+                download_button.setMinimumWidth(115)
+                download_button.setIcon(FIF.CLOUD_DOWNLOAD)
+
+                widget = QWidget()
+                layout = QHBoxLayout(widget)
+                layout.addWidget(download_button)
+                layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                layout.setContentsMargins(1, 1, 1, 1)
+
+                download_button.clicked.connect(
+                    lambda _, rvc=character_model['RVC'], c=character_model['name'], r=row, m=model: parent.download_model(c, m, rvc))
+                index = table_model.index(row, 0)
+                self.trained_table.setIndexWidget(index, widget)
 
     def loadCustom(self, parent, custom_characters):
-        """Load custom characters into the table"""
-        if not custom_characters:
-            return
-            
-        headers = ["Name", "Actions"]
         data = []
-        
-        for name, character in custom_characters.items():
-            if not self.verify(character):
-                continue
-            
-            # Create actions button
-            actions_button = TransparentDropDownPushButton(self.tr('Actions'), self.custom_table)
-            
-            # Create actions menu
-            load_action = Action(FIF.PLAY, self.tr('Load'))
-            load_action.triggered.connect(lambda checked=False, c=character: parent.load_custom_model(c['name'], c, c['RVC']))
-            
-            delete_action = Action(FIF.DELETE, self.tr('Delete'))
-            delete_action.triggered.connect(lambda checked=False, c=character, d=character['display_name']: parent.delete_custom_model(c['name'], d))
-            
-            # Add actions to button
-            actions_button.addAction(load_action)
-            actions_button.addAction(delete_action)
-            
-            # Add row to data
-            data.append([character['display_name'], actions_button])
-        
-        # Create model and set it to table
-        model = CharacterTableModel(data, headers, self)
-        self.custom_table.setModel(model)
-        
-        # Set row height for buttons
-        for row in range(len(data)):
-            self.custom_table.setRowHeight(row, 40)
-            if data[row][1] is not None:
-                self.custom_table.setIndexWidget(model.index(row, 1), data[row][1])
+        for row, cm in custom_characters.items():
+            data.append([f'load', cm["display_name"], cm["display_name"] if cm["name"] is None else cm["name"], f'delete', f'rvc', cm])
+
+        headers = ["Load", "Name", "Directory", "Delete", "RVC"]
+        table_model = CharacterTableModel(data, headers)
+        self.custom_table.setModel(table_model)
+
+        for row in range(table_model.rowCount()):
+            character_model = table_model.full_data(row, 5)
+
+            if 'RVC' in character_model:
+                widget = QWidget()
+                icon_widget = IconWidget()
+                icon_widget.setFixedSize(20, 20)
+                icon_widget.setIcon(FIF.CHECKBOX)
+                rvc_layout = QHBoxLayout(widget)
+                rvc_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                rvc_layout.setContentsMargins(1, 1, 1, 1)
+                rvc_layout.addWidget(icon_widget)
+                index = table_model.index(row, 4)
+                self.custom_table.setIndexWidget(index, widget)
+
+            if cfg.get(cfg.engine) in character_model or 'RVC' in character_model:
+                load_button = PushButton('Load')
+                load_button.setMinimumWidth(115)
+                load_button.setIcon(FIF.SEND)
+
+                widget = QWidget()
+                layout = QHBoxLayout(widget)
+                layout.addWidget(load_button)
+                layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                layout.setContentsMargins(1, 1, 1, 1)
+                load_button.clicked.connect(lambda _, rvc=character_model['RVC'] if 'RVC' in character_model else None, cm=character_model, c=character_model['name'], r=row: parent.load_custom_model(c, cm, rvc))
+                index = table_model.index(row, 0)
+                self.custom_table.setIndexWidget(index, widget)
+
+            delete_button = PushButton('Delete')
+            delete_button.setIcon(FallTalkStrokeIcons.DELETE.icon())
+            delete_button.setMinimumWidth(115)
+            delete_widget = QWidget()
+            delete_layout = QHBoxLayout(delete_widget)
+            delete_layout.addWidget(delete_button)
+            delete_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            delete_layout.setContentsMargins(1, 1, 1, 1)
+            delete_button.clicked.connect(
+                lambda _, dn=character_model["display_name"], c=character_model['name']: parent.delete_custom_model(c, dn))
+            index = table_model.index(row, 3)
+            self.custom_table.setIndexWidget(index, delete_widget)
 
     def loadUntrained(self, parent, untrained_characters):
-        """Load untrained characters into the table"""
-        headers = ["Name", "Actions"]
         data = []
-        
-        for character in untrained_characters:
-            if not self.verify(character):
-                continue
-            
-            # Create actions button
-            actions_button = TransparentDropDownPushButton(self.tr('Actions'), self.untrained_table)
-            
-            # Create actions menu
-            load_action = Action(FIF.PLAY, self.tr('Load Base Model'))
-            load_action.triggered.connect(lambda checked=False, c=character: parent.load_base_model(c, c['RVC']))
-            
-            # Add actions to button
-            actions_button.addAction(load_action)
-            
-            # Add row to data
-            data.append([character['display_name'], actions_button])
-        
-        # Create model and set it to table
-        model = CharacterTableModel(data, headers, self)
-        self.untrained_table.setModel(model)
-        
-        # Set row height for buttons
-        for row in range(len(data)):
-            self.untrained_table.setRowHeight(row, 40)
-            if data[row][1] is not None:
-                self.untrained_table.setIndexWidget(model.index(row, 1), data[row][1])
+        for row, cm in enumerate(untrained_characters):
+            data.append([f'load', cm["display_name"], cm["display_name"] if cm["name"] is None else cm["name"], f'rvc', cm])
+
+        headers = ["Load", "Name", "Directory", "RVC"]
+        table_model = CharacterTableModel(data, headers)
+        self.untrained_table.setModel(table_model)
+
+        for row in range(table_model.rowCount()):
+            character_model = table_model.full_data(row, 4)
+
+            if character_model['RVC']:
+                widget = QWidget()
+                icon_widget = IconWidget()
+                icon_widget.setFixedSize(20, 20)
+                icon_widget.setIcon(FIF.CHECKBOX)
+                rvc_layout = QHBoxLayout(widget)
+                rvc_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                rvc_layout.setContentsMargins(1, 1, 1, 1)
+                rvc_layout.addWidget(icon_widget)
+                index = table_model.index(row, 3)
+                self.untrained_table.setIndexWidget(index, widget)
+
+            # Add Load Button for Untrained Characters
+            load_button = PushButton('Load')
+            load_button.setMinimumWidth(115)
+            load_button.setIcon(FIF.SEND)
+
+            widget = QWidget()
+            layout = QHBoxLayout(widget)
+            layout.addWidget(load_button)
+            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.setContentsMargins(1, 1, 1, 1)
+            load_button.clicked.connect(lambda _, rvc=character_model['RVC'], c=character_model, r=row: parent.load_base_model(c, rvc))
+            index = table_model.index(row, 0)
+            self.untrained_table.setIndexWidget(index, widget)
 
     def on_header_clicked(self, index):
-        """Handle header click for sorting"""
         pass
 
     def apply_filter(self):
-        """Apply search filter to tables"""
-        # Get current tab
-        current_tab = self.segmented_widget.currentItem()
-        
-        # Apply filter based on current tab
-        if current_tab == "trainedWidget":
-            search_text = self.trained_search.text().lower()
-            for row in range(self.trained_table.model().rowCount()):
-                if search_text in self.trained_table.model().data(self.trained_table.model().index(row, 0)).lower():
-                    self.trained_table.showRow(row)
+        state = self.rvc_checkbox.isChecked()
+        text = self.filter_line_edit.text()
+
+        model = self.custom_table.model()
+        if model:
+            for row in range(model.rowCount()):
+                match = text.lower() in model.full_data(row, 0).lower() or text.lower() in model.full_data(row, 1).lower()
+                if state:
+                    rvc_match = model.full_data(row, 5)['RVC'] is not None
+                    self.custom_table.setRowHidden(row, not match or not rvc_match)
                 else:
-                    self.trained_table.hideRow(row)
-        elif current_tab == "untrainedWidget":
-            search_text = self.untrained_search.text().lower()
-            for row in range(self.untrained_table.model().rowCount()):
-                if search_text in self.untrained_table.model().data(self.untrained_table.model().index(row, 0)).lower():
-                    self.untrained_table.showRow(row)
+                    self.custom_table.setRowHidden(row, not match)
+
+        model = self.untrained_table.model()
+        if model:
+            for row in range(model.rowCount()):
+                match = text.lower() in model.full_data(row, 0).lower() or text.lower() in model.full_data(row, 1).lower()
+                if state:
+                    rvc_match = model.full_data(row, 4)['RVC'] is not None
+                    self.untrained_table.setRowHidden(row, not match or not rvc_match)
                 else:
-                    self.untrained_table.hideRow(row)
-        elif current_tab == "customWidget":
-            search_text = self.custom_search.text().lower()
-            for row in range(self.custom_table.model().rowCount()):
-                if search_text in self.custom_table.model().data(self.custom_table.model().index(row, 0)).lower():
-                    self.custom_table.showRow(row)
+                    self.untrained_table.setRowHidden(row, not match)
+
+        model = self.trained_table.model()
+        if model:
+            for row in range(model.rowCount()):
+                match = text.lower() in model.full_data(row, 0).lower() or text.lower() in model.full_data(row, 1).lower()
+                if state:
+                    rvc_match = model.full_data(row, 6)['RVC'] is not None
+                    self.trained_table.setRowHidden(row, not match or not rvc_match)
                 else:
-                    self.custom_table.hideRow(row)
+                    self.trained_table.setRowHidden(row, not match)
 
     def addSubInterface(self, widget: QWidget, objectName, text):
-        """Add sub interface to widget"""
         widget.setObjectName(objectName)
         self.stackedWidget.addWidget(widget)
-        self.segmented_widget.addItem(
+        self.pivot.addItem(
             routeKey=objectName,
             text=text,
             onClick=lambda: self.stackedWidget.setCurrentWidget(widget)

@@ -1,9 +1,14 @@
+from src.config.config import cfg
 from src.widgets.generation_widget import GenerationWidget
 
 class XttsWidget(GenerationWidget):
-    """
-    Widget for XTTS (X Text-to-Speech) generation.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(text="XTTS v2", parent=parent)
-        self.text_input.setPlaceholderText("Please Enter Text")
+        super().__init__(parent=parent, text="XTTS")
+        self.addTempAndRep()
+        self.addGenSettings()
+        self.text_input.setPlaceholderText("Please enter text")
+        self.addGenerationButton()
+        self.setVisible(cfg.engine.value == "XTTSv2")
+        self.media_player.setVisible(cfg.engine.value == "XTTSv2")
+        self.setEnabled(False)

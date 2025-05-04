@@ -1,3 +1,4 @@
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QStackedWidget, QWidget
 from qfluentwidgets import SegmentedWidget
 
@@ -9,47 +10,45 @@ from src.settings.gpt_sovits_settings import GPTSoVITSSettings
 from src.settings.styletts2_settings import StyleTTS2Settings
 
 class SettingsWidget(FallTalkWidget):
-    """
-    Widget for displaying and managing application settings.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(text="Settings", parent=parent, vertical=True)
-        
-        self.segmented_widget = SegmentedWidget(self)
-        self.segmented_widget.setObjectName("settingsSegmentedWidget")
-        
+        super().__init__(parent=parent, text="Settings", vertical=True)
+
+        # Create a TabView instance
+        self.pivot = SegmentedWidget(self)
         self.stackedWidget = QStackedWidget(self)
-        self.stackedWidget.setObjectName("settingsStackedWidget")
-        
-        self.main_settings = FallTalkSettings(self)
-        self.rvc_settings = RVCSettings(self)
-        self.xtts_settings = XTTSSettings(self)
-        self.gpt_sovits_settings = GPTSoVITSSettings(self)
-        self.styletts2_settings = StyleTTS2Settings(self)
-        
-        self.addSubInterface(self.main_settings, "mainSettings", "Main")
-        self.addSubInterface(self.rvc_settings, "rvcSettings", "RVC")
-        self.addSubInterface(self.xtts_settings, "xttsSettings", "XTTS")
-        self.addSubInterface(self.gpt_sovits_settings, "gptSovitsSettings", "GPT-SoVITS")
-        self.addSubInterface(self.styletts2_settings, "styletts2Settings", "StyleTTS2")
-        
-        self.segmented_widget.setCurrentItem("mainSettings")
-        self.segmented_widget.currentItemChanged.connect(self.onCurrentIndexChanged)
-        
-        self.main_layout.addWidget(self.segmented_widget)
-        self.main_layout.addWidget(self.stackedWidget)
+
+        # Add TabItems to the TabView
+        self.rvc_settings = RVCSettings(parent)
+        self.xtts_settings = XTTSSettings(parent)
+        self.gpt_sovits_settings = GPTSoVITSSettings(parent)
+        self.styletts2_settings = StyleTTS2Settings(parent)
+
+        self.engine_settings = FallTalkSettings(parent)
+
+        # add items to pivot
+        self.addSubInterface(self.engine_settings, 'main_settings', 'Main Settings')
+        self.addSubInterface(self.rvc_settings, 'rvc_settings', 'RVC')
+        self.addSubInterface(self.xtts_settings, 'xtts_settings', 'XTTS')
+        self.addSubInterface(self.gpt_sovits_settings, 'gpt_sovits_settings', 'GPT SoVITS')
+        self.addSubInterface(self.styletts2_settings, 'styletts2_settings', 'StyleTTS2')
+
+        self.boxLayout.addWidget(self.pivot, 0, Qt.AlignmentFlag.AlignLeft)
+        self.boxLayout.addWidget(self.stackedWidget)
+
+        self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
+        self.stackedWidget.setCurrentWidget(self.engine_settings)
+        self.pivot.setCurrentItem(self.engine_settings.objectName())
 
     def addSubInterface(self, widget: QWidget, objectName, text):
-        """Add sub interface to settings widget"""
         widget.setObjectName(objectName)
         self.stackedWidget.addWidget(widget)
-        self.segmented_widget.addItem(
+        self.pivot.addItem(
             routeKey=objectName,
             text=text,
             onClick=lambda: self.stackedWidget.setCurrentWidget(widget)
         )
 
     def onCurrentIndexChanged(self, index):
-        """Handle change of current settings tab"""
-        widget = self.stackedWidget.widget(self.stackedWidget.currentIndex())
-        self.stackedWidget.setCurrentWidget(widget)
+        widget = self.stackedWidget.widget(index)
+        self.pivot.setCurrentItem(widget.objectName())

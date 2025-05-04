@@ -1,22 +1,23 @@
-from PySide6.QtWidgets import QGroupBox, QHBoxLayout
-from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QFileDialog
+from qfluentwidgets import FluentIcon as FIF, RangeSettingCard, TextEdit, PrimaryPushButton, ConfigItem, SwitchSettingCard, ConfigValidator, PushSettingCard
 
-from src.config.config import cfg
-from src.ui.cards import RadioSettingCard, RangeSettingCardScaled
-from src.widgets.generation_widget import GenerationWidget
+from audio.audio_player import StandardAudioPlayerBar
+from src.config.config import cfg, FileValidator
+from src.utils.icons import FallTalkStrokeIcons
+from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, TextSettingCard, SpinSettingCard, ComboBoxWordsCard
+from src.widgets import GenerationWidget
 
+from src.utils.logging_utils import logger
 
 class LlasaWidget(GenerationWidget):
-    """
-    Widget for Llasa text-to-speech generation.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(text="Llasa", parent=parent)
-        
+        super().__init__(parent=parent, text="GPT SoVITS")
         self.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
         self.transcribe_state = None
-        
-        # Add Llasa specific settings
+        self.words_data = None
+
         self.mode_card = RadioSettingCard(
             cfg.slice_mode,
             FIF.CUT,
@@ -25,56 +26,92 @@ class LlasaWidget(GenerationWidget):
             texts=["No Slice", "Basic punctuation . ! ? ...", "Every punctuation", "Every 4 sentences", "Every 2 sentences"],
             parent=self
         )
-        
-        self.temperature_llasa_card = RangeSettingCardScaled(
-            cfg.temperature_llasa,
+
+        self.temperature_card = RangeSettingCardScaled(
+            cfg.temperature_gpt_sovits,
             FIF.FRIGID,
             self.tr('Temperature'),
             self.tr('Controls the randomness of the generation'),
             parent=self
+
         )
-        
+
         self.speed_card = RangeSettingCardScaled(
-            cfg.speed_llasa,
+            cfg.speed_gpt_sovits,
             FIF.SPEED_OFF,
             self.tr('Speed'),
             self.tr('Increase or decrease the generated audio speed'),
             parent=self
+
         )
-        
+
         self.temp_and_speed = QGroupBox()
         self.temp_and_speed.setStyleSheet("border: none")
         self.temp_and_speed_layout = QHBoxLayout()
         self.temp_and_speed_layout.setContentsMargins(0, 0, 0, 0)
-        self.temp_and_speed_layout.addWidget(self.temperature_llasa_card, 3)
+        self.temp_and_speed_layout.addWidget(self.temperature_card, 3)
         self.temp_and_speed_layout.addWidget(self.speed_card, 3)
         self.temp_and_speed.setLayout(self.temp_and_speed_layout)
-        
-        # Add transcribe button
-        self.transcribe_button = PrimaryPushButton('Transcribe Reference Audio', self, FIF.MICROPHONE)
+
+        self.top_p_card = RangeSettingCardScaled(
+            cfg.top_p_gpt_sovits,
+            FIF.UP,
+            self.tr('Top P'),
+            self.tr('Higher values give more creativity in generation.'),
+            parent=self
+        )
+
+        self.top_k_card = RangeSettingCard(
+            cfg.top_k_gpt_sovits,
+            FIF.UP,
+            self.tr('Top K'),
+            self.tr('Lower values make it more predictable and coherent'),
+            parent=self
+        )
+
+        self.addToFrame(self.mode_card)
+        self.addToFrame(self.temp_and_speed)
+
+        self.p_and_k = QGroupBox()
+        self.p_and_k.setStyleSheet("border: none")
+        self.p_and_k_layout = QHBoxLayout()
+        self.p_and_k_layout.setContentsMargins(0, 0, 0, 0)
+        self.p_and_k_layout.addWidget(self.top_p_card, 3)
+        self.p_and_k_layout.addWidget(self.top_k_card, 3)
+        self.p_and_k.setLayout(self.p_and_k_layout)
+        self.addToFrame(self.p_and_k)
+
+        self.addGenSettings()
+
+        self.media_player = StandardAudioPlayerBar(self)
+        self.media_player.setVolume(100)
+        self.buttons_layout = QHBoxLayout()
+        self.transcribe_button = PrimaryPushButton("Transcribe Reference Audio")
+        self.transcribe_button.setIcon(FIF.PENCIL_INK)
         self.transcribe_button.clicked.connect(self.transcribe)
-        self.transcribe_button.setEnabled(False)
-        
-        self.button_layout.insertWidget(1, self.transcribe_button)
-        
-        # Insert Llasa specific settings before the RVC settings
-        self.main_layout.insertWidget(self.main_layout.indexOf(self.rvc_enabled), self.mode_card)
-        self.main_layout.insertWidget(self.main_layout.indexOf(self.rvc_enabled), self.temp_and_speed)
-        
-        self.setVisible(cfg.engine.value == "Llasa")
-        self.media_player.setVisible(cfg.engine.value == "Llasa")
+        self.transcribe_button.setVisible(False)
+        self.buttons_layout.addWidget(self.transcribe_button, stretch=1)
+        self.generate_button = PrimaryPushButton("Generate Audio")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.generate_audio)
+        self.buttons_layout.addWidget(self.generate_button, stretch=1)
+        self.boxLayout.addLayout(self.buttons_layout)
+        self.addToFrame(self.media_player)
+
+        self.setVisible(cfg.engine.value == "GPT_SoVITS")
+        self.media_player.setVisible(cfg.engine.value == "GPT_SoVITS")
         self.setEnabled(False)
 
     def onReferenceSelect(self):
-        if self.parent().tts_engine and self.parent().tts_engine.is_base:
+        if self.parent.tts_engine and self.parent.tts_engine.is_base:
             self.generate_button.setEnabled(False)
             self.transcribe_button.setEnabled(True)
-        else:
+        elif self.parent.tts_engine:
             self.generate_button.setEnabled(True)
             self.transcribe_button.setVisible(False)
 
     def transcribe(self):
-        self.parent().transcribe(self)
+        self.parent.transcribe(self)
 
     def clear(self):
         self.generate_button.setEnabled(False)

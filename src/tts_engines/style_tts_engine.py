@@ -2,7 +2,7 @@ import soundfile as sf
 from nltk.tokenize import word_tokenize
 from phonemizer.backend import EspeakBackend
 
-from src.utils.file_utils import get_app_root
+from src.utils.filesystem_utils import get_app_root, get_app_code_root
 from src.utils.audio_utils import load_audio
 from src.utils import logging_utils
 
@@ -11,16 +11,16 @@ from src.config.config import cfg
 import sys
 import os
 
-
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'StyleTTS2', 'utils')))
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'StyleTTS2', 'modules')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'StyleTTS2')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party',  'StyleTTS2', 'utils')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'StyleTTS2', 'modules')))
 
 from src.tts_engines.tts_engine import tts_engine
-from StyleTTS2.Modules.diffusion.sampler import DiffusionSampler, ADPM2Sampler, KarrasSchedule
-from StyleTTS2.Utils.PLBERT.util import load_plbert
-from StyleTTS2.models import *
-from StyleTTS2.text_utils import TextCleaner
-from StyleTTS2.utils import *
+from third_party.StyleTTS2.Modules.diffusion.sampler import DiffusionSampler, ADPM2Sampler, KarrasSchedule
+from third_party.StyleTTS2.Utils.PLBERT.util import load_plbert
+from third_party.StyleTTS2.models import *
+from third_party.StyleTTS2.text_utils import TextCleaner
+from third_party.StyleTTS2.utils import *
 
 
 class StyleTTS2_Engine(tts_engine):
@@ -84,16 +84,16 @@ class StyleTTS2_Engine(tts_engine):
     def load_model(self):
         logging_utils.logger.debug(f"Loading {self.model_path}")
 
-        config = yaml.safe_load(open("models/StyleTTS2/Models/Vokan/config.yml"))
+        config = yaml.safe_load(open(os.path.join(get_app_root(), "models/StyleTTS2/Models/Vokan/config.yml")))
 
         # load pretrained ASR model
-        self.text_aligner = load_ASR_models('models/StyleTTS2/ASR/epoch_00080.pth', 'models/StyleTTS2/ASR/config.yml')
+        self.text_aligner = load_ASR_models(os.path.join(get_app_root(), 'models/StyleTTS2/ASR/epoch_00080.pth'), os.path.join(get_app_root(), 'models/StyleTTS2/ASR/config.yml'))
 
         # load pretrained F0 model
-        self.pitch_extractor = load_F0_models('models/StyleTTS2/JDC/bst.t7')
+        self.pitch_extractor = load_F0_models(os.path.join(get_app_root(),'models/StyleTTS2/JDC/bst.t7'))
 
         # load BERT model
-        self.plbert = load_plbert('models/StyleTTS2/PLBERT/')
+        self.plbert = load_plbert(os.path.join(get_app_root(),'models/StyleTTS2/PLBERT/'))
 
         self.model_params = recursive_munch(config['model_params'])
         self.model = build_model(self.model_params, self.text_aligner, self.pitch_extractor, self.plbert)
@@ -101,7 +101,7 @@ class StyleTTS2_Engine(tts_engine):
         _ = [self.model[key].to(self.device) for key in self.model]
 
         if self.is_base:
-            params_whole = torch.load("models/StyleTTS2/Models/Vokan/epoch_2nd_00012.pth", map_location='cpu')
+            params_whole = torch.load(os.path.join(get_app_root(),"models/StyleTTS2/Models/Vokan/epoch_2nd_00012.pth"), map_location='cpu')
         else:
             params_whole = torch.load(self.model_path, map_location='cpu')
 

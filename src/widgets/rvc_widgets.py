@@ -1,307 +1,306 @@
-from PySide6.QtWidgets import QWidget, QGroupBox, QVBoxLayout, QHBoxLayout, QStackedWidget
-from qfluentwidgets import FluentIcon as FIF, TextEdit, PrimaryPushButton, SegmentedWidget
+import os
 
-from config.config import cfg
+from PySide6 import QtWidgets
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QWidget, QGroupBox, QVBoxLayout, QHBoxLayout, QStackedWidget, QSpacerItem, QFileDialog, QLineEdit
+from qfluentwidgets import FluentIcon as FIF, TextEdit, PrimaryPushButton, SegmentedWidget, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem, PushSettingCard
+
+from src.config.config import cfg, FileValidator
 from src.audio.audio_player import StandardAudioPlayerBar
 from src.audio.audio_recorder import StandardAudioRecorderBar
-from src.ui.cards import TextSettingCard, ComboBoxSettingsCard, RangeSettingCardScaled
+from src.ui.cards import TextSettingCard, RangeSettingCardScaled, RvcComboBoxSettingsCard
+from src.utils.inference_utils import get_edge_tts_voices, get_eleven_labs_voices
+from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget
 
 
 class BaseRVCWidget(QWidget):
-    """
-    Base widget for RVC (Real-time Voice Conversion) functionality.
-    """
     def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        super().__init__(parent)
+        self.parent = parent
+        self.view = QVBoxLayout(self)
+        self.view.setContentsMargins(0, 0, 0, 0)
 
     def addButtons(self):
-        """Add generation buttons to the widget"""
-        self.generate_button = PrimaryPushButton('Generate', self, FIF.PLAY)
-        self.generate_button.clicked.connect(lambda: self.parent().parent().generate_audio())
-        
-        self.button_layout = QHBoxLayout()
-        self.button_layout.addStretch(1)
-        self.button_layout.addWidget(self.generate_button)
-        self.button_layout.addStretch(1)
-        
-        self.main_layout.addLayout(self.button_layout)
+        self.rvc_index_influence_card = RangeSettingCardScaled(
+            cfg.rvc_index_influence,
+            FIF.DICTIONARY,
+            self.tr("Index Influence Ratio"),
+            self.tr("Higher Values detail but risk artifacts. Increase until artifacts appear."),
+        )
+
+        self.rvc_filter_radius_card = RangeSettingCard(
+            cfg.rvc_filter_radius,
+            FIF.FILTER,
+            self.tr("Filter Radius"),
+            self.tr("Using median filtering on tones ≥ 3 can reduce respiration"),
+        )
+
+        self.train_infu = QGroupBox()
+        self.train_infu.setStyleSheet("border: none")
+        self.train_infu_layout = QHBoxLayout()
+        self.train_infu_layout.setContentsMargins(0, 0, 0, 0)
+        self.train_infu_layout.addWidget(self.rvc_filter_radius_card, 3)
+        self.train_infu_layout.addWidget(self.rvc_index_influence_card, 3)
+        self.train_infu.setLayout(self.train_infu_layout)
+        self.view.addWidget(self.train_infu)
+
+        self.rvc_autotune_card = SwitchSettingCard(
+            FIF.MUSIC,
+            self.tr("Autotune"),
+            self.tr("Apply a soft autotune to your inferences, recommended signing."),
+            configItem=cfg.rvc_autotune,
+        )
+
+        self.rvc_split_audio_card = SwitchSettingCard(
+            FIF.CUT,
+            self.tr("Split Audio"),
+            self.tr("Split the audio into chunks for better results with large audio."),
+            configItem=cfg.rvc_split_audio,
+        )
+
+        self.auto_and_split = QGroupBox()
+        self.auto_and_split.setStyleSheet("border: none")
+        self.auto_and_split_layout = QHBoxLayout()
+        self.auto_and_split_layout.setContentsMargins(0, 0, 0, 0)
+        self.auto_and_split_layout.addWidget(self.rvc_split_audio_card, 3)
+        self.auto_and_split_layout.addWidget(self.rvc_autotune_card, 3)
+        self.auto_and_split.setLayout(self.auto_and_split_layout)
+        self.view.addWidget(self.auto_and_split)
 
     def addGenSettings(self):
-        """Add generation settings to the widget"""
-        self.output_name = TextSettingCard(
-            cfg.output_name,
-            FIF.SAVE,
+        self.output_name = ConfigItem("TTS", "output_name", None, ConfigValidator())
+
+        self.output_name_card = TextSettingCard(
+            self.output_name,
+            FIF.SAVE_AS,
             self.tr('Output Name'),
-            self.tr('Name of the output file'),
-            parent=self
+            self.tr('Name of Generated WAV file'),
+            placeholder="Random"
         )
-        
-        self.transpose_card = RangeSettingCardScaled(
-            cfg.rvc_transpose,
-            FIF.MUSIC,
-            self.tr('Transpose'),
-            self.tr('Pitch shift the output audio'),
-            parent=self
+
+        self.gen_settings_1 = QGroupBox()
+        self.gen_settings_1.setStyleSheet("border: none")
+        self.gen_settings_1_layout = QHBoxLayout()
+        self.gen_settings_1_layout.setContentsMargins(0, 0, 0, 0)
+        self.gen_settings_1_layout.addWidget(self.output_name_card, 3)
+        self.gen_settings_1.setLayout(self.gen_settings_1_layout)
+        self.view.addWidget(self.gen_settings_1)
+
+        self.autoplay = SwitchSettingCard(
+            FIF.PLAY,
+            self.tr('Autoplay'),
+            self.tr('Automatically Play Generated Audio'),
+            cfg.auto_play,
         )
-        
-        self.index_rate_card = RangeSettingCardScaled(
-            cfg.index_rate,
-            FIF.ALIGNMENT,
-            self.tr('Index Rate'),
-            self.tr('Controls the quality of the output'),
-            parent=self
+        self.delete_leftovers = SwitchSettingCard(
+            FIF.DELETE,
+            self.tr('Keep Only FUZ'),
+            self.tr('Delete XMW, LIP, and WAV'),
+            cfg.keep_only_fuz
         )
-        
-        self.filter_radius_card = RangeSettingCardScaled(
-            cfg.filter_radius,
-            FIF.BRUSH,
-            self.tr('Filter Radius'),
-            self.tr('Controls the quality of the output'),
-            parent=self
+        self.xwm_card = SwitchSettingCard(
+            FIF.COMMAND_PROMPT,
+            self.tr('Create FUZ'),
+            self.tr('Create XWM, LIP, and FUZ'),
+            cfg.xwm_enabled,
         )
-        
-        self.rms_mix_rate_card = RangeSettingCardScaled(
-            cfg.rms_mix_rate,
-            FIF.ALIGNMENT,
-            self.tr('RMS Mix Rate'),
-            self.tr('Controls the volume of the output'),
-            parent=self
-        )
-        
-        self.protect_card = RangeSettingCardScaled(
-            cfg.protect,
-            FIF.SHIELD,
-            self.tr('Protect'),
-            self.tr('Protect the unvoiced consonants'),
-            parent=self
-        )
-        
-        self.index_and_filter = QGroupBox()
-        self.index_and_filter.setStyleSheet("border: none")
-        self.index_and_filter_layout = QHBoxLayout()
-        self.index_and_filter_layout.setContentsMargins(0, 0, 0, 0)
-        self.index_and_filter_layout.addWidget(self.index_rate_card, 3)
-        self.index_and_filter_layout.addWidget(self.filter_radius_card, 3)
-        self.index_and_filter.setLayout(self.index_and_filter_layout)
-        
-        self.rms_and_protect = QGroupBox()
-        self.rms_and_protect.setStyleSheet("border: none")
-        self.rms_and_protect_layout = QHBoxLayout()
-        self.rms_and_protect_layout.setContentsMargins(0, 0, 0, 0)
-        self.rms_and_protect_layout.addWidget(self.rms_mix_rate_card, 3)
-        self.rms_and_protect_layout.addWidget(self.protect_card, 3)
-        self.rms_and_protect.setLayout(self.rms_and_protect_layout)
-        
-        self.main_layout.addWidget(self.output_name)
-        self.main_layout.addWidget(self.transpose_card)
-        self.main_layout.addWidget(self.index_and_filter)
-        self.main_layout.addWidget(self.rms_and_protect)
+        self.gen_settings = QGroupBox()
+        self.gen_settings.setStyleSheet("border: none")
+        self.gen_settings_layout = QHBoxLayout()
+        self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.gen_settings_layout.addWidget(self.autoplay, 2)
+        self.gen_settings_layout.addWidget(self.xwm_card, 2)
+        self.gen_settings_layout.addWidget(self.delete_leftovers, 2)
+
+        self.gen_settings.setLayout(self.gen_settings_layout)
+        self.view.addWidget(self.gen_settings)
+
+        self.generate_button = PrimaryPushButton("Generate Audio")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.generate_audio)
+        self.view.addWidget(self.generate_button)
+
 
 class RVCMicrophoneWidget(BaseRVCWidget):
-    """
-    Widget for RVC using microphone input.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        
+        super().__init__(parent)
+
         self.media_recorder = StandardAudioRecorderBar(self)
-        self.media_player = StandardAudioPlayerBar(self)
-        self.media_player.setVisible(False)
-        
-        self.main_layout.addWidget(self.media_recorder)
+        self.view.addWidget(self.media_recorder)
+        self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.view.addItem(self.spacer)
+        self.rvc_pitch_card = RangeSettingCard(
+            cfg.rvc_pitch,
+            FIF.MARKET,
+            self.tr("Pitch Adjustment"),
+            self.tr("Set the pitch of the audio, useful for opposite gender."),
+        )
+        self.view.addWidget(self.rvc_pitch_card)
         self.addButtons()
         self.addGenSettings()
-        self.main_layout.addWidget(self.media_player)
+
 
 class RVCFileWidget(BaseRVCWidget):
-    """
-    Widget for RVC using file input.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        
-        self.text_input = TextEdit(self)
-        self.text_input.setPlaceholderText("Please Select a File")
-        self.text_input.setFixedHeight(200)
-        self.text_input.setReadOnly(True)
-        
-        self.rvc_file = TextSettingCard(
-            cfg.rvc_file,
-            FIF.FOLDER,
-            self.tr('RVC File'),
-            self.tr('File to convert'),
-            parent=self
+        super().__init__(parent)
+
+        self.rvc_file_start = "./"
+        self.rvc_file = ConfigItem("bulk", "upload_file", "Please Select an Audio File", FileValidator())
+        self.rvc_file_card = PushSettingCard(
+            self.tr('Select File'),
+            FIF.DOCUMENT,
+            self.tr("Audio File"),
+            self.rvc_file.value,
         )
-        self.rvc_file.clicked.connect(self.__onFileCardClicked)
-        
-        self.media_player = StandardAudioPlayerBar(self)
-        self.media_player.setVisible(False)
-        
-        self.main_layout.addWidget(self.text_input)
-        self.main_layout.addWidget(self.rvc_file)
+        self.rvc_file_card.clicked.connect(self.__onFileCardClicked)
+        self.view.addWidget(self.rvc_file_card)
+        self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.view.addItem(self.spacer)
+
+        self.rvc_pitch_card = RangeSettingCard(
+            cfg.rvc_pitch,
+            FIF.MARKET,
+            self.tr("Pitch Adjustment"),
+            self.tr("Set the pitch of the audio, useful for opposite gender."),
+        )
+        self.view.addWidget(self.rvc_pitch_card)
+
         self.addButtons()
         self.addGenSettings()
-        self.main_layout.addWidget(self.media_player)
 
     def __onFileCardClicked(self):
-        self.text_input.setPlainText(f"Selected File: {self.rvc_file.value}")
+        allowed_file_types = "WAV files (*.wav);;MP3 files (*.mp3)"
+        folder = QFileDialog.getOpenFileName(
+            self, self.tr("Choose CSV or Text File"), self.rvc_file_start, allowed_file_types)
+        if not folder or folder[0] == "":
+            return
+
+        self.rvc_file_start = os.path.dirname(folder[0])
+        self.rvc_file.value = folder[0]
+        self.rvc_file_card.setContent(folder[0])
+
 
 class RVCEdgeTTSWidget(BaseRVCWidget):
-    """
-    Widget for RVC using Edge TTS input.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        
-        self.text_input = TextEdit(self)
-        self.text_input.setPlaceholderText("Please Enter Text")
-        self.text_input.setFixedHeight(200)
-        
-        self.voice_combo = ComboBoxSettingsCard(
-            cfg.edge_tts_voice,
-            FIF.MICROPHONE,
+        super().__init__(parent)
+
+        self.text_input = TextEdit()
+        font = QFont()
+        font.setPointSize(12)
+        self.text_input.setFont(font)
+        self.text_input.setPlaceholderText("Edge TTS, offered by Microsoft, is a free service that boasts a diverse array of voices and supports numerous languages. However, it currently lacks the capability to infuse emotional nuances into the synthesized speech.")
+        self.view.addWidget(self.text_input)
+
+        self.voice_combo = RvcComboBoxSettingsCard(
+            FallTalkIcons.VOICE_OVER.icon(),
             self.tr('Voice'),
-            self.tr('Voice to use for Edge TTS'),
-            parent=self
-        )
-        
-        self.media_player = StandardAudioPlayerBar(self)
-        self.media_player.setVisible(False)
-        
-        self.main_layout.addWidget(self.text_input)
-        self.main_layout.addWidget(self.voice_combo)
+            self.tr('Which base voice should we use?'))
+
         self.addButtons()
         self.addGenSettings()
-        self.main_layout.addWidget(self.media_player)
-        
-        self.populate_voice_combo()
+        self.gen_settings_1_layout.addWidget(self.voice_combo, 3)
 
     def populate_voice_combo(self):
-        """Populate the voice combo box with available voices"""
-        self.voice_combo.comboBox.clear()
-        self.voice_combo.comboBox.addItems([
-            "en-US-AnaNeural", "en-US-AriaNeural", "en-US-ChristopherNeural", 
-            "en-US-EricNeural", "en-US-GuyNeural", "en-US-JennyNeural", 
-            "en-US-MichelleNeural", "en-US-RogerNeural", "en-US-SteffanNeural"
-        ])
+        if self.voice_combo.configItem.count() == 0:
+            voices = get_edge_tts_voices()
+
+            for voice in voices:
+                self.voice_combo.configItem.addItem(voice)
+
+            self.voice_combo.configItem.setCurrentIndex(self.voice_combo.configItem.count() - 1)
+
 
 class RVCElevenLabsWidget(BaseRVCWidget):
-    """
-    Widget for RVC using ElevenLabs TTS input.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        
-        self.text_input = TextEdit(self)
-        self.text_input.setPlaceholderText("Please Enter Text")
-        self.text_input.setFixedHeight(200)
-        
-        self.voice_combo = ComboBoxSettingsCard(
-            cfg.eleven_labs_voice,
-            FIF.MICROPHONE,
+        super().__init__(parent)
+
+        self.text_input = TextEdit()
+        font = QFont()
+        font.setPointSize(12)
+        self.text_input.setFont(font)
+        self.text_input.setPlaceholderText("ElevenLabs requires that you set an API key below. Once you have done that, you gain the ability to utilize all the voices on the ElevenLabs platform including ones you have created.")
+        self.view.addWidget(self.text_input)
+
+        self.voice_combo = RvcComboBoxSettingsCard(
+            FallTalkIcons.VOICE_OVER.icon(),
             self.tr('Voice'),
-            self.tr('Voice to use for ElevenLabs'),
-            parent=self
+            self.tr('Which base voice should we use?'))
+
+        self.eleven_labs_key = TextSettingCard(
+            cfg.rvc_eleven_labs_key,
+            FIF.SAVE_AS,
+            self.tr('API Access Key'),
+            self.tr('Optional, used to access your custom ElevenLabs voices'),
+            placeholder="Required to use service"
         )
-        
-        self.stability_card = RangeSettingCardScaled(
-            cfg.eleven_labs_stability,
-            FIF.ALIGNMENT,
-            self.tr('Stability'),
-            self.tr('Controls the stability of the generation'),
-            parent=self
-        )
-        
-        self.similarity_boost_card = RangeSettingCardScaled(
-            cfg.eleven_labs_similarity_boost,
-            FIF.ALIGNMENT,
-            self.tr('Similarity Boost'),
-            self.tr('Controls the similarity to the reference voice'),
-            parent=self
-        )
-        
-        self.stability_and_similarity = QGroupBox()
-        self.stability_and_similarity.setStyleSheet("border: none")
-        self.stability_and_similarity_layout = QHBoxLayout()
-        self.stability_and_similarity_layout.setContentsMargins(0, 0, 0, 0)
-        self.stability_and_similarity_layout.addWidget(self.stability_card, 3)
-        self.stability_and_similarity_layout.addWidget(self.similarity_boost_card, 3)
-        self.stability_and_similarity.setLayout(self.stability_and_similarity_layout)
-        
-        self.media_player = StandardAudioPlayerBar(self)
-        self.media_player.setVisible(False)
-        
-        self.main_layout.addWidget(self.text_input)
-        self.main_layout.addWidget(self.voice_combo)
-        self.main_layout.addWidget(self.stability_and_similarity)
+        self.eleven_labs_key.lineEdit.setEchoMode(QLineEdit.EchoMode.Password)
+
+        self.view.addWidget(self.eleven_labs_key)
         self.addButtons()
         self.addGenSettings()
-        self.main_layout.addWidget(self.media_player)
-        
-        self.populate_voice_combo()
+        self.gen_settings_1_layout.addWidget(self.voice_combo, 3)
 
     def populate_voice_combo(self):
-        """Populate the voice combo box with available voices"""
-        self.voice_combo.comboBox.clear()
-        self.voice_combo.comboBox.addItems([
-            "Adam", "Antoni", "Arnold", "Bella", "Callum", "Charlie", "Clyde", 
-            "Daniel", "Dorothy", "Ethan", "Fin", "Freya", "Gigi", "Giovanni", 
-            "Grace", "Harry", "James", "Jeremy", "Jessie", "Joseph", "Josh", 
-            "Liam", "Matthew", "Matilda", "Michael", "Mimi", "Nicole", "Patrick", 
-            "Rachel", "Ryan", "Sam", "Sarah", "Scott", "Thomas", "Victoria"
-        ])
+        self.voice_combo.configItem.clear()
+        voices = get_eleven_labs_voices()
+
+        for voice in voices:
+            self.voice_combo.configItem.addItem(voice)
+
+        self.voice_combo.configItem.setCurrentIndex(self.voice_combo.configItem.count() - 1)
+
 
 class RVCWidget(FallTalkWidget):
-    """
-    Main widget for RVC functionality, containing all RVC sub-widgets.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(text="RVC", parent=parent, vertical=True)
-        
-        self.segmented_widget = SegmentedWidget(self)
-        self.segmented_widget.setObjectName("rvcSegmentedWidget")
-        
+        super().__init__(parent=parent, text="RVC", vertical=True)
+        self.parent = parent
+
+        self.pivot = SegmentedWidget(self)
         self.stackedWidget = QStackedWidget(self)
-        self.stackedWidget.setObjectName("rvcStackedWidget")
-        
-        self.rvc_mic_widget = RVCMicrophoneWidget(self)
-        self.rvc_file_widget = RVCFileWidget(self)
-        self.edge_tts_widget = RVCEdgeTTSWidget(self)
-        self.eleven_labs_widget = RVCElevenLabsWidget(self)
-        
-        self.addSubInterface(self.rvc_mic_widget, "rvcMicWidget", "Microphone")
-        self.addSubInterface(self.rvc_file_widget, "rvcFileWidget", "File")
-        self.addSubInterface(self.edge_tts_widget, "edgeTTSWidget", "Edge TTS")
-        self.addSubInterface(self.eleven_labs_widget, "elevenLabsWidget", "ElevenLabs")
-        
-        self.segmented_widget.setCurrentItem("rvcMicWidget")
-        self.segmented_widget.currentItemChanged.connect(self.onCurrentIndexChanged)
-        
+
+        self.edge_tts_widget = RVCEdgeTTSWidget(self.parent)
+        self.eleven_labs_widget = RVCElevenLabsWidget(self.parent)
+        self.rvc_file_widget = RVCFileWidget(self.parent)
+        self.rvc_mic_widget = RVCMicrophoneWidget(self.parent)
+
+        self.addSubInterface(self.rvc_mic_widget, 'rvc_mic_widget', 'Microphone')
+        self.addSubInterface(self.rvc_file_widget, 'rvc_file_widget', 'File')
+        self.addSubInterface(self.edge_tts_widget, 'edge_tts_widget', 'Edge TTS')
+        self.addSubInterface(self.eleven_labs_widget, 'eleven_labs_widget', 'ElevenLabs')
+
+        self.boxLayout.addWidget(self.pivot, 0, Qt.AlignmentFlag.AlignLeft)
+        self.boxLayout.addWidget(self.stackedWidget)
+        self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
+        self.stackedWidget.setCurrentWidget(self.rvc_mic_widget)
+        self.pivot.setCurrentItem(self.rvc_mic_widget.objectName())
+
         self.media_player = StandardAudioPlayerBar(self)
-        self.media_player.setVisible(False)
-        
-        self.main_layout.addWidget(self.segmented_widget)
-        self.main_layout.addWidget(self.stackedWidget)
+        self.media_player.setVolume(100)
+        self.addToFrame(self.media_player)
+        self.setEnabled(False)
+        self.setVisible(cfg.engine.value == "RVC")
+        self.media_player.setVisible(cfg.engine.value == "RVC")
 
     def onCurrentIndexChanged(self, index):
-        """Handle change of current RVC tab"""
-        if index == "rvcMicWidget":
-            self.stackedWidget.setCurrentWidget(self.rvc_mic_widget)
-        elif index == "rvcFileWidget":
-            self.stackedWidget.setCurrentWidget(self.rvc_file_widget)
-        elif index == "edgeTTSWidget":
-            self.stackedWidget.setCurrentWidget(self.edge_tts_widget)
-        elif index == "elevenLabsWidget":
-            self.stackedWidget.setCurrentWidget(self.eleven_labs_widget)
+        widget = self.stackedWidget.widget(index)
+        self.pivot.setCurrentItem(widget.objectName())
+
+        if index == 3:
+            self.eleven_labs_widget.populate_voice_combo()
+        elif index == 2:
+            self.edge_tts_widget.populate_voice_combo()
 
     def addSubInterface(self, widget: QWidget, objectName, text):
-        """Add sub interface to RVC widget"""
         widget.setObjectName(objectName)
         self.stackedWidget.addWidget(widget)
-        self.segmented_widget.addItem(
+        self.pivot.addItem(
             routeKey=objectName,
             text=text,
             onClick=lambda: self.stackedWidget.setCurrentWidget(widget)

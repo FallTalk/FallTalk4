@@ -4,9 +4,9 @@ import sys
 import os
 import torch
 from src.tts_engines.tts_engine import tts_engine
-from src.utils.file_utils import get_app_root
+from src.utils.filesystem_utils import get_app_code_root
 
-sys.path.append(os.path.abspath(os.path.join(get_app_root(), 'fish-speech/fish_speech')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'fish-speech/fish_speech')))
 
 class FishSpeechEngine(tts_engine):
 

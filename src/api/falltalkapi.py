@@ -9,7 +9,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, FileResponse
 
 from src.config.config import cfg, VERSION
-from src.utils import gpt_sovits_inference, rvc_inference, styletts2_inference, xtts_inference
+from src.utils.inference_utils import gpt_sovits_inference, rvc_inference, styletts2_inference, xtts_inference
 
 app = FastAPI()
 

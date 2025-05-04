@@ -1,129 +1,130 @@
 from PySide6.QtWidgets import QGroupBox, QHBoxLayout
 from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton
 
+from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
-from src.ui.cards import ComboBoxWordsCard, RadioSettingCard, RangeSettingCardScaled
-from src.widgets.generation_widget import GenerationWidget
+from src.utils.icons import FallTalkIcons
+from src.utils.logging_utils import logger
+from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, ComboBoxWordsCard
+from src.widgets import GenerationWidget
 
 
 class F5Widget(GenerationWidget):
-    """
-    Widget for F5 text-to-speech generation.
-    """
+
     def __init__(self, parent=None):
-        super().__init__(text="F5", parent=parent)
-        
+        super().__init__(parent=parent, text="F5")
         self.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
         self.transcribe_state = None
         self.words_data = None
-        
-        # Add F5 specific settings
+
         self.mode_card = RadioSettingCard(
             cfg.f5_mode,
-            FIF.CUT,
-            self.tr('Mode'),
-            self.tr('Mode of operation'),
-            texts=["tts", "edit"],
-            parent=self
+            FIF.DEVELOPER_TOOLS,
+            self.tr('Generation Mode'),
+            self.tr('How should we generate text'),
+            texts=["Edit", "TTS"],
         )
-        self.mode_card.radioButtonGroup.buttonClicked.connect(self.mode_changed)
-        
+
+        self.mode_card.optionChanged.connect(self.mode_changed)
+        # self.edit_mode_card = RadioSettingCard(
+        #     cfg.edit_mode,
+        #     FIF.SETTING,
+        #     self.tr('Editing Mode'),
+        #     self.tr('What to do with the selected first and last word'),
+        #     texts=["Replace Half", "Replace Completely"],
+        # )
+
+        self.addToFrame(self.mode_card)
+
         self.start_dropdown_card = ComboBoxWordsCard(
-            cfg.f5_start_word,
-            FIF.ALIGNMENT,
-            self.tr('Start Word'),
-            self.tr('Word to start editing from'),
-            parent=self
-        )
-        
+            FIF.RIGHT_ARROW,
+            self.tr('Start'),
+            self.tr('Where do we start generating the new text'))
         self.end_dropdown_card = ComboBoxWordsCard(
-            cfg.f5_end_word,
-            FIF.ALIGNMENT,
-            self.tr('End Word'),
-            self.tr('Word to end editing at'),
-            parent=self
-        )
-        
-        self.start_end_group = QGroupBox()
-        self.start_end_group.setStyleSheet("border: none")
-        self.start_end_layout = QHBoxLayout()
-        self.start_end_layout.setContentsMargins(0, 0, 0, 0)
-        self.start_end_layout.addWidget(self.start_dropdown_card, 3)
-        self.start_end_layout.addWidget(self.end_dropdown_card, 3)
-        self.start_end_group.setLayout(self.start_end_layout)
-        
+            FIF.LEFT_ARROW,
+            self.tr('End'),
+            self.tr('Where do we stop generating the new text'))
+
+        self.start_and_end = QGroupBox()
+        self.start_and_end.setStyleSheet("border: none")
+        self.start_and_end_layout = QHBoxLayout()
+        self.start_and_end_layout.setContentsMargins(0, 0, 0, 0)
+        self.start_and_end_layout.addWidget(self.start_dropdown_card, 3)
+        self.start_and_end_layout.addWidget(self.end_dropdown_card, 3)
+        self.start_and_end.setLayout(self.start_and_end_layout)
+        self.start_and_end.setVisible(cfg.get(cfg.f5_mode) == "edit")
+        # self.edit_mode_card.setVisible(cfg.get(cfg.mode) == "edit")
+        self.addToFrame(self.start_and_end)
+
+        # self.addToFrame(self.edit_mode_card)
+
         self.speed_card = RangeSettingCardScaled(
-            cfg.speed_f5,
-            FIF.SPEED_OFF,
-            self.tr('Speed'),
-            self.tr('Increase or decrease the generated audio speed'),
-            parent=self
+            cfg.f5_speed,
+            FallTalkIcons.LOOP.icon(),
+            self.tr('Speed Factor'),
+            self.tr('Increase or Decrease generated speed'),
+            scale=10
         )
-        
-        self.temperature_f5_card = RangeSettingCardScaled(
-            cfg.temperature_f5,
-            FIF.FRIGID,
-            self.tr('Temperature'),
-            self.tr('Controls the randomness of the generation'),
-            parent=self
-        )
-        
-        self.temp_and_speed = QGroupBox()
-        self.temp_and_speed.setStyleSheet("border: none")
-        self.temp_and_speed_layout = QHBoxLayout()
-        self.temp_and_speed_layout.setContentsMargins(0, 0, 0, 0)
-        self.temp_and_speed_layout.addWidget(self.temperature_f5_card, 3)
-        self.temp_and_speed_layout.addWidget(self.speed_card, 3)
-        self.temp_and_speed.setLayout(self.temp_and_speed_layout)
-        
-        # Add transcribe button
-        self.transcribe_button = PrimaryPushButton('Transcribe Reference Audio', self, FIF.MICROPHONE)
+        self.temp_and_rep = QGroupBox()
+        self.temp_and_rep.setStyleSheet("border: none")
+        self.temp_and_rep_layout = QHBoxLayout()
+        self.temp_and_rep_layout.setContentsMargins(0, 0, 0, 0)
+        self.temp_and_rep_layout.addWidget(self.speed_card, 3)
+        self.temp_and_rep.setLayout(self.temp_and_rep_layout)
+        self.temp_and_rep.setVisible(cfg.get(cfg.f5_mode) == "edit")
+        self.addToFrame(self.temp_and_rep)
+
+        self.addGenSettings()
+
+        self.media_player = StandardAudioPlayerBar(self)
+        self.media_player.setVolume(100)
+        self.buttons_layout = QHBoxLayout()
+        self.transcribe_button = PrimaryPushButton("Transcribe Reference Audio")
+        self.transcribe_button.setIcon(FIF.PENCIL_INK)
         self.transcribe_button.clicked.connect(self.transcribe)
         self.transcribe_button.setEnabled(False)
-        
-        self.button_layout.insertWidget(1, self.transcribe_button)
-        
-        # Insert F5 specific settings before the RVC settings
-        self.main_layout.insertWidget(self.main_layout.indexOf(self.rvc_enabled), self.mode_card)
-        self.main_layout.insertWidget(self.main_layout.indexOf(self.rvc_enabled), self.start_end_group)
-        self.main_layout.insertWidget(self.main_layout.indexOf(self.rvc_enabled), self.temp_and_speed)
-        
-        # Hide edit-specific controls initially if mode is tts
-        if cfg.get(cfg.f5_mode) == "tts":
-            self.start_end_group.setVisible(False)
-        
+        self.buttons_layout.addWidget(self.transcribe_button, stretch=1)
+        self.generate_button = PrimaryPushButton("Generate Audio")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.generate_audio)
+        self.generate_button.setEnabled(False)
+        self.buttons_layout.addWidget(self.generate_button, stretch=1)
+        self.boxLayout.addLayout(self.buttons_layout)
+        self.addToFrame(self.media_player)
+
         self.setVisible(cfg.engine.value == "F5")
         self.media_player.setVisible(cfg.engine.value == "F5")
-        self.setEnabled(False)
+        self.setEnabled(True)
 
     def transcribe(self):
-        self.parent().transcribe(self)
+        self.parent.transcribe(self)
 
     def onReferenceSelect(self):
-        if self.parent().tts_engine and self.parent().tts_engine.is_base:
-            self.generate_button.setEnabled(False)
-            self.transcribe_button.setEnabled(True)
-        else:
-            self.generate_button.setEnabled(True)
-            self.transcribe_button.setVisible(False)
+        self.generate_button.setEnabled(False)
+        self.transcribe_button.setEnabled(True)
 
     def mode_changed(self, change):
-        self.start_end_group.setVisible(cfg.get(cfg.f5_mode) == "edit")
+        self.start_and_end.setVisible(change.value == "edit")
+        self.temp_and_rep.setVisible(cfg.get(cfg.f5_mode) == "edit")
 
     def clear(self):
         self.generate_button.setEnabled(False)
         self.transcribe_button.setEnabled(False)
-        self.start_dropdown_card.comboBox.clear()
-        self.end_dropdown_card.comboBox.clear()
-        self.words_data = None
+        self.start_dropdown_card.configItem.clear()
+        self.end_dropdown_card.configItem.clear()
+        self.start_dropdown_card.setTranscript(None)
+        self.end_dropdown_card.setTranscript(None)
 
     def load_data(self):
-        if self.transcribe_state and 'words' in self.transcribe_state:
-            self.words_data = self.transcribe_state['words']
-            self.start_dropdown_card.setWords(self.words_data)
-            self.end_dropdown_card.setWords(self.words_data)
-        
-        self.transcribe_state = self.transcribe_state['transcript']
-        self.text_input.setPlaceholderText(f'Transcript: {self.transcribe_state} \n\nPlease Enter Your Text Now')
         self.generate_button.setEnabled(True)
         self.transcribe_button.setEnabled(False)
+        self.text_input.setPlaceholderText(f"Transcript: {self.transcribe_state['transcript']} \n\nPlease Enter Your Text Now")
+        logger.debug(f"{self.transcribe_state['words_info']}")
+        self.start_dropdown_card.setTranscript(self.transcribe_state['words_info'])
+        self.end_dropdown_card.setTranscript(self.transcribe_state['words_info'])
+
+        for word_info in self.transcribe_state['words_info']:
+            self.start_dropdown_card.configItem.addItem(f"{word_info['word']}\t{word_info['start']}", userData=word_info)
+            self.end_dropdown_card.configItem.addItem(f"{word_info['word']}\t{word_info['end']}", userData=word_info)
+
+        self.end_dropdown_card.configItem.setCurrentIndex(self.end_dropdown_card.configItem.count() - 1)

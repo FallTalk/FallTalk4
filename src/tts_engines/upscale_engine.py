@@ -1,5 +1,6 @@
 import glob
 import os
+import sys
 
 import PySide6
 import noisereduce as nr
@@ -13,7 +14,10 @@ from pydub import AudioSegment
 from pydub.silence import detect_silence, split_on_silence
 
 from src.utils import logging_utils
-from audio_upscaler.predict import Predictor
+from src.utils.filesystem_utils import get_app_code_root
+
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'audio_upscaler')))
+from third_party.audio_upscaler.predict import Predictor
 from src.config.config import cfg
 from src.utils.audio_utils import load_audio, create_xwm, create_lip_and_fuz, extract_fuz
 

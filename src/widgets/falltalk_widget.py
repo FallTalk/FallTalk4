@@ -1,21 +1,22 @@
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout
 
 class FallTalkWidget(QFrame):
-    """
-    Base widget class for FallTalk application.
-    """
+
     def __init__(self, text: str, parent=None, vertical=False):
         super().__init__(parent=parent)
-        self.setObjectName(text.replace(" ", ""))
-        self.text = text
-        
         if vertical:
-            self.main_layout = QVBoxLayout(self)
+            self.boxLayout = QVBoxLayout(self)
         else:
-            self.main_layout = QHBoxLayout(self)
-            
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.main_layout)
+            self.boxLayout = QHBoxLayout(self)
+        self.title = text
+        # self.settingLabel = SubtitleLabel(self.tr(text), self)
+        # self.settingLabel.move(6, 5)
+        # self.settingLabel.setFixedWidth(400)
+
+        self.setObjectName(text.replace(' ', '-'))
+        # !IMPORTANT: leave some space for title bar
+        self.boxLayout.setContentsMargins(5, 5, 5, 5)
+        self.setLayout(self.boxLayout)
 
     def addToFrame(self, widget):
-        self.main_layout.addWidget(widget)
+        self.boxLayout.addWidget(widget)
