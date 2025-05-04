@@ -153,11 +153,10 @@ class ReferencesWidget(FallTalkWidget):
         )
 
     def load_files_from_folder(self, folder_path):
-        self.parent.gpt_sovits_widget.clear(),
-        self.parent.f5_widget.clear()
-        self.parent.llasa_widget.clear()
-        self.parent.fish_widget.clear()
-        self.parent.orpheus_widget.clear()
+        # Clear all widgets that have a clear method
+        for widget in self.parent.engine_widgets.values():
+            if hasattr(widget, 'clear'):
+                widget.clear()
 
         os.makedirs(folder_path, exist_ok=True)
         files = os.listdir(folder_path)
@@ -242,11 +241,10 @@ class ReferencesWidget(FallTalkWidget):
     def select_row(self):
         index = self.stackedWidget.currentWidget().currentIndex()
         if index.isValid():
-            self.parent.gpt_sovits_widget.onReferenceSelect()
-            self.parent.f5_widget.onReferenceSelect()
-            self.parent.llasa_widget.onReferenceSelect()
-            self.parent.fish_widget.onReferenceSelect()
-            self.parent.orpheus_widget.onReferenceSelect()
+            # Call onReferenceSelect for all widgets that have the method
+            for widget in self.parent.engine_widgets.values():
+                if hasattr(widget, 'onReferenceSelect'):
+                    widget.onReferenceSelect()
 
             row = index.row()
             model = self.stackedWidget.currentWidget().model()
@@ -273,11 +271,11 @@ class ReferencesWidget(FallTalkWidget):
     def remove_row(self):
         index = self.stackedWidget.currentWidget().currentIndex()
         if index.isValid():
-            self.parent.gpt_sovits_widget.onReferenceSelect()
-            self.parent.f5_widget.onReferenceSelect()
-            self.parent.llasa_widget.onReferenceSelect()
-            self.parent.fish_widget.onReferenceSelect()
-            self.parent.orpheus_widget.onReferenceSelect()
+            # Call onReferenceSelect for all widgets that have the method
+            for widget in self.parent.engine_widgets.values():
+                if hasattr(widget, 'onReferenceSelect'):
+                    widget.onReferenceSelect()
+
             row = index.row()
             model = self.stackedWidget.currentWidget().model()
             if (self.stackedWidget.currentWidget() == self.custom_reference_table):
@@ -286,7 +284,6 @@ class ReferencesWidget(FallTalkWidget):
                     self.reference_audio.remove(file_path)
                     model.toggle_selection(row)
                     self.decrease(file_path)
-
             else:
                 filename = model.data(model.index(row, 0)).rsplit('.', 1)[0]
                 file_path = os.path.join(get_app_root(), f"temp/{filename}.wav")

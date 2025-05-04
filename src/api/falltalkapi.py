@@ -90,7 +90,7 @@ class FallTalkAPI:
             gpt_sovits_inference(self.falltak_app, data['output_file'], data['text'], data['reference_audio'], None, data['transcript'], True)
         elif engine == 'StyleTTS2':
             styletts2_inference(self.falltak_app, data['output_file'], data['text'], data['reference_audio'], None, True)
-        elif engine == 'XTTS':
+        elif engine == 'XTTSv2':
             xtts_inference(self.falltak_app, data['output_file'], data['text'], data['reference_audio'], None, True)
 
         if data['stream']:

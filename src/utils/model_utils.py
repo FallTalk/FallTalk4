@@ -65,19 +65,31 @@ def get_character_models(character, characters_data):
     return None
 
 
-def load_xtts(parent):
+def generic_engine_loader(parent, engine_class, download_func, engine_name, api=False):
     try:
-        downloadXTTS(parent)
+        download_func(parent)
         downloadRVC(parent)
-        from src.tts_engines.xtts_engine import XTTS_Engine
-        parent.tts_engine = XTTS_Engine()
-        print("XTTS Loaded")
+        parent.tts_engine = engine_class()
+        print(f"{engine_name} Loaded")
         load_whisper(parent)
-        QMetaObject.invokeMethod(parent, "afterXtts", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-        QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+        print(f"Done Loading")
+        if not api:
+            QMetaObject.invokeMethod(parent, "after_engine_load", Qt.QueuedConnection, 
+                                   Q_ARG(PySide6.QtCore.QObject, parent),
+                                   Q_ARG(str, engine_name))
+            QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, 
+                                   Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, 
+                               Q_ARG(PySide6.QtCore.QObject, parent), 
+                               Q_ARG(str, "Unable to Load Engine"), 
+                               Q_ARG(str, "An Error Occurred while loading the engine. Please check your logs and report the issue if needed"))
+
+
+def load_xtts(parent):
+    from src.tts_engines.xtts_engine import XTTS_Engine
+    generic_engine_loader(parent, XTTS_Engine, downloadXTTS, "XTTS")
 
 
 def load_whisper(parent, attempt=0):
@@ -101,130 +113,43 @@ def load_whisper(parent, attempt=0):
 
 
 def load_gpt_sovits(parent):
-    try:
-        downloadGPTSoVITS(parent)
-        downloadRVC(parent)
-        from src.tts_engines.gpt_sovits_engine import GPT_SoVITS_Engine
-        from src.tts_engines.whisper_engine import Whisper_Engine
-        parent.tts_engine = GPT_SoVITS_Engine()
-        print("GPT_SoVITS Loaded")
-        load_whisper(parent)
-        QMetaObject.invokeMethod(parent, "afterGPT_SoVITS", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-        QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+    from src.tts_engines.gpt_sovits_engine import GPT_SoVITS_Engine
+    generic_engine_loader(parent, GPT_SoVITS_Engine, downloadGPTSoVITS, "GPT_SoVITS")
 
 
 def load_dia(parent):
-    try:
-        downloadDIA(parent)
-        downloadRVC(parent)
-        from src.tts_engines.dia_engine import DIA_Engine
-        from src.tts_engines.whisper_engine import Whisper_Engine
-        parent.tts_engine = DIA_Engine()
-        print("DIA Loaded")
-        load_whisper(parent)
-        QMetaObject.invokeMethod(parent, "afterDIA", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-        QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+    from src.tts_engines.dia_engine import DIA_Engine
+    generic_engine_loader(parent, DIA_Engine, downloadDIA, "DIA")
 
 
 def load_rvc(parent, api=False):
-    try:
-        downloadRVC(parent)
-        from src.tts_engines.rvc_engine import RVC_Engine
-        parent.tts_engine = RVC_Engine()
-        print("RVC Loaded")
-        load_whisper(parent)
-        if not api:
-            QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-            QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+    from src.tts_engines.rvc_engine import RVC_Engine
+    generic_engine_loader(parent, RVC_Engine, downloadRVC, "RVC", api)
 
 
 def load_fish(parent):
-    try:
-        downloadFish(parent)
-        downloadRVC(parent)
-        print("Fish downloaded")
-        from src.tts_engines.fish_engine import FishSpeechEngine
-        parent.tts_engine = FishSpeechEngine()
-        print("Fish Loaded")
-        load_whisper(parent)
-        QMetaObject.invokeMethod(parent, "afterFish", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-        QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+    from src.tts_engines.fish_engine import FishSpeechEngine
+    generic_engine_loader(parent, FishSpeechEngine, downloadFish, "Fish")
 
 
 def load_f5(parent):
-    try:
-        downloadF5(parent)
-        downloadRVC(parent)
-        print("F5 downloaded")
-        from src.tts_engines.f5_engine import F5Engine
-        parent.tts_engine = F5Engine()
-        print("F5 Loaded")
-        load_whisper(parent)
-        QMetaObject.invokeMethod(parent, "afterF5", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-        QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+    from src.tts_engines.f5_engine import F5Engine
+    generic_engine_loader(parent, F5Engine, downloadF5, "F5")
 
 
 def load_llasa(parent):
-    try:
-        downloadLlasa(parent)
-        downloadRVC(parent)
-        print("Llasa downloaded")
-        from src.tts_engines.llasa_engine import LlasaEngine
-        parent.tts_engine = LlasaEngine()
-        print("Llasa Loaded")
-        load_whisper(parent)
-        QMetaObject.invokeMethod(parent, "afterLlasa", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-        QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+    from src.tts_engines.llasa_engine import LlasaEngine
+    generic_engine_loader(parent, LlasaEngine, downloadLlasa, "Llasa")
 
 
 def load_orpheus(parent):
-    try:
-        downloadOrpheus(parent)
-        downloadRVC(parent)
-        print("Orpheus downloaded")
-        from src.tts_engines.llasa_engine import LlasaEngine
-        parent.tts_engine = LlasaEngine()
-        print("Orpheus Loaded")
-        load_whisper(parent)
-        QMetaObject.invokeMethod(parent, "afterOrpheus", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-        QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+    from src.tts_engines.orpheus_engine import OrpheusEngine
+    generic_engine_loader(parent, OrpheusEngine, downloadOrpheus, "Orpheus")
 
 
 def load_style_tts2(parent):
-    try:
-        downloadStyleTTS2(parent)
-        downloadRVC(parent)
-        print("StyleTTS2 downloaded")
-        from src.tts_engines.style_tts_engine import StyleTTS2_Engine
-        parent.tts_engine = StyleTTS2_Engine()
-        print("StyleTTS2 Loaded")
-        load_whisper(parent)
-        QMetaObject.invokeMethod(parent, "afterStyleTTS2", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-        QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Engine"), Q_ARG(str, "An Error Occured while loading the engine. Please check your logs and report the issue if needed"))
+    from src.tts_engines.style_tts_engine import StyleTTS2_Engine
+    generic_engine_loader(parent, StyleTTS2_Engine, downloadStyleTTS2, "StyleTTS2")
 
 
 def load_upscaler(parent, api=False):
@@ -234,10 +159,14 @@ def load_upscaler(parent, api=False):
             parent.upscale_engine = UpscaleEngine(parent)
             print("Upscaler Loaded")
         if not api:
-            QMetaObject.invokeMethod(parent, "after_upscale", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+            QMetaObject.invokeMethod(parent, "after_upscale", Qt.QueuedConnection, 
+                                   Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Upscaler"), Q_ARG(str, "An Error Occured while loading the upscaler. Please check your logs and report the issue if needed"))
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, 
+                               Q_ARG(PySide6.QtCore.QObject, parent), 
+                               Q_ARG(str, "Unable to Load Upscaler"), 
+                               Q_ARG(str, "An Error Occurred while loading the upscaler. Please check your logs and report the issue if needed"))
 
 
 def seed_everything(seed):

@@ -29,7 +29,7 @@ class SettingsWidget(FallTalkWidget):
         # add items to pivot
         self.addSubInterface(self.engine_settings, 'main_settings', 'Main Settings')
         self.addSubInterface(self.rvc_settings, 'rvc_settings', 'RVC')
-        self.addSubInterface(self.xtts_settings, 'xtts_settings', 'XTTS')
+        self.addSubInterface(self.xtts_settings, 'xtts_settings', 'XTTSv2')
         self.addSubInterface(self.gpt_sovits_settings, 'gpt_sovits_settings', 'GPT SoVITS')
         self.addSubInterface(self.styletts2_settings, 'styletts2_settings', 'StyleTTS2')
 
