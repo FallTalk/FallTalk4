@@ -10,6 +10,7 @@ from qfluentwidgets import ScrollArea, ExpandLayout
 from src.config.config import cfg, HELP_URL, YEAR, AUTHOR, VERSION, NEXUS_URL, KOFI_URL, DISCORD_URL, HUGGING_FACE
 from src.ui.cards import SpinSettingCard
 from src.utils.icons import FallTalkIcons
+from src.enums.engine_type import EngineType
 
 
 class FallTalkSettings(ScrollArea):
@@ -26,7 +27,7 @@ class FallTalkSettings(ScrollArea):
             FIF.DEVELOPER_TOOLS,
             self.tr('Engine'),
             self.tr('Backend to use for generation'),
-            texts=["F5", "RVC", "Orpheus", "DIA", "FishSpeech", "Llasa", "XTTSv2", "GPT_SoVITS", "StyleTTS2"],
+            texts=[e.value for e in EngineType],
             parent=self.settings_group
         )
 

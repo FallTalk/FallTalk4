@@ -5,6 +5,7 @@ from src.widgets.generation_widget import GenerationWidget
 from src.config.config import cfg
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
 from src.utils.icons import FallTalkStrokeIcons
+from src.enums.engine_type import EngineType
 
 
 class StyleTTS2Widget(GenerationWidget):
@@ -61,6 +62,6 @@ class StyleTTS2Widget(GenerationWidget):
         self.addGenSettings()
         self.text_input.setPlaceholderText("Please enter text")
         self.addGenerationButton()
-        self.setVisible(cfg.engine.value == "StyleTTS2")
-        self.media_player.setVisible(cfg.engine.value == "StyleTTS2")
+        self.setVisible(cfg.engine.value == EngineType.STYLE_TTS2.value)
+        self.media_player.setVisible(cfg.engine.value == EngineType.STYLE_TTS2.value)
         self.setEnabled(False)

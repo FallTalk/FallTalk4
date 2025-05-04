@@ -13,6 +13,7 @@ from src.ui.cards import TextSettingCard, RangeSettingCardScaled, RvcComboBoxSet
 from src.utils.inference_utils import get_edge_tts_voices, get_eleven_labs_voices
 from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget
+from src.enums.engine_type import EngineType
 
 
 class BaseRVCWidget(QWidget):
@@ -285,8 +286,8 @@ class RVCWidget(FallTalkWidget):
         self.media_player.setVolume(100)
         self.addToFrame(self.media_player)
         self.setEnabled(False)
-        self.setVisible(cfg.engine.value == "RVC")
-        self.media_player.setVisible(cfg.engine.value == "RVC")
+        self.setVisible(cfg.engine.value == EngineType.RVC.value)
+        self.media_player.setVisible(cfg.engine.value == EngineType.RVC.value)
 
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)

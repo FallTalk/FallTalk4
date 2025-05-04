@@ -7,6 +7,7 @@ from src.config.config import cfg, FileValidator
 from src.utils.icons import FallTalkStrokeIcons
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, TextSettingCard, SpinSettingCard, ComboBoxWordsCard
 from src.widgets import GenerationWidget
+from src.enums.engine_type import EngineType
 
 from src.utils.logging_utils import logger
 
@@ -100,8 +101,8 @@ class FishWidget(GenerationWidget):
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 
-        self.setVisible(cfg.engine.value == "DIA")
-        self.media_player.setVisible(cfg.engine.value == "DIA")
+        self.setVisible(cfg.engine.value == EngineType.FISH_SPEECH.value)
+        self.media_player.setVisible(cfg.engine.value == EngineType.FISH_SPEECH.value)
         self.setEnabled(False)
 
     def onReferenceSelect(self):

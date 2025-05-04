@@ -11,6 +11,7 @@ from qfluentwidgets import (QConfig, ConfigItem, OptionsConfigItem, BoolValidato
                             EnumSerializer, FolderValidator, ConfigSerializer, ConfigValidator, qconfig)
 
 from src.utils.filesystem_utils import get_app_root
+from src.enums.engine_type import EngineType
 
 class Language(Enum):
     """ Language enumeration """
@@ -151,7 +152,7 @@ class Config(QConfig):
     rvc_embedder_model = OptionsConfigItem("RVC", "rvc_embedding_model", "contentvec", OptionsValidator(["contentvec", "hubert"]))
 
     # General Model
-    engine = OptionsConfigItem("TTS", "engine", "GPT_SoVITS", OptionsValidator(["F5", "RVC", "Orpheus", "DIA", "FishSpeech", "Llasa", "XTTSv2", "GPT_SoVITS", "StyleTTS2" ]))
+    engine = OptionsConfigItem("TTS", "engine", EngineType.F5.value, OptionsValidator([e.value for e in EngineType]))
     load_engine_art_start = ConfigItem("TTS", "load_at_start", False, BoolValidator())
     auto_update_models = ConfigItem("TTS", "auto_update_models", False, BoolValidator())
     device = OptionsConfigItem("TTS", "device", "cuda" if torch.cuda.is_available() else "cpu", DeviceValidator())

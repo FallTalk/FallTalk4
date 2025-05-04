@@ -5,6 +5,7 @@ from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
 from src.widgets import GenerationWidget
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
+from src.enums.engine_type import EngineType
 
 class GPT_SoVITSWidget(GenerationWidget):
 
@@ -94,8 +95,8 @@ class GPT_SoVITSWidget(GenerationWidget):
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 
-        self.setVisible(cfg.engine.value == "GPT_SoVITS")
-        self.media_player.setVisible(cfg.engine.value == "GPT_SoVITS")
+        self.setVisible(cfg.engine.value == EngineType.GPT_SOVITS.value)
+        self.media_player.setVisible(cfg.engine.value == EngineType.GPT_SOVITS.value)
         self.setEnabled(False)
 
     def onReferenceSelect(self):

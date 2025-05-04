@@ -18,6 +18,7 @@ from qfluentwidgets import NavigationItemPosition
 
 import src.config.config as config
 from src.config.config import cfg, DISCLAIMER, REPO
+from src.enums.engine_type import EngineType
 from src.utils.audio_utils import combine_wav_files
 from src.utils.bulk_utils import bulk_inference, bulk_rvc_inference, bulk_fuz
 # Import utility functions directly from utility modules
@@ -187,65 +188,65 @@ class ModelApp(FallTalkFluentWindow):
 
     def xttsv2_checked(self, checked):
         if checked:
-            cfg.set(cfg.engine, "XTTSv2")
+            cfg.set(cfg.engine, EngineType.XTTS_V2)
             self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "XTTSv2":
+        elif cfg.get(cfg.engine) == EngineType.XTTS_V2:
             self.xtts_action.setChecked(True)
 
     def rvc_checked(self, checked):
         if checked:
-            cfg.set(cfg.engine, "RVC")
+            cfg.set(cfg.engine, EngineType.RVC)
             self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "RVC":
+        elif cfg.get(cfg.engine) == EngineType.RVC:
             self.rvc_action.setChecked(True)
 
     def styletts2_checked(self, checked):
         if checked:
-            cfg.set(cfg.engine, "StyleTTS2")
+            cfg.set(cfg.engine, EngineType.STYLE_TTS2)
             self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "StyleTTS2":
+        elif cfg.get(cfg.engine) == EngineType.STYLE_TTS2:
             self.styletts2_action.setChecked(True)
 
     def dia_checked(self, checked):
         if checked:
-            cfg.set(cfg.engine, "DIA")
+            cfg.set(cfg.engine, EngineType.DIA)
             self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "DIA":
+        elif cfg.get(cfg.engine) == EngineType.DIA:
             self.dia_action.setChecked(True)
 
     def f5_checked(self, checked):
         if checked:
-            cfg.set(cfg.engine, "F5")
+            cfg.set(cfg.engine, EngineType.F5)
             self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "F5":
+        elif cfg.get(cfg.engine) == EngineType.F5:
             self.f5_action.setChecked(True)
 
     def orpheus_checked(self, checked):
         if checked:
-            cfg.set(cfg.engine, "Orpheus")
+            cfg.set(cfg.engine, EngineType.ORPHEUS)
             self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "Orpheus":
+        elif cfg.get(cfg.engine) == EngineType.ORPHEUS:
             self.orpheus_action.setChecked(True)
 
     def llasa_checked(self, checked):
         if checked:
-            cfg.set(cfg.engine, "Llasa")
+            cfg.set(cfg.engine, EngineType.LLASA)
             self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "Llasa":
+        elif cfg.get(cfg.engine) == EngineType.LLASA:
             self.llasa_action.setChecked(True)
 
     def fish_checked(self, checked):
         if checked:
-            cfg.set(cfg.engine, "FishSpeech")
+            cfg.set(cfg.engine, EngineType.FISH_SPEECH)
             self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "FishSpeech":
+        elif cfg.get(cfg.engine) == EngineType.FISH_SPEECH:
             self.f5_action.setChecked(True)
 
     def gpt_sovits_checked(self, checked):
         if checked:
-            cfg.set(cfg.engine, "GPT_SoVITS")
+            cfg.set(cfg.engine, EngineType.GPT_SOVITS)
             self.onEngineChange(cfg.engine)
-        elif cfg.get(cfg.engine) == "GPT_SoVITS":
+        elif cfg.get(cfg.engine) == EngineType.GPT_SOVITS:
             self.gpt_sovits_action.setChecked(True)
 
     def cpu_checked(self, checked):
@@ -845,7 +846,7 @@ class ModelApp(FallTalkFluentWindow):
     def generate_audio(self, recording_file=None):
         references = self.reference_widget.reference_audio
         references_length = self.reference_widget.reference_audio_length
-        if cfg.get(cfg.engine) == "RVC":
+        if cfg.get(cfg.engine) == EngineType.RVC:
             if self.rvc_widget.stackedWidget.currentWidget() == self.rvc_widget.rvc_mic_widget:
                 if recording_file is None or not recording_file:
                     self.showErrorPopup(self.rvc_widget, self.rvc_widget.rvc_mic_widget.media_recorder.recordButton, "Please Record Audio")
@@ -891,7 +892,7 @@ class ModelApp(FallTalkFluentWindow):
                     output_file = self.get_output_file(self.rvc_widget.eleven_labs_widget)
                     tr = (threading.Thread(target=eleven_labs_inference, args=(self, text, output_file, self.rvc_widget.eleven_labs_widget.voice_combo.configItem.currentText(), self.rvc_widget), daemon=True))
                     tr.start()
-        elif cfg.get(cfg.engine) == "XTTSv2":
+        elif cfg.get(cfg.engine) == EngineType.XTTS_V2:
             text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.xtts_widget.text_input.toPlainText()))
             if references is None or not references:
                 self.showErrorPopup(self.xtts_widget, self.xtts_widget.generate_button, "Please Select Reference Audio")
@@ -903,7 +904,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Generating Audio", "Please Wait")
                 tr = (threading.Thread(target=xtts_inference, args=(self, self.get_output_file(self.xtts_widget), text, self.combine_references(references), self.xtts_widget), daemon=True))
                 tr.start()
-        elif cfg.get(cfg.engine) == "GPT_SoVITS":
+        elif cfg.get(cfg.engine) == EngineType.GPT_SOVITS:
             text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.gpt_sovits_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:
@@ -922,7 +923,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Generating Audio", "Please Wait")
                 tr = (threading.Thread(target=gpt_sovits_inference, args=(self, self.get_output_file(self.gpt_sovits_widget), text, self.combine_references(references) if self.tts_engine.is_base else references, self.gpt_sovits_widget, transcribe_state), daemon=True))
                 tr.start()
-        elif cfg.get(cfg.engine) == "StyleTTS2":
+        elif cfg.get(cfg.engine) == EngineType.STYLE_TTS2:
             text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.styletts2_widget.text_input.toPlainText()))
             if references_length > 15 or references_length < 5:
                 self.showErrorPopup(self.styletts2_widget, self.styletts2_widget.generate_button, "Please Select between 5 and 10 seconds of Reference Audio")
@@ -934,7 +935,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Generating Audio", "Please Wait")
                 tr = (threading.Thread(target=styletts2_inference, args=(self, self.get_output_file(self.styletts2_widget), text, self.combine_references(references), self.styletts2_widget), daemon=True))
                 tr.start()
-        elif cfg.get(cfg.engine) == "Llasa":
+        elif cfg.get(cfg.engine) == EngineType.LLASA:
             text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.llasa_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:
@@ -953,7 +954,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Generating Audio", "Please Wait")
                 tr = (threading.Thread(target=llasa_inference, args=(self, self.get_output_file(self.llasa_widget), text, self.combine_references(references), self.llasa_widget, transcribe_state), daemon=True))
                 tr.start()
-        elif cfg.get(cfg.engine) == "Orpheus":
+        elif cfg.get(cfg.engine) == EngineType.ORPHEUS:
             text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.orpheus_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:
@@ -972,7 +973,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Generating Audio", "Please Wait")
                 tr = (threading.Thread(target=orpheus_inference, args=(self, self.get_output_file(self.orpheus_widget), text, self.combine_references(references), self.orpheus_widget, transcribe_state), daemon=True))
                 tr.start()
-        elif cfg.get(cfg.engine) == "DIA":
+        elif cfg.get(cfg.engine) == EngineType.DIA:
             text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.dia_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:
@@ -991,7 +992,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Generating Audio", "Please Wait")
                 tr = (threading.Thread(target=dia_inference, args=(self, self.get_output_file(self.dia_widget), text, self.combine_references(references), self.dia_widget, transcribe_state), daemon=True))
                 tr.start()
-        elif cfg.get(cfg.engine) == "F5":
+        elif cfg.get(cfg.engine) == EngineType.F5:
             text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.f5_widget.text_input.toPlainText()))
             start_word = self.f5_widget.start_dropdown_card.getWordInfo()
             end_word = self.f5_widget.end_dropdown_card.getWordInfo()
@@ -1011,7 +1012,7 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Generating Audio", "Please Wait")
                 tr = (threading.Thread(target=f5_inference, args=(self, self.get_output_file(self.f5_widget), text, self.combine_references(references), self.f5_widget, start_time, end_time, self.f5_widget.transcribe_state), daemon=True))
                 tr.start()
-        elif cfg.get(cfg.engine) == "FishSpeech":
+        elif cfg.get(cfg.engine) == EngineType.FISH_SPEECH:
             text = replace_numbers_with_words(self.ensure_sentence_punctuation(self.fish_widget.text_input.toPlainText()))
             transcribe_state = None
             if self.tts_engine.is_base:

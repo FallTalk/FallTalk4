@@ -1,5 +1,6 @@
 from src.config.config import cfg
 from src.widgets.generation_widget import GenerationWidget
+from src.enums.engine_type import EngineType
 
 class XttsWidget(GenerationWidget):
 
@@ -9,6 +10,6 @@ class XttsWidget(GenerationWidget):
         self.addGenSettings()
         self.text_input.setPlaceholderText("Please enter text")
         self.addGenerationButton()
-        self.setVisible(cfg.engine.value == "XTTSv2")
-        self.media_player.setVisible(cfg.engine.value == "XTTSv2")
+        self.setVisible(cfg.engine.value == EngineType.XTTS_V2.value)
+        self.media_player.setVisible(cfg.engine.value == EngineType.XTTS_V2.value)
         self.setEnabled(False)

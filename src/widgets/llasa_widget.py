@@ -7,6 +7,7 @@ from src.config.config import cfg, FileValidator
 from src.utils.icons import FallTalkStrokeIcons
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, TextSettingCard, SpinSettingCard, ComboBoxWordsCard
 from src.widgets import GenerationWidget
+from src.enums.engine_type import EngineType
 
 from src.utils.logging_utils import logger
 
@@ -98,8 +99,8 @@ class LlasaWidget(GenerationWidget):
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 
-        self.setVisible(cfg.engine.value == "GPT_SoVITS")
-        self.media_player.setVisible(cfg.engine.value == "GPT_SoVITS")
+        self.setVisible(cfg.engine.value == EngineType.LLASA.value)
+        self.media_player.setVisible(cfg.engine.value == EngineType.LLASA.value)
         self.setEnabled(False)
 
     def onReferenceSelect(self):

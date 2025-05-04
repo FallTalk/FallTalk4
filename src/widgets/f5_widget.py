@@ -7,6 +7,7 @@ from src.utils.icons import FallTalkIcons
 from src.utils.logging_utils import logger
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, ComboBoxWordsCard
 from src.widgets import GenerationWidget
+from src.enums.engine_type import EngineType
 
 
 class F5Widget(GenerationWidget):
@@ -92,8 +93,8 @@ class F5Widget(GenerationWidget):
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 
-        self.setVisible(cfg.engine.value == "F5")
-        self.media_player.setVisible(cfg.engine.value == "F5")
+        self.setVisible(cfg.engine.value == EngineType.F5.value)
+        self.media_player.setVisible(cfg.engine.value == EngineType.F5.value)
         self.setEnabled(True)
 
     def transcribe(self):
