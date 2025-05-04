@@ -501,7 +501,12 @@ class ModelApp(FallTalkFluentWindow):
             self.characters_widget.loadUntrained(self, untrained_characters)
 
         if self.custom_models is not None:
-            self.characters_widget.loadCustom(self, self.custom_models)
+            # Filter custom models to only include those with the current engine
+            filtered_custom_models = {
+                name: model for name, model in self.custom_models.items()
+                if cfg.get(cfg.engine) in model
+            }
+            self.characters_widget.loadCustom(self, filtered_custom_models)
 
         self.bulk_generate_widget.populate_character_card()
 
