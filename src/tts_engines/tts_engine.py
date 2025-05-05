@@ -60,7 +60,7 @@ class tts_engine(ABC):
             if self.model_name is None or self.model_name != selected_model:
                 self.is_base = True
                 self.model_name = selected_model
-                self.load_base_model()
+                self.load_model()
             else:
                 print("reusing model")
 
@@ -100,11 +100,6 @@ class tts_engine(ABC):
 
     @abstractmethod
     def load_model(self):
-        """LOAD"""
-        pass
-
-    @abstractmethod
-    def load_base_model(self):
         """LOAD"""
         pass
 

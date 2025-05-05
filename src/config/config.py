@@ -226,8 +226,31 @@ class Config(QConfig):
     f5_seed = RangeConfigItem("F5", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
     f5_speed = RangeConfigItem("F5", "speed_factor", 10, RangeValidator(-100, 100))
 
-    #Llasa
-    llasa_mode = OptionsConfigItem("music", "mode", "3B", OptionsValidator(["3B", "1B", "8B"]))
+    #LASA
+    llasa_temperature = RangeConfigItem("Llasa", "model_temperature", 80, RangeValidator(1, 100))
+    llasa_seed = RangeConfigItem("Llasa", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
+    llasa_top_p = RangeConfigItem("Llasa", "top_p", 100, RangeValidator(0.0, 100))
+    llasa_max_length = RangeConfigItem("Llasa", "max_length", 2048, RangeValidator(1, 2048))
+    llasa_mode = OptionsConfigItem("Llasa", "mode", "3B", OptionsValidator(["3B", "1B", "8B"]))
+
+    #Orpehus
+    orpehus_temperature = RangeConfigItem("Orpehus", "model_temperature", 80, RangeValidator(1, 100))
+    orpehus_seed = RangeConfigItem("Orpehus", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
+    orpehus_top_p = RangeConfigItem("Orpehus", "top_p", 100, RangeValidator(0.0, 100))
+    orpehus_repetition = RangeConfigItem("Orpehus", "model_repetition", 11, RangeValidator(1, 20))
+
+    #FishSpeech
+    fish_use_torch_compile = ConfigItem("FishSpeech", "use_torch_compile", True, BoolValidator())
+    fish_repetition = RangeConfigItem("FishSpeech", "model_repetition", 15, RangeValidator(1, 20))
+    fish_top_p = RangeConfigItem("FishSpeech", "top_p", 70, RangeValidator(0.0, 100))
+    fish_max_length = RangeConfigItem("FishSpeech", "max_length", 2048, RangeValidator(0, 2048))
+    fish_use_cache = ConfigItem("FishSpeech", "use_memory_cache", True, BoolValidator())
+    fish_iterative_prompt = ConfigItem("FishSpeech", "iterative_prompt", True, BoolValidator())
+    fish_seed = RangeConfigItem("FishSpeech", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
+    fish_temperature = RangeConfigItem("FishSpeech", "model_temperature", 80, RangeValidator(1, 100))
+
+    #DIA
+    dia_use_torch_compile = ConfigItem("DIA", "use_torch_compile", True, BoolValidator())
 
     # GPT_SoVITS
     slice_mode = OptionsConfigItem("GPT_SoVITS", "slice_mode", "Slice once every 4 sentences", OptionsValidator(["No Slice", "Slice by English punct", "Slice by every punct", "Slice once every 4 sentences", "Slice once every 2 sentences"]))

@@ -9,7 +9,7 @@ from src.config.config import cfg
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
 
 
-class F5Settings(ScrollArea):
+class LLASASettings(ScrollArea):
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -17,28 +17,44 @@ class F5Settings(ScrollArea):
         self.expand_layout = ExpandLayout(self.scroll_widget)
         self.settings_group = SettingCardGroup(self.tr(''), self.scroll_widget)
 
-        self.mode_card = RadioSettingCard(
-            cfg.f5_mode,
-            FIF.CUT,
-            self.tr('Mode'),
-            self.tr('Choose between TTS and edit modes'),
-            texts=["TTS", "Edit"],
+        self.temperature_card = RangeSettingCardScaled(
+            cfg.llasa_temperature,
+            FIF.FRIGID,
+            self.tr('Temperature'),
+            self.tr('Control randomness in generation'),
             parent=self.settings_group
         )
 
         self.seed_card = RangeSettingCard(
-            cfg.f5_seed,
+            cfg.llasa_seed,
             FIF.NUMBER_SYMBOL,
             self.tr('Seed'),
             self.tr('Random seed for generation (-1 for random)'),
             parent=self.settings_group
         )
 
-        self.speed_card = RangeSettingCardScaled(
-            cfg.f5_speed,
-            FIF.SPEED_OFF,
-            self.tr('Speed Factor'),
-            self.tr('Adjust the speed of generated audio'),
+        self.top_p_card = RangeSettingCardScaled(
+            cfg.llasa_top_p,
+            FIF.UP,
+            self.tr('Top P'),
+            self.tr('Higher values give more creativity in generation'),
+            parent=self.settings_group
+        )
+
+        self.max_length_card = RangeSettingCard(
+            cfg.llasa_max_length,
+            FIF.LENGTH,
+            self.tr('Max Length'),
+            self.tr('Maximum length of generated text'),
+            parent=self.settings_group
+        )
+
+        self.mode_card = RadioSettingCard(
+            cfg.llasa_mode,
+            FIF.CUT,
+            self.tr('Model Size'),
+            self.tr('Choose the model size to use'),
+            texts=["3B", "1B", "8B"],
             parent=self.settings_group
         )
 
@@ -60,9 +76,11 @@ class F5Settings(ScrollArea):
 
     def __initLayout(self):
         # add cards to group
-        self.settings_group.addSettingCard(self.mode_card)
+        self.settings_group.addSettingCard(self.temperature_card)
         self.settings_group.addSettingCard(self.seed_card)
-        self.settings_group.addSettingCard(self.speed_card)
+        self.settings_group.addSettingCard(self.top_p_card)
+        self.settings_group.addSettingCard(self.max_length_card)
+        self.settings_group.addSettingCard(self.mode_card)
 
         # add setting card group to layout
         self.expand_layout.setSpacing(28)

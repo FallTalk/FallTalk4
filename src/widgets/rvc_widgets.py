@@ -1,10 +1,10 @@
 import os
 
 from PySide6 import QtWidgets
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QWidget, QGroupBox, QVBoxLayout, QHBoxLayout, QStackedWidget, QSpacerItem, QFileDialog, QLineEdit
-from qfluentwidgets import FluentIcon as FIF, TextEdit, PrimaryPushButton, SegmentedWidget, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem, PushSettingCard
+from qfluentwidgets import FluentIcon as FIF, TextEdit, PrimaryPushButton, SegmentedWidget, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem, PushSettingCard, PushButton, Flyout, FlyoutView, FlyoutAnimationType
 
 from src.config.config import cfg, FileValidator
 from src.audio.audio_player import StandardAudioPlayerBar
@@ -14,6 +14,7 @@ from src.utils.inference_utils import get_edge_tts_voices, get_eleven_labs_voice
 from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.enums.engine_type import EngineType
+from src.settings.rvc_settings import RVCSettings
 
 
 class BaseRVCWidget(QWidget):
@@ -121,7 +122,48 @@ class BaseRVCWidget(QWidget):
         self.generate_button = PrimaryPushButton("Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
-        self.view.addWidget(self.generate_button)
+
+        # Add settings button
+        self.settings_button = PushButton("Settings")
+        self.settings_button.setIcon(FIF.SETTING)
+        self.settings_button.setEnabled(True)
+        self.settings_button.setFixedWidth(100)
+        self.settings_button.clicked.connect(lambda: self.show_settings(RVCSettings(self)))
+        
+        # Add to layout
+        self.buttons_layout = QHBoxLayout()
+        self.buttons_layout.addWidget(self.settings_button, stretch=1)
+        self.buttons_layout.addWidget(self.generate_button, stretch=5)
+        self.view.addLayout(self.buttons_layout)
+
+    def show_settings(self, settings):
+        view = FlyoutView(
+            title='RVC Settings',
+            content="",
+            icon=FIF.SETTING,
+            parent=self,
+            isClosable=True
+        )
+
+        # Add settings widget
+        view.vBoxLayout.addWidget(settings)
+
+        # Adjust flyout size
+        screen_rect = self.window().screen().availableGeometry()
+        width = min(1000, screen_rect.width() - 100)  # Leave some margin
+        view.setMinimumWidth(width)
+
+        # Calculate center point of the window
+        window_rect = self.window().geometry()
+        view_size = view.sizeHint()
+        center_point = QPoint(
+            window_rect.x() + window_rect.width() // 2 - view_size.width() // 2,
+            window_rect.y() + window_rect.height() // 2 - view_size.height() // 2
+        )
+
+        # Show the flyout at the center point
+        w = Flyout.make(view, center_point, self, aniType=FlyoutAnimationType.NONE)
+        view.closed.connect(w.close)
 
 
 class RVCMicrophoneWidget(BaseRVCWidget):

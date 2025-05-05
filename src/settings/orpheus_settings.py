@@ -6,10 +6,10 @@ from qfluentwidgets import (
 from qfluentwidgets import ScrollArea, ExpandLayout
 
 from src.config.config import cfg
-from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
+from src.ui.cards import RangeSettingCardScaled
 
 
-class F5Settings(ScrollArea):
+class OrpheusSettings(ScrollArea):
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -17,28 +17,35 @@ class F5Settings(ScrollArea):
         self.expand_layout = ExpandLayout(self.scroll_widget)
         self.settings_group = SettingCardGroup(self.tr(''), self.scroll_widget)
 
-        self.mode_card = RadioSettingCard(
-            cfg.f5_mode,
-            FIF.CUT,
-            self.tr('Mode'),
-            self.tr('Choose between TTS and edit modes'),
-            texts=["TTS", "Edit"],
+        self.temperature_card = RangeSettingCardScaled(
+            cfg.orpehus_temperature,
+            FIF.FRIGID,
+            self.tr('Temperature'),
+            self.tr('Control randomness in generation'),
             parent=self.settings_group
         )
 
         self.seed_card = RangeSettingCard(
-            cfg.f5_seed,
+            cfg.orpehus_seed,
             FIF.NUMBER_SYMBOL,
             self.tr('Seed'),
             self.tr('Random seed for generation (-1 for random)'),
             parent=self.settings_group
         )
 
-        self.speed_card = RangeSettingCardScaled(
-            cfg.f5_speed,
-            FIF.SPEED_OFF,
-            self.tr('Speed Factor'),
-            self.tr('Adjust the speed of generated audio'),
+        self.top_p_card = RangeSettingCardScaled(
+            cfg.orpehus_top_p,
+            FIF.UP,
+            self.tr('Top P'),
+            self.tr('Higher values give more creativity in generation'),
+            parent=self.settings_group
+        )
+
+        self.repetition_card = RangeSettingCard(
+            cfg.orpehus_repetition,
+            FIF.REPEAT,
+            self.tr('Repetition'),
+            self.tr('Control repetition in generation'),
             parent=self.settings_group
         )
 
@@ -60,9 +67,10 @@ class F5Settings(ScrollArea):
 
     def __initLayout(self):
         # add cards to group
-        self.settings_group.addSettingCard(self.mode_card)
+        self.settings_group.addSettingCard(self.temperature_card)
         self.settings_group.addSettingCard(self.seed_card)
-        self.settings_group.addSettingCard(self.speed_card)
+        self.settings_group.addSettingCard(self.top_p_card)
+        self.settings_group.addSettingCard(self.repetition_card)
 
         # add setting card group to layout
         self.expand_layout.setSpacing(28)

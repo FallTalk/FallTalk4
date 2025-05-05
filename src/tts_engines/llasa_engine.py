@@ -49,8 +49,7 @@ class LlasaEngine(tts_engine):
             self.model.eval().cuda()
 
 
-    def load_base_model(self):
-        self.load_model()
+
 
     def unload_model(self):
         pass

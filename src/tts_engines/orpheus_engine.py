@@ -48,8 +48,7 @@ class OrpheusEngine(tts_engine):
 
         self.model.to(self.device)
 
-    def load_base_model(self):
-        self.load_model()
+
 
     def unload_model(self):
         self.basic_unload_model()
@@ -99,6 +98,12 @@ class OrpheusEngine(tts_engine):
 
     def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False):
         self.inference(text, transcript, voice, language, output_file, streaming)
+        rvc_enabled = cfg.get(cfg.rvc_enabled)
+        if rvc_enabled and self.rvc_model:
+            self.run_rvc(output_file)
+
+        rs_data = load_audio(output_file, 44100)
+        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
 

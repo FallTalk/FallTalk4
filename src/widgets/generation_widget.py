@@ -1,6 +1,7 @@
+from PySide6.QtCore import QPoint
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QGroupBox, QHBoxLayout
-from qfluentwidgets import TextEdit, PrimaryPushButton, FluentIcon as FIF, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem
+from qfluentwidgets import TextEdit, PrimaryPushButton, FluentIcon as FIF, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem, Flyout, FlyoutAnimationType, FlyoutView
 
 from src.audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
@@ -23,15 +24,6 @@ class GenerationWidget(FallTalkWidget):
         self.gen_settings2 = None
         self.media_player = None
         self.generate_button = None
-
-    def addGenerationButton(self):
-        self.media_player = StandardAudioPlayerBar(self)
-        self.media_player.setVolume(100)
-        self.generate_button = PrimaryPushButton("Generate Audio")
-        self.generate_button.setIcon(FIF.SEND)
-        self.generate_button.clicked.connect(self.parent.generate_audio)
-        self.addToFrame(self.generate_button)
-        self.addToFrame(self.media_player)
 
     def addGenSettings(self):
         self.output_name = ConfigItem("TTS", "output_name", None, ConfigValidator())
@@ -134,3 +126,36 @@ class GenerationWidget(FallTalkWidget):
         # self.temp_and_rep_layout.addWidget(self.temperature_card, 3)
         self.temp_and_rep.setLayout(self.temp_and_rep_layout)
         self.addToFrame(self.temp_and_rep)
+
+    def show_settings(self, settings):
+        view = FlyoutView(
+            title='StyleTTS2 Settings',
+            content="",
+            icon=FIF.SETTING,
+            parent=self,
+            isClosable=True
+        )
+
+        # Add settings widget
+        view.vBoxLayout.addWidget(settings)
+        window_rect = self.window().geometry()
+
+        # Adjust flyout size
+        view.setMinimumWidth(max(1000, int(window_rect.width() * 0.75)))
+        view.setMinimumHeight(max(600, int(window_rect.height() * 0.75)))
+
+        # Calculate center point of the window
+        view_size = view.sizeHint()
+
+        # Calculate dynamic offsets based on window and view sizes
+        x_offset = -(window_rect.width() * 0.3)  # Move left by 20% of window width
+        y_offset = -(window_rect.height() * 0.2)  # Move up by 10% of window height
+
+        center_point = QPoint(
+            int(window_rect.x() + (window_rect.width() - view_size.width()) // 2 + x_offset),
+            int(window_rect.y() + (window_rect.height() - view_size.height()) // 2 + y_offset)
+        )
+
+        # Show the flyout at the center point
+        w = Flyout.make(view, center_point, self, aniType=FlyoutAnimationType.NONE)
+        view.closed.connect(w.close)

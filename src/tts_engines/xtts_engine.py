@@ -103,11 +103,11 @@ class XTTS_Engine(tts_engine):
         if cfg.get(cfg.low_vram) and self.device == "cuda":
             self.handle_lowvram_change()
 
-    def load_base_model(self):
-        self.model_path = os.path.join(get_app_root(), "models", "XTTSv2", "model.pth")
-        self.load_model()
 
     def load_model(self):
+        if self.is_base:
+            self.model_path = os.path.join(get_app_root(), "models", "XTTSv2", "model.pth")
+
         logging_utils.logger.debug(f"Loading {self.model_path}")
         config = XttsConfig()
         config_path = os.path.join(get_app_root(),"models", "XTTSv2", "config.json")

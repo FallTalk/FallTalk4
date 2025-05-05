@@ -628,8 +628,7 @@ class GPT_SoVITS_Engine(tts_engine):
 
         return bert
 
-    def load_base_model(self):
-        self.load_model()
+
 
 
     def loadSsl(self):

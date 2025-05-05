@@ -56,8 +56,7 @@ class F5Engine(tts_engine):
         self.model_cfg = None
 
 
-    def load_base_model(self):
-        self.load_model()
+
 
     def load_model(self):
         logging_utils.logger.debug(f"Loading {self.model_path}")
