@@ -10,6 +10,7 @@ const
 var
   slExport: TStringList;
   lstRecursion: TList;
+  slIgnoredFiles: TStringList;
   ExportFileName, InfoNPCID, InfoSPEAKER, InfoRACEID, InfoCONDITION: string;
 
 //============================================================================
@@ -25,6 +26,14 @@ function Initialize: integer;
 begin
   slExport := TStringList.Create;
   lstRecursion := TList.Create;
+  slIgnoredFiles := TStringList.Create;
+  slIgnoredFiles.Add('Fallout4.esm');
+  slIgnoredFiles.Add('DLCCoast.esm');
+  slIgnoredFiles.Add('DLCNukaWorld.esm');
+  slIgnoredFiles.Add('DLCRobot.esm');
+  slIgnoredFiles.Add('DLCworkshop01.esm');
+  slIgnoredFiles.Add('DLCworkshop02.esm');
+  slIgnoredFiles.Add('DLCworkshop03.esm');
 end;
 
 //============================================================================
@@ -58,7 +67,7 @@ begin
   // check against a list of processed FormIDs
   if lstRecursion.IndexOf(FormID(e)) <> -1 then Exit
     else lstRecursion.Add(FormID(e));
-  
+
   e := WinningOverride(e);
   AddDebug('GetRecordVoiceType '+Name(e));
 
@@ -67,7 +76,7 @@ begin
     e := WinningOverride(BaseRecord(e));
     sig := Signature(e);
   end;
-    
+
   // Voice type record
   if sig = 'VTYP' then begin
     lstVoice.AddObject(EditorID(e), e);
@@ -138,7 +147,7 @@ var
 begin
   Quest := WinningOverride(Quest);
   AddDebug('GetAliasVoiceTypes ' + Name(Quest) + ' -- ' + IntToStr(aAlias));
-  
+
   Aliases := ElementByName(Quest, 'Aliases');
   for i := 0 to Pred(ElementCount(Aliases)) do begin
     Alias := ElementByIndex(Aliases, i);
@@ -157,7 +166,7 @@ begin
       )
     else if ElementExists(Alias, 'Conditions') then
       GetConditionsVoiceTypes(ElementByName(Alias, 'Conditions'), lstVoice);
-    
+
     // from CK Wiki "... list of voice types which the editor uses to limit any dialogue assigned to this alias"
     // so remove everything that is not in list
     if GetElementNativeValues(Alias, 'VTCK - Voice Types') <> 0 then begin
@@ -212,7 +221,7 @@ begin
       GetRecordVoiceTypes(Elem, lstVoiceCondition);
     end else
     // skip other functions
-    if not bGetIsID then 
+    if not bGetIsID then
     // Voice type of FLST list of voice types
     if ConditionFunction = 'GetIsVoiceType' then begin
       InfoCONDITION := ConditionFunction;
@@ -243,13 +252,13 @@ begin
       Elem := LinksTo(ElementByPath(Condition, 'CTDA\Class'));
       GetRecordVoiceTypes(Elem, lstVoiceCondition);
     end;
-    
+
     if lstVoiceCondition.Count = 0 then
       Continue;
-    
+
     // not sure about how to combine voice types from several conditions, for now just OR
     lstVoice.AddStrings(lstVoiceCondition);
-    
+
     {// if condition is ORed then combine voice lists
     if GetElementNativeValues(Condition, 'CTDA\Type') and 1 > 0 then
       lstVoice.AddStrings(lstVoiceCondition)
@@ -262,7 +271,7 @@ begin
     }
     lstVoiceCondition.Clear;
   end;
-  
+
   lstVoiceCondition.Free;
 end;
 
@@ -270,30 +279,32 @@ end;
 // get a list of voice types for INFO record
 procedure InfoVoiceTypes(Info: IInterface; lstVoice: TStringList);
 var
-  Elem, Dialogue: IInterface;
+  Elem, Dialogue, PrevInfo: IInterface;
   Conditions: IInterface;
   Scene, Actions, Action: IInterface;
   i, j, Alias: integer;
   bAliasFound: Boolean;
+  StartScenePhase: string;
 begin
   if not Assigned(lstVoice) then
     Exit;
 
   lstVoice.Clear;
-  
+
   // check Speaker
   Elem := ElementByName(Info, 'ANAM - Speaker');
   if Assigned(Elem) then begin
+    AddDebug('Found ANAM field in ' + Name(Info));
     Elem := LinksTo(Elem);
     GetRecordVoiceTypes(Elem, lstVoice);
     InfoSPEAKER := Name(Elem);
     Exit;
   end;
-  
+
   // check Conditions
   if ElementExists(Info, 'Conditions') then
     GetConditionsVoiceTypes(ElementByName(Info, 'Conditions'), lstVoice);
-  
+
   // check Scene aliases if above has no result
   if lstVoice.Count <> 0 then
     Exit;
@@ -301,11 +312,11 @@ begin
   bAliasFound := False;
   Dialogue := LinksTo(ElementByName(Info, 'Topic'));
 
-  if GetElementEditValues(Dialogue, 'DATA\Category') = 'Scene' then begin
+  if not bAliasFound and (GetElementEditValues(Dialogue, 'DATA\Category') = 'Scene') then begin
     for i := Pred(ReferencedByCount(Dialogue)) downto 0 do begin
       Scene := ReferencedByIndex(Dialogue, i);
       if Signature(Scene) <> 'SCEN' then Continue;
-      
+
       AddDebug('Searching for alias and dialog in scene ' + Name(Scene));
       Actions := ElementByName(Scene, 'Actions');
       for j := 0 to Pred(ElementCount(Actions)) do begin
@@ -324,12 +335,103 @@ begin
     end;
   end;
 
+  if lstVoice.Count <> 0 then
+    Exit;
+
+  // check Previous INFO recursively
+  Elem := ElementByName(Info, 'PNAM - Previous INFO');
+  if Assigned(Elem) then begin
+    PrevInfo := LinksTo(Elem);
+    if Assigned(PrevInfo) then begin
+      AddDebug('Searching for previous INFO');
+      InfoVoiceTypes(PrevInfo, lstVoice);
+      if lstVoice.Count > 0 then begin
+        AddDebug('Found voices in previous INFO: ' + Name(PrevInfo));
+        Exit;
+      end else
+        AddDebug('No voices found in previous INFO: ' + Name(PrevInfo));
+    end else
+      AddDebug('PNAM link is not assigned');
+  end else
+    AddDebug('No PNAM field found in ' + Name(Info));
+
+  if lstVoice.Count <> 0 then
+    Exit;
+
+    // Check for Start Scene Phase
+  StartScenePhase := GetElementEditValues(Info, 'NAM0 - Start Scene Phase');
+  if StartScenePhase <> '' then begin
+    AddDebug('Found Start Scene Phase: ' + StartScenePhase);
+    // Try to find the scene that contains this phase
+    for i := Pred(ReferencedByCount(Dialogue)) downto 0 do begin
+      Scene := ReferencedByIndex(Dialogue, i);
+      if Signature(Scene) <> 'SCEN' then Continue;
+
+      AddDebug('Searching for alias and dialog in scene ' + Name(Scene));
+      Actions := ElementByName(Scene, 'Actions');
+      for j := 0 to Pred(ElementCount(Actions)) do begin
+        Action := ElementByIndex(Actions, j);
+        if (GetElementEditValues(Action, 'ANAM - Type') = 'Start Scene') and
+           (GetElementEditValues(Action, 'NAM0 - Start Scene Phase') = StartScenePhase)
+        then begin
+          Alias := GetElementNativeValues(Action, 'ALID - Actor ID');
+          GetAliasVoiceTypes(LinksTo(ElementByName(Scene, 'PNAM - Quest')), Alias, lstVoice);
+          bAliasFound := True;
+          Break;
+        end;
+      end;
+      if bAliasFound then
+        Break;
+    end;
+  end;
+
+  if lstVoice.Count <> 0 then
+    Exit;
+
+  // Final fallback: Search for greeting topics
+  AddDebug('No voices found, searching for greeting topics');
+  Dialogue := LinksTo(ElementByName(Info, 'Topic'));
+  if Assigned(Dialogue) then begin
+    // First check if we're already in a greeting topic
+    if GetElementEditValues(Dialogue, 'SNAM') = 'GREE' then begin
+      AddDebug('Current INFO is already in a greeting topic, skipping greeting search');
+      Exit;
+    end;
+
+    // Get the quest from the dialogue
+    Elem := LinksTo(ElementByName(Dialogue, 'QNAM - Quest'));
+    if Assigned(Elem) then begin
+      AddDebug('Searching quest: ' + Name(Elem));
+      // Get all DIALs referencing this quest
+      for i := 0 to Pred(ReferencedByCount(Elem)) do begin
+        if Signature(ReferencedByIndex(Elem, i)) = 'DIAL' then begin
+          Dialogue := ReferencedByIndex(Elem, i);
+          // Check if this is a greeting topic
+          if GetElementEditValues(Dialogue, 'SNAM') = 'GREE' then begin
+            AddDebug('Found greeting topic: ' + Name(Dialogue));
+            // Get all INFOs from this dialogue
+            Elem := ChildGroup(Dialogue);
+            for j := 0 to Pred(ElementCount(Elem)) do begin
+              Info := ElementByIndex(Elem, j);
+              AddDebug('Checking greeting INFO: ' + Name(Info));
+              InfoVoiceTypes(Info, lstVoice);
+              if lstVoice.Count > 0 then begin
+                AddDebug('Found voices in greeting INFO');
+                Exit;
+              end;
+            end;
+          end;
+        end;
+      end;
+    end;
+  end;
+
   // if still can't determine voices, then use all of them
   if lstVoice.Count = 0 then begin
     AddMessage('Warning: No voice types found for ' + Name(Info));
     //GetRecordVoiceTypes(RecordByFormID(FileByIndex(0), $0003B4A5, False), lstVoice); // DefaultNPCVoiceTypes [FLST:0003B4A5]
   end;
-  
+
 end;
 
 //============================================================================
@@ -397,7 +499,6 @@ begin
 
       // Reset flags & capture topic FormID
       IsPlayerDialogue := False;
-      IsNPCDialogue    := False;
       StartAlias       := -1;
       TopicID          := GetLoadOrderFormID(Dialogue);
 
@@ -425,27 +526,17 @@ begin
 
             if ActionType = 'Player Dialogue' then begin
               PlayerDialogue := ElementByName(Action, 'Player Dialogue');
-
               // Player tags
               if ((GetElementNativeValues(PlayerDialogue, 'PTOP') = TopicID) or
                   (GetElementNativeValues(PlayerDialogue, 'NTOP') = TopicID) or
                   (GetElementNativeValues(PlayerDialogue, 'NETO') = TopicID) or
+                  (GetElementNativeValues(PlayerDialogue, 'VENC') = TopicID) or
+                  (GetElementNativeValues(PlayerDialogue, 'PLVD') = TopicID) or
+                  (GetElementNativeValues(PlayerDialogue, 'JOUT') = TopicID) or
+                  (GetElementNativeValues(PlayerDialogue, 'DALC') = TopicID) or
                   (GetElementNativeValues(PlayerDialogue, 'QTOP') = TopicID))
               then begin
                 IsPlayerDialogue := True;
-                Break;
-              end;
-
-              // NPC tags
-              if ((GetElementNativeValues(PlayerDialogue, 'NPOT') = TopicID) or
-                  (GetElementNativeValues(PlayerDialogue, 'NNGT') = TopicID) or
-                  (GetElementNativeValues(PlayerDialogue, 'NNUT') = TopicID) or
-                  (GetElementNativeValues(PlayerDialogue, 'NQUT') = TopicID) or
-                  (GetElementNativeValues(PlayerDialogue, 'NNGS') = TopicID) or
-                  (GetElementNativeValues(PlayerDialogue, 'NNUS') = TopicID) or
-                  (GetElementNativeValues(PlayerDialogue, 'NQUS') = TopicID))
-              then begin
-                IsNPCDialogue := True;
                 Break;
               end;
             end;
@@ -462,9 +553,6 @@ begin
         lstVoice.Add('PlayerVoiceFemale01');
         lstVoice.Add('PlayerVoiceMale01');
       end
-      else if IsNPCDialogue and (StartAlias >= 0) then begin
-        GetAliasVoiceTypes(Quest, StartAlias, lstVoice);
-      end
       else begin
         InfoVoiceTypes(Info, lstVoice);
       end;
@@ -474,12 +562,13 @@ begin
         Response := ElementByIndex(Responses, r);
         ResponseNumber := GetElementNativeValues(Response, 'TRDT\Response number') + 1;
 
+        VoiceFileName := InfoFileName(
+          GetLoadOrderFormID(Info),
+          ResponseNumber
+        );
+
         if lstVoice.Count > 0 then begin
           for v := 0 to Pred(lstVoice.Count) do begin
-            VoiceFileName := InfoFileName(
-              GetLoadOrderFormID(Info),
-              ResponseNumber
-            );
             VoiceFilePath := Format(
               'Data\Sound\Voice\%s\%s\',
               [GetFileName(Quest), lstVoice[v]]
@@ -515,7 +604,7 @@ begin
         else begin
           // No voice found fallback
           slExport.Add(Format(
-            '%s,%s,%s,%s,%s,"no voice",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s',
+            '%s,%s,%s,%s,%s,"no voice",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s',
             [
               EscapeCSVField(GetFileName(Quest)),
               EscapeCSVField(Name(Quest)),
@@ -529,6 +618,8 @@ begin
               EscapeCSVField(GetElementEditValues(Dialogue, 'DATA\Subtype')),
               EscapeCSVField(Trim(EditorID(Info) + ' [INFO:' + IntToHex(FormID(Info), 8) + ']')),
               EscapeCSVField(IntToStr(ResponseNumber)),
+              EscapeCSVField(VoiceFileName),
+              EscapeCSVField(''),
               EscapeCSVField(GetElementEditValues(Dialogue, 'FULL')),
               EscapeCSVField(GetElementEditValues(Info, 'RNAM - Prompt')),
               EscapeCSVField(GetElementEditValues(Response, 'NAM1 - Response Text')),
@@ -548,7 +639,7 @@ begin
   lstInfo.Free;
   lstVoice.Free;
 
-  ExportFileName := PluginName + '_' + '_dialogueExport.csv';
+  ExportFileName := 'Fallout4_DialogueExport.csv';
 end;
 
 //============================================================================
@@ -556,15 +647,23 @@ function Process(e: IInterface): integer;
 var
   s: string;
   sl: TStringList;
+  fileName: string;
 begin
   if Signature(e) <> 'QUST' then
     Exit;
 
+  fileName := GetFileName(e);
+
+  // Check if file should be ignored
+  if slIgnoredFiles.IndexOf(fileName) <> -1 then begin
+    Exit;
+  end;
+
   AddMessage('=== EXPORTING: ' + Name(e));
   e := MasterOrSelf(e);
-  
+
   if ContainerStates(GetFile(e)) and (1 shl csRefsBuild) = 0 then begin
-    AddMessage('Skipping quest, references are not built for file ' + GetFileName(e));
+    AddMessage('Skipping quest, references are not built for file ' + fileName);
     AddMessage('Use Right click \ Other \ Build Reference Info menu and try again.');
     Exit;
   end;
@@ -584,6 +683,7 @@ begin
   end;
   slExport.Free;
   lstRecursion.Free;
+  slIgnoredFiles.Free;
 end;
 
 end.

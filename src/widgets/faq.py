@@ -10,7 +10,7 @@ from qfluentwidgets import (
 from qfluentwidgets import ScrollArea, ExpandLayout
 
 from src.config.config import cfg, DISCLAIMER
-from src.utils.icons import FallTalkIcons, FallTalkStrokeIcons
+from src.utils.icons import FallTalkIcons
 
 
 class FaqSettingCard(ExpandSettingCard):
@@ -217,7 +217,7 @@ class FAQPage(ScrollArea):
         )
 
         self.bugs = FaqSettingCard(
-            FallTalkStrokeIcons.BUG.icon(),
+            FallTalkIcons.BUG.icon(stroke=True),
             self.tr('Crashed / Encountered an Error'),
             text=
             """

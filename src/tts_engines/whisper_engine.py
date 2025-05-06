@@ -70,7 +70,7 @@ def get_transcribe_state(segments):
 class Whisper_Engine():
     def __init__(self):
         self.align_model = WhisperxAlignModel()
-        self.transcribe_model = WhisperxModel("distil-large-v3", self.align_model)
+        self.transcribe_model = WhisperxModel("distil-large-v3.5", self.align_model)
 
 
     def transcribe(self, audio_path):

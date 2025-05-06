@@ -100,7 +100,7 @@ def edge_tts_inference(parent, text, output_file, voice, panel, api=False):
             QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Generate Audio"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
 
 
-def generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state=None, start_time=None, end_time=None, api=False):
+def generic_inference(parent, output_file, text, selected_audio=None, panel=None, transcribe_state=None, start_time=None, end_time=None, api=False):
     try:
         # Common parameters for all engines
         kwargs = {

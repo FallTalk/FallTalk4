@@ -14,7 +14,7 @@ from qfluentwidgets import (
 )
 
 from src.config.config import cfg, CUSTOM_DISCLAIMER
-from src.utils.icons import FallTalkStrokeIcons
+from src.utils.icons import FallTalkIcons
 from src.widgets.custom_message_box import CustomMessageBox
 from src.widgets.table_models import CharacterTableModel
 from src.widgets import FallTalkWidget
@@ -248,7 +248,7 @@ class CharactersWidget(FallTalkWidget):
 
             if downloaded:
                 delete_button = PushButton('Delete')
-                delete_button.setIcon(FallTalkStrokeIcons.DELETE.icon())
+                delete_button.setIcon(FallTalkIcons.DELETE.icon(stroke=True))
                 delete_button.setMinimumWidth(115)
                 delete_widget = QWidget()
                 delete_layout = QHBoxLayout(delete_widget)
@@ -350,7 +350,7 @@ class CharactersWidget(FallTalkWidget):
                 self.custom_table.setIndexWidget(index, widget)
 
             delete_button = PushButton('Delete')
-            delete_button.setIcon(FallTalkStrokeIcons.DELETE.icon())
+            delete_button.setIcon(FallTalkIcons.DELETE.icon(stroke=True))
             delete_button.setMinimumWidth(115)
             delete_widget = QWidget()
             delete_layout = QHBoxLayout(delete_widget)

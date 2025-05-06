@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
 from qfluentwidgets import FluentIcon as FIF, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, NavigationTreeWidget, BodyLabel
 from qfluentwidgets.window.fluent_window import FluentWindowBase
 
-from src.utils.icons import FallTalkStrokeIcons, FallTalkIcons
+from src.utils.icons import FallTalkIcons
 
 from src.config.config import cfg
 
@@ -47,13 +47,13 @@ class FallTalkFluentWindow(FluentWindowBase):
         self.reference_time_label = BodyLabel(self.tr("00:00"))
         self.reference_time_label.setFixedWidth(45)
 
-        self.rvc_action = Action(FallTalkStrokeIcons.VOICE_SQUARE.icon(), self.tr('RVC'), checkable=True, checked=cfg.get(cfg.engine) == 'RVC')
+        self.rvc_action = Action(FallTalkIcons.VOICE_SQUARE.icon(stroke=True), self.tr('RVC'), checkable=True, checked=cfg.get(cfg.engine) == 'RVC')
         self.gpt_sovits_action = Action(FallTalkIcons.G.icon(), self.tr('GPT_SoVITS'), checkable=True, checked=cfg.get(cfg.engine) == 'GPT_SoVITS')
         self.xtts_action = Action(FallTalkIcons.FROG.icon(), self.tr('XTTSv2'), checkable=True, checked=cfg.get(cfg.engine) == 'XTTSv2')
         self.styletts2_action = Action(FallTalkIcons.STYLE.icon(), self.tr('StyleTTS2'), checkable=True, checked=cfg.get(cfg.engine) == 'StyleTTS2')
         self.fish_action = Action(FallTalkIcons.FISH.icon(), self.tr('FishSpeech'), checkable=True, checked=cfg.get(cfg.engine) == 'FishSpeech')
         self.f5_action = Action(FallTalkIcons.F5.icon(), self.tr('F5'), checkable=True, checked=cfg.get(cfg.engine) == 'F5')
-        self.dia_action = Action(FallTalkStrokeIcons.DIA.icon(), self.tr('DIA'), checkable=True, checked=cfg.get(cfg.engine) == 'DIA')
+        self.dia_action = Action(FallTalkIcons.DIA.icon(stroke=True), self.tr('DIA'), checkable=True, checked=cfg.get(cfg.engine) == 'DIA')
         self.llasa_action = Action(FallTalkIcons.LLAMA.icon(), self.tr('Llasa'), checkable=True, checked=cfg.get(cfg.engine) == 'Llasa')
         self.orpheus_action = Action(FallTalkIcons.TRIANGLE.icon(), self.tr('Orpheus'), checkable=True, checked=cfg.get(cfg.engine) == 'Orpheus')
         self.cpu_action = Action(FallTalkIcons.CPU.icon(), self.tr('CPU'), checkable=True, checked=cfg.get(cfg.device) == 'cpu')

@@ -5,7 +5,7 @@ from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton, SwitchSettingCa
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.config.config import cfg, CustomFolderValidator
 from src.ui.cards import TextSettingCard, ComboBoxSettingsCard, RadioSettingCard
-from src.utils.icons import FallTalkIcons, FallTalkStrokeIcons
+from src.utils.icons import FallTalkIcons
 
 
 
@@ -21,7 +21,7 @@ class UpscaleWidget(FallTalkWidget):
 
         self.mode_card = RadioSettingCard(
             self.audio_mode,
-            FallTalkStrokeIcons.VOICE_SQUARE.icon(),
+            FallTalkIcons.VOICE_SQUARE.icon(stroke=True),
             self.tr('Mode'),
             self.tr('Upscale 16 kHz or below. Denoise for Recorded Speech. Isolate vocals is an AI denoiser from removing vocals from heavy background noise'),
             texts=["Denoise", "Isolate Vocals", "Upscale"],

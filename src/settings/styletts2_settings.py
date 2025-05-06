@@ -7,7 +7,7 @@ from qfluentwidgets import ScrollArea, ExpandLayout
 
 from src.config.config import cfg
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
-from src.utils.icons import FallTalkIcons, FallTalkStrokeIcons
+from src.utils.icons import FallTalkIcons
 
 
 class StyleTTS2Settings(ScrollArea):
@@ -22,7 +22,7 @@ class StyleTTS2Settings(ScrollArea):
 
         self.alpha_card = RangeSettingCardScaled(
             cfg.style_alpha,
-            FallTalkStrokeIcons.ALPHA.icon(),
+            FallTalkIcons.ALPHA.icon(stroke=True),
             self.tr('Alpha α'),
             self.tr("Timbre of speech. Lower values lean to the reference audio."),
             parent=self.settings_group
@@ -30,7 +30,7 @@ class StyleTTS2Settings(ScrollArea):
 
         self.beta_card = RangeSettingCardScaled(
             cfg.style_beta,
-            FallTalkStrokeIcons.BETA.icon(),
+            FallTalkIcons.BETA.icon(stroke=True),
             self.tr('Beta β'),
             self.tr('Rhythm, stress, and intonation of speech. Lower values give more influence by the reference audio.'),
             parent=self.settings_group

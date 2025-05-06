@@ -5,44 +5,9 @@ from qfluentwidgets import FluentIconBase, Theme, getIconColor
 from qfluentwidgets.common.icon import SvgIconEngine, writeSvg
 
 
-class FallTalkStrokeIcons(FluentIconBase, Enum):
-    """ Custom icons """
-
-    ALPHA = "alpha"
-    BETA = "beta"
-    BUG = "bug"
-    RECORD = "record"
-    DELETE = "delete"
-    HUGGING_FACE = "huggingface"
-    NEW = "NEW"
-    VOICE_OVER = "voice-over"
-    VOICE_SQUARE = "voice-square"
-    FROG = "frog"
-    MUSIC = "music"
-    REPLACE = "replace"
-    ENHANCE = "enhance"
-    SINE = "sine"
-    DIA = "dia"
-    FISH = "fish"
-
-
-
-    def icon(self, theme=Theme.AUTO, color: QColor = None) -> QIcon:
-        path = self.path(theme)
-
-        if not color:
-            return QIcon(SvgIconEngine(writeSvg(path, style=f"fill: none; stroke: rgb(0, 0, 0); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; stroke: {getIconColor(theme)}")))
-
-        color = QColor(color).name()
-        return QIcon(SvgIconEngine(writeSvg(path, style=f"fill: none; stroke: rgb(0, 0, 0); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; stroke: {color}")))
-
-    def path(self, theme=Theme.AUTO):
-        return f'resource/icons/{self.value}.svg'
-
-
 class FallTalkIcons(FluentIconBase, Enum):
     """ Custom icons """
-
+    # Regular icons
     GPU = "gpu"
     VAULT_BOY = "vault_boy"
     KO_FI = "ko-fi"
@@ -76,9 +41,17 @@ class FallTalkIcons(FluentIconBase, Enum):
     DIA = "dia"
     F5 = "f5"
     FISH = "fish"
+    MAGIC = "magic"
+    UP = "up"
 
+    # Stroke-only icons
+    ALPHA = "alpha"
+    BETA = "beta"
+    BUG = "bug"
+    DELETE = "delete"
+    MUSIC = "music"
 
-    def icon(self, theme=Theme.AUTO, color: QColor = None) -> QIcon:
+    def icon(self, theme=Theme.AUTO, color: QColor = None, stroke: bool = False) -> QIcon:
         """ create a fluent icon
 
         Parameters
@@ -91,14 +64,21 @@ class FallTalkIcons(FluentIconBase, Enum):
 
         color: QColor | Qt.GlobalColor | str
             icon color, only applicable to svg icon
+            
+        stroke: bool
+            whether to render the icon as a stroke instead of a fill
         """
         path = self.path(theme)
 
-        if path.endswith('.svg') and not color:
-            return QIcon(SvgIconEngine(writeSvg(path, fill=getIconColor(theme))))
+        if not color:
+            color = getIconColor(theme)
 
-        color = QColor(color).name()
-        return QIcon(SvgIconEngine(writeSvg(path, fill=color)))
+        if stroke:
+            style = f"fill: none; stroke: rgb(0, 0, 0); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; stroke: {color}"
+        else:
+            style = f"fill: {color}"
+
+        return QIcon(SvgIconEngine(writeSvg(path, style=style)))
 
     def path(self, theme=Theme.AUTO):
         return f'resource/icons/{self.value}.svg'

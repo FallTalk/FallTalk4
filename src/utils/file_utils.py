@@ -6,8 +6,14 @@ import sys
 import uuid
 from datetime import datetime
 
+from src.utils.filesystem_utils import get_app_root
+
 logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)
+
+
+def clean_tmp_folder():
+    clean_folder(os.path.join(get_app_root(), "temp"))
 
 
 def clean_folder(folder_path):
@@ -46,6 +52,6 @@ def formatted_time_stamp_uuid():
 
 
 def get_bulk_folder(engine_name):
-    output_folder = f"bulk_outputs/{formatted_time_stamp()}_{engine_name}"
+    output_folder = os.path.join(get_app_root(), f"bulk_outputs/{formatted_time_stamp()}_{engine_name}")
     os.makedirs(output_folder, exist_ok=True)
     return output_folder

@@ -37,7 +37,12 @@ from src.utils.model_utils import (
     load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler
 )
 
-from src.widgets import StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget, DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget, XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, FallTalkFluentWindow, FallTalkWidget, BulkGenerationWidget
+from src.widgets import (
+    StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget, 
+    DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget, 
+    XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, FallTalkFluentWindow, 
+    FallTalkWidget, BulkGenerationWidget, EzVoiceCreatorWidget
+)
 from src.utils.filesystem_utils import get_app_root
 
 
@@ -57,10 +62,11 @@ class ModelApp(FallTalkFluentWindow):
         self.pending_rvc = None
         self.pending_model = None
         self.pending_base = False
+        self.pending_bulk = False
+        self.pending_ez = False
         self.characters_data = None
         self.models = None
         self.custom_models = None
-        self.pending_bulk = False
         self.upscale_engine = None
 
         # Dictionary to store engine widgets
@@ -116,6 +122,20 @@ class ModelApp(FallTalkFluentWindow):
         if self.characters_data is None:
             with open(os.path.join(get_app_root(), 'config/characters.json'), 'r', encoding='utf-8') as file:
                 self.characters_data = {character['name']: character for character in json.load(file)}
+            
+            # Pre-sort and store reference files for each character
+            self.sorted_references = {}
+            for character_name, character in self.characters_data.items():
+                if character.get('voicefiles'):
+                    # Get all voice files with their dialogue text lengths
+                    voice_files = []
+                    for voice_file in character['voicefiles']:
+                        if voice_file.get('filename') and voice_file.get('dialogue'):
+                            voice_files.append((voice_file['filename'], len(voice_file['dialogue'])))
+                    
+                    # Sort by dialogue length and store top 15 filenames
+                    voice_files.sort(key=lambda x: x[1], reverse=True)
+                    self.sorted_references[character_name] = [filename for filename, _ in voice_files[:15]]
         
         if self.models is None:
             with open(os.path.join(get_app_root(), 'config/models.json'), 'r', encoding='utf-8') as file:
@@ -269,6 +289,7 @@ class ModelApp(FallTalkFluentWindow):
         self.bulk_generate_widget = BulkGenerationWidget(parent=self)
         self.upscale_widget = UpscaleWidget(parent=self)
         self.setting_widget = SettingsWidget(self)
+        self.ez_voice_creator_widget = EzVoiceCreatorWidget(parent=self)
 
         # Add all engine widgets to the generate widget
         for engine_type, widget in self.engine_widgets.items():
@@ -283,7 +304,8 @@ class ModelApp(FallTalkFluentWindow):
         self.addSubInterface(self.generate_widget, FIF.ROBOT, 'Generate Voice', NavigationItemPosition.TOP)
         self.navigationInterface.addSeparator()
         self.addSubInterface(self.bulk_generate_widget, FallTalkIcons.BULK.icon(), 'Bulk Generation', NavigationItemPosition.TOP)
-        self.addSubInterface(self.upscale_widget, FallTalkIcons.ENHANCE.icon(), 'Bulk Enhancement', NavigationItemPosition.TOP)
+        self.addSubInterface(self.upscale_widget, FallTalkIcons.UP.icon(stroke=True), 'Bulk Enhancement', NavigationItemPosition.TOP)
+        self.addSubInterface(self.ez_voice_creator_widget, FallTalkIcons.MAGIC.icon(), 'ESP Voice Generator', NavigationItemPosition.TOP)
         self.navigationInterface.addSeparator()
         self.addSubInterface(self.faq_widget, FIF.HELP, 'FAQ', NavigationItemPosition.BOTTOM)
         self.addSubInterface(self.setting_widget, FIF.SETTING, 'Settings', NavigationItemPosition.BOTTOM)
@@ -370,7 +392,7 @@ class ModelApp(FallTalkFluentWindow):
     def onEngineChange(self, engine):
         self.showLoaderPopup("Loading Engine", f"Loading {engine.value}")
         logger.debug(f"Engine Changed to {engine.value}")
-
+        engine_type = EngineType(engine.value)
         # Hide all engine widgets
         for widget in self.engine_widgets.values():
             widget.setVisible(False)
@@ -386,9 +408,9 @@ class ModelApp(FallTalkFluentWindow):
         if self.tts_engine is not None:
             self.tts_engine.clean()
 
-        if engine in self.engine_load_functions:
-            self.engine_actions[engine].setChecked(True)
-            tr = (threading.Thread(target=self.engine_load_functions[engine], args={self}, daemon=True))
+        if engine_type in self.engine_load_functions:
+            self.engine_actions[engine_type].setChecked(True)
+            tr = (threading.Thread(target=self.engine_load_functions[engine_type], args={self}, daemon=True))
             tr.start()
         else:
             self.tts_engine = None
@@ -454,6 +476,8 @@ class ModelApp(FallTalkFluentWindow):
         parent.load_models_config()
         if parent.pending_bulk:
             parent.bulk_inference()
+        elif parent.pending_ez:
+            parent.ez_voice_creator_inference()
         elif parent.pending_character and not parent.pending_base:
             parent.stackedWidget.setCurrentWidget(parent.characters_widget)
             parent.load_trained_model(parent.pending_character, parent.pending_model, parent.pending_rvc)
@@ -611,6 +635,26 @@ class ModelApp(FallTalkFluentWindow):
                 self.showLoaderPopup("Enhancing", "Please Wait")
                 tr = (threading.Thread(target=self.upscale_engine.upscale_dir, args=(up_dir, cfg.get(cfg.replace_existing), cfg.get(cfg.include_subdir), self.upscale_widget.audio_mode.value, self.upscale_widget.sample_rate.value), daemon=True))
                 tr.start()
+
+    def ez_voice_creator_inference(self):
+        """Handle generation button click in EzVoiceCreator widget"""
+        if not self.ez_voice_creator_widget.dialogue_table.model() or self.ez_voice_creator_widget.dialogue_table.model().rowCount() == 0:
+            MessageBox("Error", "No dialogue data to generate", self).exec()
+            return
+
+        if self.tts_engine is None:
+            self.pending_ez = True
+            self.onEngineChange(cfg.engine)
+        else:
+            self.pending_ez = False
+            data = len(self.ez_voice_creator_widget.dialogue_table.model().getData())
+            if data > 0:
+                self.showLoaderPopup(f"Generating Audio", f"Completed: 0/{data}")
+                from src.utils.bulk_utils import ez_voice_creator_inference
+                tr = (threading.Thread(target=ez_voice_creator_inference, args={self}, daemon=True))
+                tr.start()
+            else:
+                self.showErrorPopup(self.ez_voice_creator_widget, self.ez_voice_creator_widget.generate_button, "Please Load some Data")
 
     def bulk_inference(self):
         # if self.bulk_generate_widget.stackedWidget.currentWidget() == self.bulk_generate_widget.bulk_rvc_widget and (self.tts_engine is None or self.tts_engine.engine_name != 'RVC'):
@@ -874,3 +918,5 @@ class ModelApp(FallTalkFluentWindow):
                 json.dump(new_custom_models, file)
 
             self.load_models_config()
+
+

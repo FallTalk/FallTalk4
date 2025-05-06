@@ -6,7 +6,7 @@ from audio.audio_player import StandardAudioPlayerBar
 from src.widgets.generation_widget import GenerationWidget
 from src.config.config import cfg
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
-from src.utils.icons import FallTalkStrokeIcons
+from src.utils.icons import FallTalkIcons
 from src.enums.engine_type import EngineType
 from src.settings.styletts2_settings import StyleTTS2Settings
 

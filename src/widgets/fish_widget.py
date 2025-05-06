@@ -4,7 +4,7 @@ from qfluentwidgets import FluentIcon as FIF, RangeSettingCard, TextEdit, Primar
 
 from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg, FileValidator
-from src.utils.icons import FallTalkStrokeIcons
+from src.utils.icons import FallTalkIcons
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, TextSettingCard, SpinSettingCard, ComboBoxWordsCard
 from src.widgets import GenerationWidget
 from src.enums.engine_type import EngineType

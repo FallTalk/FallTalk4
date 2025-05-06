@@ -33,6 +33,7 @@ from src.widgets.bulk_generation_widgets import (
     BulkLipFuzWidget, BulkGenerationRVCWidget, 
     BulkGenerationTableWidget, BulkGenerationWidget
 )
+from src.widgets.ez_voice_creator_widget import EzVoiceCreatorWidget
 
 __all__ = [
     'FallTalkWidget',
@@ -66,5 +67,6 @@ __all__ = [
     'BulkLipFuzWidget',
     'BulkGenerationRVCWidget',
     'BulkGenerationTableWidget',
-    'BulkGenerationWidget'
+    'BulkGenerationWidget',
+    'EzVoiceCreatorWidget'
 ]

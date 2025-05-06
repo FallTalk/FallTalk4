@@ -4,7 +4,7 @@ from qfluentwidgets import FluentIcon as FIF, RangeSettingCard, TextEdit, Primar
 
 from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg, FileValidator
-from src.utils.icons import FallTalkStrokeIcons
+from src.utils.icons import FallTalkIcons
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, TextSettingCard, SpinSettingCard
 from widgets import FallTalkWidget
 
@@ -126,7 +126,7 @@ class MusicGenWidget(FallTalkWidget):
         self.text_input.setPlaceholderText("""
 The first time you generate, a 10GB model must downloaded. It is recommended you have 12GB of VRAM, but it can work on less or CPU mode, just slowly.
 
-Include some level of details on the instruments present, along with some intended use case (e.g. adding “perfect for a commercial”) can sometimes help. You can control BPM and Time Signatures 4/4, 3/4, 5/4, 2/4, etc, or leave it to the AI. Here are some example prompts:
+Include some level of details on the instruments present, along with some intended use case (e.g. adding "perfect for a commercial") can sometimes help. You can control BPM and Time Signatures 4/4, 3/4, 5/4, 2/4, etc, or leave it to the AI. Here are some example prompts:
 
 Violins and synths that inspire awe at the finiteness of life and the universe.
 
@@ -196,7 +196,7 @@ Audio model is licensed under CC-By-NC license for non commercial use
 
         self.mode_card = RadioSettingCard(
             cfg.audio_mode,
-            FallTalkStrokeIcons.VOICE_SQUARE.icon(),
+            FallTalkIcons.VOICE_SQUARE.icon(stroke=True),
             self.tr('Mode'),
             self.tr('Which model should we use? Changing causes loading in next generation'),
             texts=["Mono (5 GB)", "Stereo (12 GB)", "Song (20 GB)"],

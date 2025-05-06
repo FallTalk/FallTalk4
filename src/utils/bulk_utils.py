@@ -8,16 +8,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 import PySide6
+import random
 
 from src.config.config import cfg
 from src.utils.audio_utils import create_lip_and_fuz
-from src.utils.file_utils import get_bulk_folder
+from src.utils.file_utils import get_bulk_folder, clean_tmp_folder
 from src.utils.filesystem_utils import get_app_root
 from src.utils.model_utils import get_character_model, get_trained_character
 from src.utils.huggingface_utils import download_models, download_rvc_models
 from src.utils.inference_utils import (
-    do_transcribe, rvc_inference, xtts_inference, gpt_sovits_inference, styletts2_inference
+    do_transcribe, rvc_inference, xtts_inference, gpt_sovits_inference, styletts2_inference, dia_inference, f5_inference, fish_inference, orpheus_inference, llasa_inference
 )
+from src.enums.engine_type import EngineType
 
 logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)
@@ -239,10 +241,90 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
         QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
 
 
+def process_inference_data(parent, data, output_file, character, model, is_trained, has_rvc, reference_voice, text_or_file, api=True, last_character=None):
+    """Helper function to process inference data for both bulk and ez voice creator"""
+    try:
+        if last_character is None or last_character != character:
+            clean_tmp_folder()
+            if is_trained and not os.path.exists(os.path.join('models', character, parent.tts_engine.engine_name)):
+                download_models(parent, character, model[parent.tts_engine.engine_name], model['RVC'] if has_rvc else None, True)
+            elif has_rvc and not os.path.exists(os.path.join('models', character, 'RVC')):
+                download_rvc_models(character, model['RVC'])
+
+            if is_trained and character != parent.tts_engine.model_name:
+                parent.tts_engine.setup(character, has_rvc, False)
+            elif not is_trained and character != parent.tts_engine.model_name:
+                parent.tts_engine.setup(character, has_rvc, True)
+
+        is_wav = os.path.exists(text_or_file)
+
+        # Get reference audio
+        reference_path = None
+        if reference_voice is not None and os.path.exists(reference_voice):
+            reference_path = reference_voice
+        elif reference_voice is not None and reference_voice != "":
+            reference_path = get_reference(parent, character, reference_voice)
+        else:
+            # If no reference file specified or it doesn't exist, and model is not trained
+            engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
+            if not is_trained and engine_type.needs_reference_when_trained:
+                # Get top 5 longest references
+                top_references = get_top_references(parent, character)
+                if top_references:
+                    # Select a random reference from the top 5
+                    reference_path = random.choice(top_references)
+                else:
+                    logger.warning(f"No reference files found for character {character}")
+                    return
+
+        if has_rvc and is_wav:
+            data, samplerate = sf.read(text_or_file)
+            sf.write(output_file, data, samplerate)
+            rvc_inference(parent, output_file, None, api)
+        elif not is_wav:
+            engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
+            if engine_type is None:
+                raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")
+                
+            transcript = None
+            transcribe_state = None
+            if engine_type.needs_transcription and reference_path is not None:
+                resp = do_transcribe(parent, os.path.abspath(reference_path), None, api=True)
+                transcribe_state = resp if resp is not None else None
+                transcript = transcribe_state['transcript'] if transcribe_state is not None else None
+
+            if engine_type == EngineType.GPT_SOVITS:
+                gpt_sovits_inference(parent, output_file, text_or_file, os.path.abspath(reference_path) if parent.tts_engine.is_base else [os.path.abspath(reference_path)], None, transcript, api)
+            elif engine_type == EngineType.XTTS_V2:
+                xtts_inference(parent, output_file, text_or_file, reference_path, None, api)
+            elif engine_type == EngineType.STYLE_TTS2:
+                styletts2_inference(parent, output_file, text_or_file, reference_path, None, api)
+            elif engine_type == EngineType.DIA:
+                dia_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
+            elif engine_type == EngineType.F5:
+                f5_inference(parent, output_file, text_or_file, reference_path, None, None, None, transcribe_state=transcribe_state, api=api)
+            elif engine_type == EngineType.FISH_SPEECH:
+                fish_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
+            elif engine_type == EngineType.ORPHEUS:
+                orpheus_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
+            elif engine_type == EngineType.LLASA:
+                llasa_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
+
+        if cfg.get(cfg.xwm_enabled):
+            create_lip_and_fuz(parent, output_file, 44100, True)
+    except Exception as e:
+        logger.exception(f"Inference failed for row {data}")
+        raise
+
+
 def bulk_inference(parent):
-    if parent.tts_engine.engine_name != 'RVC':
+    if parent.tts_engine.engine_name != EngineType.RVC.value:
         model = parent.bulk_generate_widget.bulk_csv_widget.bulk_table.model()
         datas = model.getData()
+        
+        # Sort data by character (index 1) to process all entries for the same character together
+        datas.sort(key=lambda x: x[1] if x[1] is not None else "")
+        
         count = 0
         total = len(datas)
         time_total = 0
@@ -258,10 +340,12 @@ def bulk_inference(parent):
                 text_or_file = data[2]
                 reference_voice = data[3]
                 output_folder = data[4]
-                reference_path = None
 
                 model = get_character_model(character, parent.models, parent.custom_models)
                 is_trained, has_rvc = get_trained_character(model, parent.tts_engine.engine_name)
+                engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
+                if engine_type is None:
+                    raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")
 
                 if file_name is not None and file_name != "":
                     if ".wav" not in file_name:
@@ -281,45 +365,95 @@ def bulk_inference(parent):
                 except OSError as e:
                     pass
 
-                if reference_voice is not None and os.path.exists(reference_voice):
-                    reference_path = reference_voice
-                elif reference_voice is not None:
-                    reference_path = get_reference(parent, character, reference_voice)
-
-                if last_character is None or last_character != character:
-                    if is_trained and not os.path.exists(os.path.join('models', character, parent.tts_engine.engine_name)):
-                        download_models(parent, character, model[parent.tts_engine.engine_name], model['RVC'] if has_rvc else None, True)
-                    elif has_rvc and not os.path.exists(os.path.join('models', character, 'RVC')):
-                        download_rvc_models(character, model['RVC'])
-
-                    if is_trained and character != parent.tts_engine.model_name:
-                        parent.tts_engine.setup(character, has_rvc, False)
-
-                    elif not is_trained and character != parent.tts_engine.model_name:
-                        parent.tts_engine.setup(character, has_rvc, True)
-
-                is_wav = os.path.exists(text_or_file)
-
-                if has_rvc and is_wav:
-                    data, samplerate = sf.read(text_or_file)
-                    sf.write(output_file, data, samplerate)
-                    rvc_inference(parent, output_file, None, True)
-                elif not is_wav and parent.tts_engine.engine_name == 'GPT_SoVITS':
-                    transcript = None
-                    if not is_trained and reference_path is not None:
-                        resp = do_transcribe(parent, os.path.abspath(reference_path), None, api=True)
-                        transcript = resp['transcript'] if resp is not None else None
-                    gpt_sovits_inference(parent, output_file, text_or_file, os.path.abspath(reference_path) if parent.tts_engine.is_base else [os.path.abspath(reference_path)], None, transcript, api=True)
-                elif not is_wav and parent.tts_engine.engine_name == 'XTTSv2':
-                    xtts_inference(parent, output_file, text_or_file, reference_path, None, api=True)
-                elif not is_wav and parent.tts_engine.engine_name == 'StyleTTS2':
-                    styletts2_inference(parent, output_file, text_or_file, reference_path, None, api=True)
-
-                if cfg.get(cfg.xwm_enabled):
-                    create_lip_and_fuz(parent, output_file, 44100, True)
+                process_inference_data(parent, data, output_file, character, model, is_trained, has_rvc, reference_voice, text_or_file, last_character=last_character)
+                last_character = character
 
             except Exception as e:
                 logger.exception(f"bulk_inference failed for row {data}")
+
+            count += 1
+            end = datetime.now()
+            time_total += (end - start).total_seconds()
+            update_progress(parent, total, time_total, count)
+
+    QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+
+
+def get_top_references(parent, character_name, count=5):
+    """Get the top N reference files with the longest dialogue text for a character"""
+    # Get pre-sorted filenames
+    top_filenames = parent.sorted_references.get(character_name, [])[:count]
+    if not top_filenames:
+        return []
+
+    # Get reference paths for the selected filenames
+    references = []
+    for filename in top_filenames:
+        reference_path = get_reference(parent, character_name, filename)
+        if reference_path and os.path.exists(reference_path):
+            references.append(reference_path)
+
+    return references
+
+
+def ez_voice_creator_inference(parent):
+    if parent.tts_engine.engine_name != EngineType.RVC.value:
+        model = parent.ez_voice_creator_widget.dialogue_table.model()
+        datas = model.getData()
+        
+        # Sort data by voice_type (index 2) to process all entries for the same character together
+        datas.sort(key=lambda x: x[2] if x[2] is not None else "")
+        
+        count = 0
+        total = len(datas)
+        time_total = 0
+
+        last_character = None
+
+        for data in datas:
+            start = datetime.now()
+            try:
+                file_name = data[0]  # FILE_NAME
+                text = data[1]       # RESPONSE TEXT
+                voice_type = data[2] # VOICE TYPE
+                full_path = data[3]  # FULLPATH
+                reference_voice = data[4]  # REFERENCE FILE
+                plugin_name = data[5]  # PLUGIN
+
+                # Get character data
+                character = parent.characters_data.get(voice_type)
+                if not character:
+                    continue
+
+                model = get_character_model(character['name'], parent.models, parent.custom_models)
+                is_trained, has_rvc = get_trained_character(model, parent.tts_engine.engine_name)
+                engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
+                if engine_type is None:
+                    raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")
+
+                # Construct the output path with plugin name
+                # Remove the plugin name from the full path if it exists
+                path_parts = full_path.split(os.sep)
+                if len(path_parts) > 1 and path_parts[0] == 'Data':
+                    path_parts = path_parts[1:]  # Remove 'Data' from the path
+                
+                # Create the full output path with plugin name
+                output_path = os.path.join(get_app_root(), 'bulk_outputs/', plugin_name, 'Data', *path_parts)
+                output_file = output_path.replace('.fuz', '.wav')
+                
+                # Create the directory structure if it doesn't exist
+                output_dir = os.path.dirname(output_file)
+                try:
+                    os.makedirs(output_dir, exist_ok=True)
+                except OSError as e:
+                    logger.exception(f"Failed to create directory {output_dir}: {e}")
+                    continue
+
+                process_inference_data(parent, data, output_file, character['name'], model, is_trained, has_rvc, reference_voice, text, last_character=last_character)
+                last_character = character['name']
+
+            except Exception as e:
+                logger.exception(f"ez_voice_creator_inference failed for row {data}")
 
             count += 1
             end = datetime.now()
