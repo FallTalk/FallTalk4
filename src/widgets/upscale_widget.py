@@ -1,16 +1,22 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 from PySide6 import QtWidgets
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QGroupBox, QFileDialog, QSpacerItem
+from PySide6.QtWidgets import QHBoxLayout, QGroupBox, QFileDialog, QSpacerItem
 from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton, SwitchSettingCard, ConfigItem, PushSettingCard, OptionsValidator, OptionsConfigItem
 
-from src.widgets.falltalk_widget import FallTalkWidget
-from src.config.config import cfg, CustomFolderValidator
-from src.ui.cards import TextSettingCard, ComboBoxSettingsCard, RadioSettingCard
-from src.utils.icons import FallTalkIcons
 
+from src.config.config import cfg, CustomFolderValidator
+from src.ui.cards import RadioSettingCard
+from src.utils.icons import FallTalkIcons
+from src.widgets.falltalk_widget import FallTalkWidget
 
 
 class UpscaleWidget(FallTalkWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="Bulk Enhancement", vertical=True)
         self.parent = parent
 
@@ -50,7 +56,7 @@ class UpscaleWidget(FallTalkWidget):
 
         self.upscale_dir_card.clicked.connect(self.__onFolderCardClicked)
 
-        self.generate_button = PrimaryPushButton("Bulk Enhance")
+        self.generate_button = PrimaryPushButton(text="Bulk Enhance")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.upscale_folder)
 

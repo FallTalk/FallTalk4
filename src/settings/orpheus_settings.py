@@ -27,7 +27,7 @@ class OrpheusSettings(ScrollArea):
 
         self.seed_card = RangeSettingCard(
             cfg.orpehus_seed,
-            FIF.NUMBER_SYMBOL,
+            FIF.SETTING,
             self.tr('Seed'),
             self.tr('Random seed for generation (-1 for random)'),
             parent=self.settings_group
@@ -43,7 +43,7 @@ class OrpheusSettings(ScrollArea):
 
         self.repetition_card = RangeSettingCard(
             cfg.orpehus_repetition,
-            FIF.REPEAT,
+            FIF.SETTING,
             self.tr('Repetition'),
             self.tr('Control repetition in generation'),
             parent=self.settings_group

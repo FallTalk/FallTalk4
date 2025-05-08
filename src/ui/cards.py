@@ -1,15 +1,34 @@
 # coding:utf-8
-from enum import Enum
+from textwrap import dedent
 from typing import Union
 
-from PySide6.QtCore import Qt, QLocale, Signal, QObject
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QButtonGroup, QGroupBox
-from qfluentwidgets import (ConfigItem, OptionsConfigItem, BoolValidator,
-                            ColorConfigItem, OptionsValidator, RangeConfigItem, RangeValidator,
-                            EnumSerializer, FolderValidator, ConfigSerializer, SettingCard, FluentIconBase, SpinBox, DoubleSpinBox, BodyLabel, ComboBox, PrimaryPushButton,
-                            LineEdit, Slider, ConfigValidator, RadioButton, qconfig)
+from qfluentwidgets import (ConfigItem, OptionsConfigItem, RangeConfigItem, SettingCard, FluentIconBase, SpinBox, DoubleSpinBox, BodyLabel, ComboBox, LineEdit, Slider, RadioButton, qconfig, ExpandSettingCard, FluentIcon as FIF)
 
+
+class TextAreaCard(ExpandSettingCard):
+    def __init__(self, icon: Union[str, QIcon, FIF], title: str, content: str = None, parent=None, text: str = None, height=100):
+        super().__init__(icon, title, content, parent)
+        self.viewLayout.setSpacing(5)
+        self.viewLayout.setContentsMargins(5, 5, 5, 5)
+        self.options_group_box = QGroupBox(parent=self)
+        self.options_group_box.setStyleSheet("border: none")
+        self.options_box = QHBoxLayout(self)
+        self.label = QLabel()
+
+        self.label.setText(dedent(text))
+        self.label.setWordWrap(True)
+        self.label.setOpenExternalLinks(True)
+        self.label.setMaximumHeight(height)
+        self.label.setMinimumHeight(height)
+
+        self.options_box.addWidget(self.label)
+        self.options_group_box.setLayout(self.options_box)
+
+        self.viewLayout.addWidget(self.options_group_box)
+        self._adjustViewSize()
 
 class StyledSettingCard(SettingCard):
 

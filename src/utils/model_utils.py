@@ -1,3 +1,9 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 import logging
 import os
 import shutil
@@ -5,8 +11,10 @@ import shutil
 import PySide6
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 
+from enums.engine_type import EngineType
+
 from src.utils.huggingface_utils import (
-    downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA,
+    downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA, downloadSpark,
     downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models
 )
 
@@ -14,7 +22,7 @@ logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)
 
 
-def load_model(parent, character=None, rvc=None, display_name=None, base_model=False):
+def load_model(parent: 'FallTalkApp', character=None, rvc=None, display_name=None, base_model=False, model_engine_version=None):
     print(f"load_model {parent} {character}")
     try:
         if not character.startswith("custom_"):
@@ -30,7 +38,7 @@ def load_model(parent, character=None, rvc=None, display_name=None, base_model=F
                 parent.reference_time_label.setText("00:00")
                 parent.character_label.setText(f"Base Model")
 
-            parent.tts_engine.setup(character, rvc is not None, base_model)
+            parent.tts_engine.setup(character, rvc is not None, base_model, model_engine_version)
             QMetaObject.invokeMethod(parent, "afterModelLoader", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception("Unable to load model")
@@ -65,7 +73,7 @@ def get_character_models(character, characters_data):
     return None
 
 
-def generic_engine_loader(parent, engine_class, download_func, engine_name, api=False):
+def generic_engine_loader(parent: 'FallTalkApp', engine_class, download_func, engine_name, api=False):
     try:
         download_func(parent)
         downloadRVC(parent)
@@ -87,12 +95,12 @@ def generic_engine_loader(parent, engine_class, download_func, engine_name, api=
                                Q_ARG(str, "An Error Occurred while loading the engine. Please check your logs and report the issue if needed"))
 
 
-def load_xtts(parent):
+def load_xtts(parent: 'FallTalkApp'):
     from src.tts_engines.xtts_engine import XTTS_Engine
     generic_engine_loader(parent, XTTS_Engine, downloadXTTS, "XTTS")
 
 
-def load_whisper(parent, attempt=0):
+def load_whisper(parent: 'FallTalkApp', attempt=0):
     try:
         if parent.transcription_engine is None:
             from src.tts_engines.whisper_engine import Whisper_Engine
@@ -112,47 +120,52 @@ def load_whisper(parent, attempt=0):
                                      Q_ARG(str, "An Error Occured while loading whisper engine. Transcription will not work for untrained models. Please delete C:\\Users\\USERNAME\\.cache\\huggingface\\hub"))
 
 
-def load_gpt_sovits(parent):
+def load_gpt_sovits(parent: 'FallTalkApp') -> None:
     from src.tts_engines.gpt_sovits_engine import GPT_SoVITS_Engine
     generic_engine_loader(parent, GPT_SoVITS_Engine, downloadGPTSoVITS, "GPT_SoVITS")
 
 
-def load_dia(parent):
+def load_dia(parent: 'FallTalkApp'):
     from src.tts_engines.dia_engine import DIA_Engine
     generic_engine_loader(parent, DIA_Engine, downloadDIA, "DIA")
 
 
-def load_rvc(parent, api=False):
+def load_rvc(parent: 'FallTalkApp', api=False):
     from src.tts_engines.rvc_engine import RVC_Engine
     generic_engine_loader(parent, RVC_Engine, downloadRVC, "RVC", api)
 
 
-def load_fish(parent):
+def load_fish(parent: 'FallTalkApp'):
     from src.tts_engines.fish_engine import FishSpeechEngine
     generic_engine_loader(parent, FishSpeechEngine, downloadFish, "Fish")
 
 
-def load_f5(parent):
+def load_f5(parent: 'FallTalkApp'):
     from src.tts_engines.f5_engine import F5Engine
     generic_engine_loader(parent, F5Engine, downloadF5, "F5")
 
 
-def load_llasa(parent):
+def load_llasa(parent: 'FallTalkApp'):
     from src.tts_engines.llasa_engine import LlasaEngine
     generic_engine_loader(parent, LlasaEngine, downloadLlasa, "Llasa")
 
 
-def load_orpheus(parent):
+def load_orpheus(parent: 'FallTalkApp'):
     from src.tts_engines.orpheus_engine import OrpheusEngine
     generic_engine_loader(parent, OrpheusEngine, downloadOrpheus, "Orpheus")
 
 
-def load_style_tts2(parent):
+def load_style_tts2(parent: 'FallTalkApp'):
     from src.tts_engines.style_tts_engine import StyleTTS2_Engine
-    generic_engine_loader(parent, StyleTTS2_Engine, downloadStyleTTS2, "StyleTTS2")
+    generic_engine_loader(parent, StyleTTS2_Engine, downloadStyleTTS2, EngineType.STYLE_TTS2.value)
 
 
-def load_upscaler(parent, api=False):
+def load_spark(parent: 'FallTalkApp'):
+    from src.tts_engines.spark_engine import SparkEngine
+    generic_engine_loader(parent, SparkEngine, downloadSpark, EngineType.SPARK.value)
+
+
+def load_upscaler(parent: 'FallTalkApp', api=False):
     try:
         if parent.upscale_engine is None:
             from src.tts_engines.upscale_engine import UpscaleEngine
@@ -182,3 +195,5 @@ def seed_everything(seed):
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+
+

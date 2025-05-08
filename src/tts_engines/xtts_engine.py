@@ -8,6 +8,8 @@ from TTS.tts.models.xtts import Xtts
 from TTS.tts.models.xtts import XttsAudioConfig
 from TTS.config.shared_configs import BaseDatasetConfig
 from TTS.tts.models.xtts import XttsArgs
+
+from src.enums.engine_type import EngineType
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
@@ -34,7 +36,8 @@ torch.serialization.add_safe_globals([XttsArgs])
 class XTTS_Engine(tts_engine):
     def __init__(self):
         super().__init__()
-        self.engine_name = 'XTTSv2'
+        self.engin_type = EngineType.DIA
+        self.engine_name = self.engin_type.value
 
     def clean(self):
         super().clean()

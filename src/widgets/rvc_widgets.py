@@ -1,10 +1,18 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
+
 import os
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QWidget, QGroupBox, QVBoxLayout, QHBoxLayout, QStackedWidget, QSpacerItem, QFileDialog, QLineEdit
-from qfluentwidgets import FluentIcon as FIF, TextEdit, PrimaryPushButton, SegmentedWidget, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem, PushSettingCard, PushButton, Flyout, FlyoutView, FlyoutAnimationType
+from qfluentwidgets import FluentIcon as FIF, TextEdit, PrimaryPushButton, SegmentedWidget, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem, PushSettingCard, PushButton, Flyout, FlyoutView, FlyoutAnimationType, ToolButton
+
 
 from src.config.config import cfg, FileValidator
 from src.audio.audio_player import StandardAudioPlayerBar
@@ -18,7 +26,7 @@ from src.settings.rvc_settings import RVCSettings
 
 
 class BaseRVCWidget(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
         self.parent = parent
         self.view = QVBoxLayout(self)
@@ -119,15 +127,15 @@ class BaseRVCWidget(QWidget):
         self.gen_settings.setLayout(self.gen_settings_layout)
         self.view.addWidget(self.gen_settings)
 
-        self.generate_button = PrimaryPushButton("Generate Audio")
+        self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
 
         # Add settings button
-        self.settings_button = PushButton("Settings")
+        self.settings_button = ToolButton()
         self.settings_button.setIcon(FIF.SETTING)
         self.settings_button.setEnabled(True)
-        self.settings_button.setFixedWidth(100)
+        self.settings_button.setFixedWidth(50)
         self.settings_button.clicked.connect(lambda: self.show_settings(RVCSettings(self)))
         
         # Add to layout
@@ -138,7 +146,7 @@ class BaseRVCWidget(QWidget):
 
     def show_settings(self, settings):
         view = FlyoutView(
-            title='RVC Settings',
+            title='Advanced Settings',
             content="",
             icon=FIF.SETTING,
             parent=self,
@@ -147,18 +155,22 @@ class BaseRVCWidget(QWidget):
 
         # Add settings widget
         view.vBoxLayout.addWidget(settings)
+        window_rect = self.window().geometry()
 
         # Adjust flyout size
-        screen_rect = self.window().screen().availableGeometry()
-        width = min(1000, screen_rect.width() - 100)  # Leave some margin
-        view.setMinimumWidth(width)
+        view.setMinimumWidth(max(1000, int(window_rect.width() * 0.75)))
+        view.setMinimumHeight(max(600, int(window_rect.height() * 0.75)))
 
         # Calculate center point of the window
-        window_rect = self.window().geometry()
         view_size = view.sizeHint()
+
+        # Calculate dynamic offsets based on window and view sizes
+        x_offset = -(window_rect.width() * 0.3)  # Move left by 20% of window width
+        y_offset = -(window_rect.height() * 0.2)  # Move up by 10% of window height
+
         center_point = QPoint(
-            window_rect.x() + window_rect.width() // 2 - view_size.width() // 2,
-            window_rect.y() + window_rect.height() // 2 - view_size.height() // 2
+            int(window_rect.x() + (window_rect.width() - view_size.width()) // 2 + x_offset),
+            int(window_rect.y() + (window_rect.height() - view_size.height()) // 2 + y_offset)
         )
 
         # Show the flyout at the center point
@@ -168,7 +180,7 @@ class BaseRVCWidget(QWidget):
 
 class RVCMicrophoneWidget(BaseRVCWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
 
         self.media_recorder = StandardAudioRecorderBar(self)
@@ -188,7 +200,7 @@ class RVCMicrophoneWidget(BaseRVCWidget):
 
 class RVCFileWidget(BaseRVCWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
 
         self.rvc_file_start = "./"
@@ -229,7 +241,7 @@ class RVCFileWidget(BaseRVCWidget):
 
 class RVCEdgeTTSWidget(BaseRVCWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
 
         self.text_input = TextEdit()
@@ -260,7 +272,7 @@ class RVCEdgeTTSWidget(BaseRVCWidget):
 
 class RVCElevenLabsWidget(BaseRVCWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
 
         self.text_input = TextEdit()
@@ -301,7 +313,7 @@ class RVCElevenLabsWidget(BaseRVCWidget):
 
 class RVCWidget(FallTalkWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="RVC", vertical=True)
         self.parent = parent
 

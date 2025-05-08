@@ -1,6 +1,7 @@
 import time
 import wave
 
+from enums.engine_type import EngineType
 from src.config.config import cfg
 
 import sys
@@ -31,7 +32,8 @@ class OrpheusEngine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up Orpheus Engine")
-        self.engine_name = 'Orpheus'
+        self.engin_type = EngineType.ORPHEUS
+        self.engine_name = self.engin_type.value
         self.device = cfg.get(cfg.device)
         self.snac_model = None
         self.tokenizer = None

@@ -4,6 +4,7 @@ import sys
 import soundfile as sf
 import torch
 
+from src.enums.engine_type import EngineType
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
 
@@ -20,7 +21,8 @@ class DIA_Engine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up DIA Engine")
-        self.engine_name = 'DIA'
+        self.engin_type = EngineType.DIA
+        self.engine_name = self.engin_type.value
         self.device = cfg.get(cfg.device)
         self.dia = None
 

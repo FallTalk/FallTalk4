@@ -1,44 +1,31 @@
-from textwrap import dedent
-from typing import Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QWidget, QLabel, QGroupBox, QHBoxLayout
+from PySide6.QtWidgets import QWidget
 from qfluentwidgets import (
-    FluentIcon as FIF, SettingCardGroup, RangeSettingCard, isDarkTheme, ExpandSettingCard
+    FluentIcon as FIF, SettingCardGroup, isDarkTheme
 )
 from qfluentwidgets import ScrollArea, ExpandLayout
 
-from src.config.config import cfg, DISCLAIMER
+
+from src.config.config import DISCLAIMER
 from src.utils.icons import FallTalkIcons
+from src.ui.cards import TextAreaCard
 
 
-class FaqSettingCard(ExpandSettingCard):
-    def __init__(self, icon: Union[str, QIcon, FIF], title: str, content: str = None, parent=None, text: str = None, height=100):
-        super().__init__(icon, title, content, parent)
-        self.viewLayout.setSpacing(5)
-        self.viewLayout.setContentsMargins(5, 5, 5, 5)
-        self.options_group_box = QGroupBox(parent=self)
-        self.options_group_box.setStyleSheet("border: none")
-        self.options_box = QHBoxLayout(self)
-        self.label = QLabel()
 
-        self.label.setText(dedent(text))
-        self.label.setWordWrap(True)
-        self.label.setOpenExternalLinks(True)
-        self.label.setMaximumHeight(height)
-        self.label.setMinimumHeight(height)
-
-        self.options_box.addWidget(self.label)
-        self.options_group_box.setLayout(self.options_box)
-
-        self.viewLayout.addWidget(self.options_group_box)
-        self._adjustViewSize()
 
 
 class FAQPage(ScrollArea):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
 
         self.scroll_widget = QWidget()
@@ -48,7 +35,7 @@ class FAQPage(ScrollArea):
         self.about_group = SettingCardGroup(self.tr('About'), self.scroll_widget)
         self.models_group = SettingCardGroup(self.tr('Models'), self.scroll_widget)
 
-        self.why = FaqSettingCard(
+        self.why = TextAreaCard(
             FallTalkIcons.VAULT_BOY.icon(),
             self.tr('Why did you make this?'),
             text=
@@ -61,7 +48,7 @@ class FAQPage(ScrollArea):
 
         )
 
-        self.eginesuse = FaqSettingCard(
+        self.eginesuse = TextAreaCard(
             FIF.DEVELOPER_TOOLS,
             self.tr('Which Engine Should I use?'),
             text="""
@@ -77,7 +64,7 @@ class FAQPage(ScrollArea):
             height=225
         )
 
-        self.rvc = FaqSettingCard(
+        self.rvc = TextAreaCard(
             FIF.VOLUME,
             self.tr('What is RVC?'),
             text="""
@@ -91,7 +78,7 @@ class FAQPage(ScrollArea):
 
         )
 
-        self.reference = FaqSettingCard(
+        self.reference = TextAreaCard(
             FIF.MIX_VOLUMES,
             self.tr('What is reference audio?'),
             text="""
@@ -110,7 +97,7 @@ class FAQPage(ScrollArea):
 
         )
 
-        self.gpu = FaqSettingCard(
+        self.gpu = TextAreaCard(
             FallTalkIcons.GPU.icon(),
             self.tr("GPU or CPU?"),
             text="""
@@ -120,7 +107,7 @@ class FAQPage(ScrollArea):
             """
         )
 
-        self.downmodels = FaqSettingCard(
+        self.downmodels = TextAreaCard(
             FIF.PEOPLE,
             self.tr("How do I get new models?"),
             text="""
@@ -129,7 +116,7 @@ class FAQPage(ScrollArea):
             """
         )
 
-        self.moremodels = FaqSettingCard(
+        self.moremodels = TextAreaCard(
             FIF.PEOPLE,
             self.tr("Why isn't [character name] trained?"),
             text="""
@@ -142,7 +129,7 @@ class FAQPage(ScrollArea):
             height=155
         )
 
-        self.api = FaqSettingCard(
+        self.api = TextAreaCard(
             FIF.MEGAPHONE,
             self.tr('Upcoming Features or new Engines?'),
             text="""
@@ -164,7 +151,7 @@ class FAQPage(ScrollArea):
 
         )
 
-        self.acknowledgements = FaqSettingCard(
+        self.acknowledgements = TextAreaCard(
             FIF.HEART,
             self.tr('Acknowledgements and Credits'),
             text="""
@@ -182,7 +169,7 @@ class FAQPage(ScrollArea):
             height=225
         )
 
-        self.ownmodels = FaqSettingCard(
+        self.ownmodels = TextAreaCard(
             FIF.EDUCATION,
             self.tr('Can I train models?'),
             text="""
@@ -200,7 +187,7 @@ class FAQPage(ScrollArea):
             height=150
         )
 
-        self.games = FaqSettingCard(
+        self.games = TextAreaCard(
             FIF.GAME,
             self.tr('Can you add other games?'),
             text="""
@@ -208,7 +195,7 @@ class FAQPage(ScrollArea):
             """
         )
 
-        self.other = FaqSettingCard(
+        self.other = TextAreaCard(
             FIF.TILES,
             self.tr('Is this better than ElevenLabs or xVASynth?'),
             text="""
@@ -216,7 +203,7 @@ class FAQPage(ScrollArea):
             """
         )
 
-        self.bugs = FaqSettingCard(
+        self.bugs = TextAreaCard(
             FallTalkIcons.BUG.icon(stroke=True),
             self.tr('Crashed / Encountered an Error'),
             text=
@@ -233,14 +220,14 @@ class FAQPage(ScrollArea):
 
         )
 
-        self.disclaimer = FaqSettingCard(
+        self.disclaimer = TextAreaCard(
             FIF.TILES,
             self.tr('Disclaimer for Use of FallTalk'),
             text=DISCLAIMER,
             height=400
         )
 
-        self.text = FaqSettingCard(
+        self.text = TextAreaCard(
             FIF.INFO,
             self.tr('Creating Text'),
             text="""                
@@ -255,7 +242,7 @@ class FAQPage(ScrollArea):
             height=175
         )
 
-        self.params = FaqSettingCard(
+        self.params = TextAreaCard(
             FIF.INFO,
             self.tr('Engine Parameters'),
             text="""

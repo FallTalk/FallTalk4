@@ -1,3 +1,9 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 import logging
 import os
 import sys
@@ -6,6 +12,45 @@ import shutil
 from src.utils.filesystem_utils import get_app_root
 from logging.handlers import RotatingFileHandler
 
+logger: Optional[logging.Logger] = None
+
+def setup_logging():
+    # Configure the logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    os.makedirs(os.path.join(get_app_root(),"logs"), exist_ok=True)
+
+    # Rotate logs before creating new handler
+    rotate_logs()
+
+    # Create rotating handler with large file size limit
+    handler = logging.handlers.RotatingFileHandler(
+        os.path.join(get_app_root(), 'logs/falltalk.log'),
+        maxBytes=1024 * 1024 * 50,  # 50MB (safety net for single-run logging)
+        backupCount=20,  # Should match our manual rotation
+        encoding='utf-8'
+    )
+    handler.setLevel(logging.DEBUG)
+
+    # Formatter and activation
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    root_logger.addHandler(handler)
+
+    # Set up stdout and stderr redirection
+    stdout_logger = logging.getLogger('stdout')
+    stderr_logger = logging.getLogger('stderr')
+
+    # Redirect stdout and stderr to the logger
+    sys.stdout = LoggerStream(stdout_logger, logging.INFO)
+    sys.stderr = LoggerStream(stderr_logger, logging.ERROR)
+
+    # Return the root logger for convenience
+    global logger
+    logger = logging.getLogger('falltalk')
+    logger.setLevel(logging.DEBUG)
+
+    return root_logger
 
 def rotate_logs():
     log_dir = os.path.join(get_app_root(),"logs")
@@ -48,40 +93,3 @@ class LoggerStream:
 
     def isatty(self):
         return False
-
-def setup_logging():
-    # Configure the logger
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
-    os.makedirs(os.path.join(get_app_root(),"logs"), exist_ok=True)
-
-    # Rotate logs before creating new handler
-    rotate_logs()
-
-    # Create rotating handler with large file size limit
-    handler = logging.handlers.RotatingFileHandler(
-        os.path.join(get_app_root(), 'logs/falltalk.log'),
-        maxBytes=1024 * 1024 * 50,  # 50MB (safety net for single-run logging)
-        backupCount=20,  # Should match our manual rotation
-        encoding='utf-8'
-    )
-    handler.setLevel(logging.DEBUG)
-
-    # Formatter and activation
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    root_logger.addHandler(handler)
-
-    # Set up stdout and stderr redirection
-    stdout_logger = logging.getLogger('stdout')
-    stderr_logger = logging.getLogger('stderr')
-
-    # Redirect stdout and stderr to the logger
-    sys.stdout = LoggerStream(stdout_logger, logging.INFO)
-    sys.stderr = LoggerStream(stderr_logger, logging.ERROR)
-
-    # Return the root logger for convenience
-    return root_logger
-
-logger = logging.getLogger('falltalk')
-logger.setLevel(logging.DEBUG)

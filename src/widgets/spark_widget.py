@@ -1,68 +1,58 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from help.gpt_sovits_help import GPTSoVITSHelp
-
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
-from PySide6.QtWidgets import QHBoxLayout
-from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton, ToolButton
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
+from qfluentwidgets import (PrimaryPushButton, LineEdit, ComboBox,
+                            BodyLabel, FluentIcon as FIF, ToolButton,
+                            TextEdit)
 
 
 from audio.audio_player import StandardAudioPlayerBar
+from settings.spark_settings import SparkSettings
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
-from src.settings.gpt_sovits_settings import GPTSoVITSSettings
 from src.widgets import GenerationWidget
 
 
-class GPT_SoVITSWidget(GenerationWidget):
+class SparkWidget(GenerationWidget):
+
     def __init__(self, parent: FallTalkApp):
-        super().__init__(parent=parent, text="GPT SoVITS")
+        super().__init__(parent=parent, text=EngineType.LLASA.value)
         self.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
         self.transcribe_state = None
         self.words_data = None
 
         self.addGenSettings()
 
-
         self.media_player = StandardAudioPlayerBar(self)
         self.media_player.setVolume(100)
         self.buttons_layout = QHBoxLayout()
-
-        
         self.transcribe_button = PrimaryPushButton(text="Transcribe Reference Audio")
         self.transcribe_button.setIcon(FIF.PENCIL_INK)
         self.transcribe_button.clicked.connect(self.transcribe)
         self.transcribe_button.setVisible(False)
-        self.buttons_layout.addWidget(self.transcribe_button, stretch=5)
-        
+        self.buttons_layout.addWidget(self.transcribe_button, stretch=1)
         self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
-        self.buttons_layout.addWidget(self.generate_button, stretch=5)
+        self.buttons_layout.addWidget(self.generate_button, stretch=1)
 
         self.settings_button = ToolButton()
         self.settings_button.setIcon(FIF.SETTING)
         self.settings_button.setEnabled(True)
-        self.settings_button.clicked.connect(lambda: self.show_settings(GPTSoVITSSettings(self)))
+        self.settings_button.clicked.connect(lambda: self.show_settings(SparkSettings(self)))
         self.settings_button.setFixedWidth(50)
-
-        self.help_button = ToolButton()
-        self.help_button.setIcon(FIF.QUESTION)
-        self.help_button.setEnabled(True)
-        self.help_button.clicked.connect(lambda: self.show_help(GPTSoVITSSettings(self)))
-        self.help_button.setFixedWidth(50)
-
         self.buttons_layout.addWidget(self.settings_button)
-        self.buttons_layout.addWidget(self.help_button)
 
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 
-        self.setVisible(cfg.engine.value == EngineType.GPT_SOVITS.value)
-        self.media_player.setVisible(cfg.engine.value == EngineType.GPT_SOVITS.value)
+        self.setVisible(cfg.engine.value == EngineType.LLASA.value)
+        self.media_player.setVisible(cfg.engine.value == EngineType.LLASA.value)
         self.setEnabled(False)
 
     def onReferenceSelect(self):
@@ -70,8 +60,8 @@ class GPT_SoVITSWidget(GenerationWidget):
             self.generate_button.setEnabled(False)
             self.transcribe_button.setEnabled(True)
         elif self.parent.tts_engine:
-            self.generate_button.setEnabled(False)
-            self.transcribe_button.setEnabled(True)
+            self.generate_button.setEnabled(True)
+            self.transcribe_button.setVisible(False)
 
     def transcribe(self):
         self.parent.transcribe(self)
@@ -85,4 +75,3 @@ class GPT_SoVITSWidget(GenerationWidget):
         self.text_input.setPlaceholderText(f'Transcript: {self.transcribe_state} \n\nPlease Enter Your Text Now')
         self.generate_button.setEnabled(True)
         self.transcribe_button.setEnabled(False)
-

@@ -3,6 +3,7 @@ import time
 import numpy as np
 import torchaudio
 
+from enums.engine_type import EngineType
 from src.config.config import cfg
 
 import sys
@@ -24,7 +25,8 @@ class FishSpeechEngine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up FishSpeech Engine")
-        self.engine_name = 'FishSpeech'
+        self.engin_type = EngineType.FISH_SPEECH
+        self.engine_name = self.engin_type.value
         self.device = cfg.get(cfg.device)
         self.fish = None
         self.vqgan_model = None

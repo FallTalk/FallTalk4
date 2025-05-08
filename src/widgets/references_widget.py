@@ -1,26 +1,33 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
+
+import os
 import re
 
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QStackedWidget, QGroupBox, QHeaderView, QAbstractItemView, QSizePolicy, QSpacerItem, QWidget
+import soundfile as sf
 from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtWidgets import QHBoxLayout, QStackedWidget, QHeaderView, QAbstractItemView, QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SearchLineEdit, TableView, PushButton, SegmentedWidget,
-    TransparentDropDownPushButton, Action, CheckBox
+    CheckBox
 )
+
 
 from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
-from src.widgets.falltalk_widget import FallTalkWidget
-from src.widgets.table_models import CustomReferencesModel, CustomTableModel
-import os
-import soundfile as sf
-
 from src.utils.audio_utils import extract_bsa, create_xwm, extract_fuz
 from src.utils.filesystem_utils import get_app_root
+from src.widgets.falltalk_widget import FallTalkWidget
+from src.widgets.table_models import CustomReferencesModel, CustomTableModel
 
 
 class ReferencesWidget(FallTalkWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="Reference Audio", vertical=True)
         self.parent = parent
         self.media_player = StandardAudioPlayerBar(self)
@@ -63,10 +70,10 @@ class ReferencesWidget(FallTalkWidget):
         self.filter_line_edit.textChanged.connect(self.apply_filter)
         self.controlsBox.addWidget(self.filter_line_edit, stretch=5)
 
-        self.select_button = PushButton("Select")
+        self.select_button = PushButton(text="Select")
         self.select_button.clicked.connect(self.select_row)
         self.select_button.setIcon(FIF.ADD_TO)
-        self.remove_button = PushButton("Remove")
+        self.remove_button = PushButton(text="Remove")
         self.remove_button.setIcon(FIF.REMOVE_FROM)
         self.remove_button.clicked.connect(self.remove_row)
         self.highlight_checkbox = CheckBox("Show Highlighted")

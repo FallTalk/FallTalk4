@@ -12,7 +12,6 @@ from src.utils.icons import FallTalkIcons
 
 class GPTSoVITSSettings(ScrollArea):
 
-
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -25,7 +24,7 @@ class GPTSoVITSSettings(ScrollArea):
             FIF.CUT,
             self.tr('Slice Mode'),
             self.tr('How to slice the sentence for longer TTS generation'),
-            texts=["No Slice", "Slice by basic punct: . ! ? ...", "Slice by every punct", "Slice every 4 sentences", "Slice every 2 sentences"],
+            texts=["No Slice", "Slice by English punct", "Slice by every punct", "Slice every 4 sentences", "Slice per 50 characters"],
             parent=self.settings_group
         )
 

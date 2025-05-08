@@ -1,4 +1,5 @@
-from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QWidget
+
 
 class FallTalkWidget(QFrame):
 
@@ -18,5 +19,5 @@ class FallTalkWidget(QFrame):
         self.boxLayout.setContentsMargins(5, 5, 5, 5)
         self.setLayout(self.boxLayout)
 
-    def addToFrame(self, widget):
+    def addToFrame(self, widget: QWidget) -> None:
         self.boxLayout.addWidget(widget)

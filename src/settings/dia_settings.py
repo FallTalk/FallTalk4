@@ -1,15 +1,16 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from qfluentwidgets import (
-    FluentIcon as FIF, SettingCardGroup, RangeSettingCard, isDarkTheme
+    FluentIcon as FIF, SettingCardGroup, RangeSettingCard, isDarkTheme, SwitchSettingCard
 )
 from qfluentwidgets import ScrollArea, ExpandLayout
 
 from src.config.config import cfg
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
+from src.utils.icons import FallTalkIcons
 
 
-class LLASASettings(ScrollArea):
+class DIASettings(ScrollArea):
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -17,17 +18,16 @@ class LLASASettings(ScrollArea):
         self.expand_layout = ExpandLayout(self.scroll_widget)
         self.settings_group = SettingCardGroup(self.tr(''), self.scroll_widget)
 
-        self.mode_card = RadioSettingCard(
-            cfg.llasa_mode,
-            FIF.CUT,
-            self.tr('Model Size'),
-            self.tr('Choose the model size to use'),
-            texts=["3B", "1B", "8B"],
+        self.torch_compile_card = SwitchSettingCard(
+            FallTalkIcons.COMPILE.icon(),
+            self.tr('Use Torch Compile'),
+            self.tr('Enable PyTorch compilation for faster inference'),
+            configItem=cfg.dia_use_torch_compile,
             parent=self.settings_group
         )
 
         self.temperature_card = RangeSettingCardScaled(
-            cfg.llasa_temperature,
+            cfg.dia_temperature,
             FIF.FRIGID,
             self.tr('Temperature'),
             self.tr('Control randomness in generation'),
@@ -35,26 +35,26 @@ class LLASASettings(ScrollArea):
         )
 
         self.seed_card = RangeSettingCard(
-            cfg.llasa_seed,
-            FIF.SETTING,
+            cfg.dia_seed,
+            FIF.SEED,
             self.tr('Seed'),
             self.tr('Random seed for generation (-1 for random)'),
             parent=self.settings_group
         )
 
         self.top_p_card = RangeSettingCardScaled(
-            cfg.llasa_top_p,
+            cfg.dia_top_p,
             FIF.UP,
             self.tr('Top P'),
             self.tr('Higher values give more creativity in generation'),
             parent=self.settings_group
         )
 
-        self.max_length_card = RangeSettingCard(
-            cfg.llasa_max_length,
-            FIF.SETTING,
-            self.tr('Max Length'),
-            self.tr('Maximum length of generated text'),
+        self.repetition_card = RangeSettingCardScaled(
+            cfg.dia_repetition,
+            FIF.REPEAT,
+            self.tr('Repetition Penalty'),
+            self.tr('Higher values reduce repetition in generation'),
             parent=self.settings_group
         )
 
@@ -76,11 +76,11 @@ class LLASASettings(ScrollArea):
 
     def __initLayout(self):
         # add cards to group
-        self.settings_group.addSettingCard(self.mode_card)
+        self.settings_group.addSettingCard(self.torch_compile_card)
         self.settings_group.addSettingCard(self.temperature_card)
         self.settings_group.addSettingCard(self.seed_card)
         self.settings_group.addSettingCard(self.top_p_card)
-        self.settings_group.addSettingCard(self.max_length_card)
+        self.settings_group.addSettingCard(self.repetition_card)
 
         # add setting card group to layout
         self.expand_layout.setSpacing(28)

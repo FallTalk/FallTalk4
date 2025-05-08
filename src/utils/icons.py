@@ -43,6 +43,7 @@ class FallTalkIcons(FluentIconBase, Enum):
     FISH = "fish"
     MAGIC = "magic"
     UP = "up"
+    SPARK = "spark"
 
     # Stroke-only icons
     ALPHA = "alpha"

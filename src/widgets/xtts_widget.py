@@ -1,30 +1,36 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
 from src.widgets.generation_widget import GenerationWidget
 from src.enums.engine_type import EngineType
-from qfluentwidgets import FluentIcon as FIF, PushButton, Flyout, FlyoutView, FlyoutAnimationType, PrimaryPushButton
+from qfluentwidgets import FluentIcon as FIF, PushButton, Flyout, FlyoutView, FlyoutAnimationType, PrimaryPushButton, ToolButton
 from PySide6.QtWidgets import QHBoxLayout
 from PySide6.QtCore import QPoint
 from src.settings.xtts_settings import XTTSSettings
 
 class XttsWidget(GenerationWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="XTTS")
         self.addGenSettings()
         self.text_input.setPlaceholderText("Please enter text")
 
         self.media_player = StandardAudioPlayerBar(self)
         self.media_player.setVolume(100)
-        self.generate_button = PrimaryPushButton("Generate Audio")
+        self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
 
         # Add settings button
-        self.settings_button = PushButton("Settings")
+        self.settings_button = ToolButton()
         self.settings_button.setIcon(FIF.SETTING)
         self.settings_button.setEnabled(True)
-        self.settings_button.setFixedWidth(100)
+        self.settings_button.setFixedWidth(50)
         self.settings_button.clicked.connect(lambda: self.show_settings(XTTSSettings(self)))
         
         # Add to layout

@@ -1,3 +1,4 @@
+from enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 import soundfile as sf
 from src.utils.audio_utils import load_audio
@@ -5,7 +6,8 @@ from src.utils.audio_utils import load_audio
 class RVC_Engine(tts_engine):
     def __init__(self):
         super().__init__()
-        self.engine_name = 'RVC'
+        self.engin_type = EngineType.RVC
+        self.engine_name = self.engin_type.value
 
     def load_model(self):
         pass

@@ -5,6 +5,8 @@ import soundfile as sf
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from xcodec2.modeling_xcodec2 import XCodec2Model
+
+from src.enums.engine_type import EngineType
 from src.utils.filesystem_utils import get_app_root
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
@@ -16,7 +18,8 @@ class LlasaEngine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up Llasa Engine")
-        self.engine_name = 'Llasa'
+        self.engin_type = EngineType.LLASA
+        self.engine_name = self.engin_type.value
         self.device = cfg.get(cfg.device)
         self.codec_model = None
         self.tokenize = None

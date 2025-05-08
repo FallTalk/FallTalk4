@@ -1,6 +1,13 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QFileDialog
 from qfluentwidgets import FluentIcon as FIF, RangeSettingCard, TextEdit, PrimaryPushButton, ConfigItem, SwitchSettingCard, ConfigValidator, PushSettingCard
+
 
 from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg, FileValidator
@@ -10,7 +17,7 @@ from widgets import FallTalkWidget
 
 
 class AudioGenWidget(FallTalkWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="Sound Generator", vertical=True)
         self.parent = parent
 
@@ -42,7 +49,7 @@ Two swords fighting
 Audio model is licensed under CC-By-NC license for non commercial use        
         """)
 
-        self.generate_button = PrimaryPushButton("Generate")
+        self.generate_button = PrimaryPushButton(text="Generate")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_fx)
 
@@ -113,7 +120,7 @@ Audio model is licensed under CC-By-NC license for non commercial use
 
 
 class MusicGenWidget(FallTalkWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="Music Generator", vertical=True)
         self.parent = parent
 
@@ -139,7 +146,7 @@ a light and cheerily EDM track, with syncopated drums, aery pads, and strong emo
 Audio model is licensed under CC-By-NC license for non commercial use        
         """)
 
-        self.generate_button = PrimaryPushButton("Generate")
+        self.generate_button = PrimaryPushButton(text="Generate")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_music)
 

@@ -11,6 +11,7 @@ import torchaudio
 from hydra.utils import get_class
 from omegaconf import OmegaConf
 
+from src.enums.engine_type import EngineType
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
 from src.utils.filesystem_utils import get_app_root, get_app_code_root
@@ -31,7 +32,8 @@ class F5Engine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up F5 Engine")
-        self.engine_name = 'F5'
+        self.engin_type = EngineType.F5
+        self.engine_name = self.engin_type.value
         self.device = cfg.get(cfg.device)
         self.vocoder = None
         self.cfm_model = None
@@ -65,7 +67,7 @@ class F5Engine(tts_engine):
             self.switch_models()
 
         if self.vocoder is None:
-            self.vocoder = utils_infer.load_vocoder(is_local=True, local_path=os.path.join(get_app_root(), 'models', 'F5'), device=self.device)
+            self.vocoder = utils_infer.load_vocoder(is_local=True, local_path=os.path.join(get_app_root(), 'models', 'F5', 'vocos'), device=self.device)
 
         if self.is_base:
             ckpt_path = str(os.path.abspath(os.path.join(get_app_root(), 'models', 'F5', 'F5TTS_v1_Base', 'model_1250000.safetensors')))

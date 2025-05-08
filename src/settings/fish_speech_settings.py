@@ -27,7 +27,7 @@ class FishSpeechSettings(ScrollArea):
 
         self.repetition_card = RangeSettingCard(
             cfg.fish_repetition,
-            FIF.REPEAT,
+            FIF.SETTING,
             self.tr('Repetition'),
             self.tr('Control repetition in generation'),
             parent=self.settings_group
@@ -43,14 +43,14 @@ class FishSpeechSettings(ScrollArea):
 
         self.max_length_card = RangeSettingCard(
             cfg.fish_max_length,
-            FIF.LENGTH,
+            FIF.SETTING,
             self.tr('Max Length'),
             self.tr('Maximum length of generated text'),
             parent=self.settings_group
         )
 
         self.use_cache_card = SwitchSettingCard(
-            FIF.MEMORY,
+            FIF.SETTING,
             self.tr('Use Memory Cache'),
             self.tr('Cache model outputs for faster generation'),
             configItem=cfg.fish_use_cache,
@@ -67,7 +67,7 @@ class FishSpeechSettings(ScrollArea):
 
         self.seed_card = RangeSettingCard(
             cfg.fish_seed,
-            FIF.NUMBER_SYMBOL,
+            FIF.SETTING,
             self.tr('Seed'),
             self.tr('Random seed for generation (-1 for random)'),
             parent=self.settings_group

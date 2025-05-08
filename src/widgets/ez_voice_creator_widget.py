@@ -1,20 +1,29 @@
-import os
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 import csv
+import os
 import subprocess
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QHeaderView, QAbstractItemView, QFileDialog
+
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QGroupBox, QHeaderView, QAbstractItemView, QFileDialog
 from qfluentwidgets import (
     FluentIcon as FIF, TableView, PushButton, PrimaryPushButton,
     ConfigItem, PushSettingCard, MessageBox, SwitchSettingCard, SearchLineEdit
 )
 
-from src.widgets.falltalk_widget import FallTalkWidget
-from src.widgets.table_models import TableModel
+
 from src.config.config import cfg, FileValidator
 from src.utils.filesystem_utils import get_app_root
+from src.widgets.falltalk_widget import FallTalkWidget
+from src.widgets.table_models import TableModel
+
 
 class EzVoiceCreatorWidget(FallTalkWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="ESP Voice Generator", vertical=True)
         self.parent = parent
 
@@ -54,7 +63,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.filter_line_edit.setPlaceholderText("Filter...")
         self.filter_line_edit.textChanged.connect(self.apply_filter)
         
-        self.edit_mode_button = PushButton("Edit Mode")
+        self.edit_mode_button = PushButton(text="Edit Mode")
         self.edit_mode_button.setIcon(FIF.EDIT)
         self.edit_mode_button.setCheckable(True)
         self.edit_mode_button.clicked.connect(self.toggle_edit_mode)
@@ -127,12 +136,12 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.buttons_layout.setContentsMargins(0, 0, 0, 0)
         
         # Run xEdit button
-        self.run_xedit_button = PushButton("xEdit")
+        self.run_xedit_button = PushButton(text="xEdit")
         self.run_xedit_button.setIcon(FIF.COMMAND_PROMPT)
         self.run_xedit_button.clicked.connect(self.run_xedit)
         
         # Generate button
-        self.generate_button = PrimaryPushButton("Generate Audio")
+        self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.generate_audio)
         

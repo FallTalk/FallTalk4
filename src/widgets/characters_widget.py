@@ -1,3 +1,9 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 import json
 import os
 import re
@@ -14,6 +20,7 @@ from qfluentwidgets import (
 )
 
 from src.config.config import cfg, CUSTOM_DISCLAIMER
+from src.enums.engine_type import EngineType
 from src.utils.icons import FallTalkIcons
 from src.widgets.custom_message_box import CustomMessageBox
 from src.widgets.table_models import CharacterTableModel
@@ -22,7 +29,7 @@ from src.widgets import FallTalkWidget
 
 class CharactersWidget(FallTalkWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="Character Models", vertical=True)
         self.parent = parent
         # Create a TabView instance
@@ -86,7 +93,7 @@ class CharactersWidget(FallTalkWidget):
 
         # self.stackedWidget.currentChanged.connect(self.verify)
 
-        self.add_button = PushButton("Add")
+        self.add_button = PushButton(text="Add")
         self.add_button.setMaximumWidth(200)
         self.add_button.clicked.connect(self.add_custom)
         self.add_button.setIcon(FIF.ADD_TO)
@@ -219,7 +226,13 @@ class CharactersWidget(FallTalkWidget):
     def loadTrained(self, parent, trained_characters):
         d = []
         for row, cm in enumerate(trained_characters):
-            d.append([f'load', f'{cm["display_name"]}', f'{cm["name"]}', f'rvc', f'delete', f'dl', cm])
+            # Check if the model's engine version is supported
+            engine_type = EngineType(cfg.get(cfg.engine))
+            model = cm[cfg.get(cfg.engine)]
+            version = model.get('engine_version', "1")
+            
+            if engine_type.is_version_supported(version):
+                d.append([f'load', f'{cm["display_name"]}', f'{cm["name"]}', f'rvc', f'delete', f'dl', cm])
 
         headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
         table_model = CharacterTableModel(d, headers)
@@ -240,7 +253,11 @@ class CharactersWidget(FallTalkWidget):
                 self.trained_table.setIndexWidget(index, widget)
 
             model = character_model[cfg.get(cfg.engine)]
+            version = model.get('engine_version', 1)
             model_dir = os.path.join("models", character_model["name"], cfg.get(cfg.engine))
+            if version != "1":
+                model_dir = os.path.join(model_dir, str(version))
+            
             model_files = os.listdir(model_dir) if os.path.isdir(model_dir) else []
             pattern_str = fr"^{character_model['name']}.*_v.*\.{model['type']}$"
             pattern = re.compile(pattern_str)
@@ -274,7 +291,7 @@ class CharactersWidget(FallTalkWidget):
                 self.trained_table.setIndexWidget(index, widget)
 
                 # Check if there is a different version locally
-                versions = self.find_versions(os.path.join("models", character_model["name"], cfg.get(cfg.engine)), character_model["name"], model['type'])
+                versions = self.find_versions(model_dir, character_model["name"], model['type'])
                 different_version_found = int(model['version']) not in versions
                 if not different_version_found and character_model['RVC']:
                     versions = self.find_versions(os.path.join("models", character_model["name"], "RVC"), character_model["name"], character_model['RVC']['type'])
@@ -314,7 +331,14 @@ class CharactersWidget(FallTalkWidget):
     def loadCustom(self, parent, custom_characters):
         data = []
         for row, cm in custom_characters.items():
-            data.append([f'load', cm["display_name"], cm["display_name"] if cm["name"] is None else cm["name"], f'delete', f'rvc', cm])
+            # Check if the model's engine version is supported
+            if cfg.get(cfg.engine) in cm:
+                engine_type = EngineType(cfg.get(cfg.engine))
+                model = cm[cfg.get(cfg.engine)]
+                version = model.get('engine_version', "1")
+                
+                if engine_type.is_version_supported(version):
+                    data.append([f'load', cm["display_name"], cm["display_name"] if cm["name"] is None else cm["name"], f'delete', f'rvc', cm])
 
         headers = ["Load", "Name", "Directory", "Delete", "RVC"]
         table_model = CharacterTableModel(data, headers)
@@ -365,6 +389,8 @@ class CharactersWidget(FallTalkWidget):
     def loadUntrained(self, parent, untrained_characters):
         data = []
         for row, cm in enumerate(untrained_characters):
+            # For untrained characters, we don't need to check engine version
+            # since they don't have a specific engine model yet
             data.append([f'load', cm["display_name"], cm["display_name"] if cm["name"] is None else cm["name"], f'rvc', cm])
 
         headers = ["Load", "Name", "Directory", "RVC"]

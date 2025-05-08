@@ -1,18 +1,26 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 from PySide6.QtWidgets import QGroupBox, QHBoxLayout
-from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton
+from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton, PushButton, ToolButton
+
 
 from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
 from src.utils.icons import FallTalkIcons
 from src.utils.logging_utils import logger
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, ComboBoxWordsCard
-from src.widgets import GenerationWidget
+from src.widgets.generation_widget import GenerationWidget
 from src.enums.engine_type import EngineType
+from src.settings.f5_settings import F5Settings
 
 
 class F5Widget(GenerationWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="F5")
         self.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
         self.transcribe_state = None
@@ -80,16 +88,24 @@ class F5Widget(GenerationWidget):
         self.media_player = StandardAudioPlayerBar(self)
         self.media_player.setVolume(100)
         self.buttons_layout = QHBoxLayout()
-        self.transcribe_button = PrimaryPushButton("Transcribe Reference Audio")
+        self.transcribe_button = PrimaryPushButton(text="Transcribe Reference Audio")
         self.transcribe_button.setIcon(FIF.PENCIL_INK)
         self.transcribe_button.clicked.connect(self.transcribe)
         self.transcribe_button.setEnabled(False)
         self.buttons_layout.addWidget(self.transcribe_button, stretch=1)
-        self.generate_button = PrimaryPushButton("Generate Audio")
+        self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
         self.generate_button.setEnabled(False)
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
+        
+        self.settings_button = ToolButton()
+        self.settings_button.setIcon(FIF.SETTING)
+        self.settings_button.setEnabled(True)
+        self.settings_button.clicked.connect(lambda: self.show_settings(F5Settings(self)))
+        self.settings_button.setFixedWidth(50)
+        self.buttons_layout.addWidget(self.settings_button)
+        
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 

@@ -1,20 +1,24 @@
 import glob
 import os
 from abc import ABC, abstractmethod
+from typing import Optional
+
 import torch
 
+from enums.engine_type import EngineType
 from src.utils import logging_utils
-from src.tts_engines.rvc.infer.infer import RVCPipeline, RVCParameters
 from src.config.config import cfg
+from src.utils.filesystem_utils import get_app_root
 
 
 class tts_engine(ABC):
     def __init__(self):
         self.model = None
         self.model_name = None
-        self.engine_name = None
+        self.engin_type: Optional[EngineType] = None
         self.model_path = None
-        self.model_type = 'pth'
+        self.model_engine_version = None
+        self.model_type = 'safetensors'
         self.rvc_model = False
         self.is_base = False
         self.device = cfg.get(cfg.device)
@@ -23,9 +27,15 @@ class tts_engine(ABC):
         self.rvc_parameters = None
         self.rvc_pth_path = None
         self.rvc_index_path = None
+        self.rvc_model_version = None
 
-    def get_model(self, engine, model_type):
-        directory = os.path.join("models", self.model_name, engine)
+    def get_model(self, engin_type: EngineType, model_type=None, model_engine_version=None):
+        if(model_type is None):
+            model_type = self.model_type
+        if(model_engine_version is None):
+            model_engine_version = self.model_engine_version
+
+        directory = os.path.join(get_app_root(), "models", engin_type.get_model_path(self.model_name, model_engine_version))
         model_files = glob.glob(os.path.join(directory, '*.' + model_type))
         if not model_files:
             print("No model files found in the directory.")
@@ -40,18 +50,24 @@ class tts_engine(ABC):
 
         self.model_name = None
         self.model_path = None
+        self.model_engine_version = None
         self.rvc_model = False
         self.is_base = False
         torch.cuda.empty_cache()
 
-    def setup(self, selected_model, rvc=False, base_model=False):
-        print(f"setup {selected_model}")
+    def setup(self, selected_model, rvc=False, base_model=False, model_version=None):
+        from src.tts_engines.rvc.infer.infer import RVCPipeline
+
+        print(f"setup {selected_model} version {model_version}")
         self.rvc_model = rvc
         if selected_model is not None and not base_model:
             if self.model_name != selected_model:
-                self.unload_model()
+                if self.model:
+                    self.unload_model()
                 self.model_name = selected_model
-                self.model_path = self.get_model(self.engine_name, self.model_type)
+                self.model_engine_version = model_version
+
+                self.model_path = self.get_model(self.engin_type, self.model_type)
                 self.load_model()
         elif base_model:
             if self.model_name is not None and not self.is_base:
@@ -69,8 +85,8 @@ class tts_engine(ABC):
                 self.rvc_pipeline.clean_up()
 
             self.rvc_pipeline = RVCPipeline(cfg.get(cfg.device))
-            self.rvc_pth_path = self.get_model("RVC", "pth")
-            self.rvc_index_path = self.get_model("RVC", "index")
+            self.rvc_pth_path = self.get_model(EngineType.RVC, "pth", "1")
+            self.rvc_index_path = self.get_model(EngineType.RVC, "index", "1")
 
             if os.path.isfile(self.rvc_pth_path) and os.path.isfile(self.rvc_index_path):
                 self.rvc_pipeline.load_person(self.rvc_pth_path)
@@ -117,6 +133,7 @@ class tts_engine(ABC):
         self.rvc_parameters = self.get_rvc_params()
 
     def get_rvc_params(self):
+        from src.tts_engines.rvc.infer.infer import RVCParameters
         params = RVCParameters()
         params.f0up_key = cfg.get(cfg.rvc_pitch)
         params.filter_radius = cfg.get(cfg.rvc_filter_radius) / 100.0

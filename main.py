@@ -1,18 +1,10 @@
-import sys
-import os
 import ctypes
+import logging
+import os
 import subprocess
+import sys
 import traceback
 
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
-
-import src.api.falltalkapi as falltalkapi
-from src.FallTalk import ModelApp
-from src.utils.model_utils import seed_everything
-from src.config.config import cfg
-from src.utils.logging_utils import setup_logging
-from src.utils import logging_utils
 
 def hide_console():
     whnd = ctypes.windll.kernel32.GetConsoleWindow()
@@ -21,24 +13,32 @@ def hide_console():
 
 
 if __name__ == '__main__':
+    from src.utils.logging_utils import setup_logging
 
+    logger = None
     try:
         # Configure the logger
         root_logger = setup_logging()
-        logger = logging_utils.logger
-        seed_everything(cfg.get(cfg.seed))
-
-        if cfg.get(cfg.dpiScale) != "Auto":
-            os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
-            os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
-
-        application = QApplication(sys.argv)
+        logger = logging.getLogger('main')
     except Exception as e:
         traceback.print_exc()
-        print("Unable to Start FallTalk", e)
+        logger = logging.getLogger('main')
+        logger.debug("Unable to Start FallTalk Logging", e)
+
+
+    from src.config.config import cfg
 
     try:
+        from src.utils.model_utils import seed_everything
+        seed_everything(cfg.get(cfg.seed))
 
+
+    except Exception as e:
+        traceback.print_exc()
+        logger.debug("Unable to Seed Everything", e)
+
+
+    try:
         if cfg.get(cfg.huggingface_cache_dir) != "Please Select a Valid Folder":
             os.environ["HF_HUB_CACHE"] = cfg.get(cfg.huggingface_cache_dir)
 
@@ -70,11 +70,21 @@ if __name__ == '__main__':
         os.environ['NLTK_DATA'] = os.path.abspath(os.path.join("resource", "apps", "nltk_data"))
 
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        from src.utils import logging_utils
-        logger = logging_utils.logger
         logger.debug('Unable to find espeak', e)
 
     try:
+        from PySide6.QtWidgets import QApplication
+        from PySide6.QtCore import Qt
+
+        import src.api.falltalkapi as falltalkapi
+        from src.FallTalk import FallTalkApp
+
+        if cfg.get(cfg.dpiScale) != "Auto":
+            os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+            os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
+
+        application = QApplication(sys.argv)
+
         QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.Ceil)
 
         app_id = 'falltalk'
@@ -84,13 +94,13 @@ if __name__ == '__main__':
             from qfluentwidgets import Theme
             cfg.set(cfg.themeMode, Theme.DARK)
 
-        falltak_app = ModelApp()
+        falltak_app = FallTalkApp()
         api_server = falltalkapi.FallTalkAPI(falltak_app)
         hide_console()
         application.exec()
-        print(f"Shutting down")
+        logger.debug(f"Shutting down")
         api_server.shutdown()
         sys.exit()
     except Exception as e:
         traceback.print_exc()
-        print("Unable to Start FallTalk", e)
+        logger.debug("Unable to Start FallTalk", e)

@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+
 import logging
 import asyncio
-import os
 import re
-import soundfile as sf
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 import PySide6
 
@@ -14,7 +19,7 @@ logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)
 
 
-def do_transcribe(parent, selected_audio, widget, api=False):
+def do_transcribe(parent: 'FallTalkApp', selected_audio, widget, api=False):
     try:
         resp = parent.transcription_engine.transcribe(selected_audio)
         if not api:
@@ -58,7 +63,7 @@ def get_edge_tts_voices():
     return [f"{v['ShortName']}-{v['Gender']}" for v in tts_voice_list if v['ShortName'].startswith('en-')]
 
 
-def eleven_labs_inference(parent, text, output_file, voice, panel, api=False):
+def eleven_labs_inference(parent: 'FallTalkApp', text, output_file, voice, panel, api=False):
     from elevenlabs.core import ApiError
     try:
         key = cfg.get(cfg.rvc_eleven_labs_key)
@@ -84,7 +89,7 @@ def eleven_labs_inference(parent, text, output_file, voice, panel, api=False):
             QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Call Eleven Labs"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
 
 
-def edge_tts_inference(parent, text, output_file, voice, panel, api=False):
+def edge_tts_inference(parent: 'FallTalkApp', text, output_file, voice, panel, api=False):
     try:
         import edge_tts
 
@@ -100,7 +105,7 @@ def edge_tts_inference(parent, text, output_file, voice, panel, api=False):
             QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Generate Audio"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
 
 
-def generic_inference(parent, output_file, text, selected_audio=None, panel=None, transcribe_state=None, start_time=None, end_time=None, api=False):
+def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=None, panel=None, transcribe_state=None, start_time=None, end_time=None, api=False):
     try:
         # Common parameters for all engines
         kwargs = {
@@ -138,7 +143,7 @@ def generic_inference(parent, output_file, text, selected_audio=None, panel=None
                                    Q_ARG(str, "An Error Occurred while attempting to generate audio. Please check your logs and report the issue if needed"))
 
 
-def rvc_inference(parent, input_file, panel, api=False):
+def rvc_inference(parent: 'FallTalkApp', input_file, panel, api=False):
     try:
         parent.tts_engine.run_rvc(input_file)
         if not api:
@@ -158,33 +163,55 @@ def rvc_inference(parent, input_file, panel, api=False):
                                    Q_ARG(str, "An Error Occurred while attempting to generate audio. Please check your logs and report the issue if needed"))
 
 
-def xtts_inference(parent, output_file, text, selected_audio, panel, api=False):
+def xtts_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, api=api)
 
 
-def dia_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=False):
+def dia_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
 
 
-def orpheus_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=False):
+def orpheus_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
 
 
-def llasa_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=False):
+def llasa_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
 
 
-def fish_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=False):
+def fish_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
 
 
-def f5_inference(parent, output_file, text, selected_audio, panel, start_time, end_time, transcribe_state, api=False):
+def f5_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, start_time, end_time, transcribe_state, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, start_time, end_time, api=api)
 
 
-def gpt_sovits_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=False):
+def gpt_sovits_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
 
 
-def styletts2_inference(parent, output_file, text, selected_audio, panel, api=False):
+def styletts2_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, api=api)
+
+
+def spark_inference(parent: 'FallTalkApp', output_file, text, language, speaker_id, widget):
+    try:
+        if parent.tts_engine is None:
+            raise ValueError("TTS engine not loaded")
+
+        # Generate audio
+        parent.tts_engine.synthesize(
+            text=text,
+            output_path=output_file,
+            speaker_id=speaker_id,
+            language=language
+        )
+
+        # Update media player
+        parent.updateMediaplayer(widget, output_file)
+        parent.afterGen(parent)
+
+    except Exception as e:
+        logger.exception(f"Error in Spark-TTS inference: {str(e)}")
+        parent.onError(parent, "Error", str(e))

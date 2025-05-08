@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import json
 import os
@@ -15,38 +17,40 @@ from PySide6.QtWidgets import QApplication
 from packaging import version
 from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, MessageBox
 from qfluentwidgets import NavigationItemPosition
-
+from typing import Optional
 import src.config.config as config
 from src.config.config import cfg, DISCLAIMER, REPO
 from src.enums.engine_type import EngineType
 from src.utils.audio_utils import combine_wav_files
 from src.utils.bulk_utils import bulk_inference, bulk_rvc_inference, bulk_fuz
-# Import utility functions directly from utility modules
-
 from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp, formatted_time_stamp_uuid
 from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models
 from src.utils.icons import FallTalkIcons
 from src.utils.inference_utils import (
     do_transcribe, replace_numbers_with_words, eleven_labs_inference, edge_tts_inference,
     rvc_inference, xtts_inference, dia_inference, fish_inference, f5_inference,
-    gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference
+    gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference, spark_inference
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
-    load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc,
+    load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc, load_spark,
     load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler
 )
 
-from src.widgets import (
-    StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget, 
-    DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget, 
-    XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, FallTalkFluentWindow, 
-    FallTalkWidget, BulkGenerationWidget, EzVoiceCreatorWidget
-)
+from src.widgets.falltalk_fluent_window import FallTalkFluentWindow
 from src.utils.filesystem_utils import get_app_root
+from src.tts_engines import tts_engine
+from tts_engines.whisper_engine import Whisper_Engine
 
+# Import widgets here to avoid circular imports
+from src.widgets import (
+    StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget,
+    DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget,
+    XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, BulkGenerationWidget,
+    EzVoiceCreatorWidget, FallTalkWidget, SparkWidget
+)
 
-class ModelApp(FallTalkFluentWindow):
+class FallTalkApp(FallTalkFluentWindow):
     def __init__(self):
         super().__init__()
         self.stateTooltip = None
@@ -55,9 +59,8 @@ class ModelApp(FallTalkFluentWindow):
         self.splashScreen = SplashScreen(self.icon, self)
         self.splashScreen.setIconSize(QSize(128, 128))
         self.setupWindow()
-
-        self.tts_engine = None
-        self.transcription_engine = None
+        self.tts_engine: Optional[tts_engine] = None
+        self.transcription_engine: Optional[Whisper_Engine] = None
         self.pending_character = None
         self.pending_rvc = None
         self.pending_model = None
@@ -83,7 +86,8 @@ class ModelApp(FallTalkFluentWindow):
             EngineType.ORPHEUS: load_orpheus,
             EngineType.FISH_SPEECH: load_fish,
             EngineType.F5: load_f5,
-            EngineType.RVC: load_rvc
+            EngineType.RVC: load_rvc,
+            EngineType.SPARK: load_spark
         }
 
         clean_folder("temp/")
@@ -138,7 +142,7 @@ class ModelApp(FallTalkFluentWindow):
                     self.sorted_references[character_name] = [filename for filename, _ in voice_files[:15]]
         
         if self.models is None:
-            with open(os.path.join(get_app_root(), 'config/models.json'), 'r', encoding='utf-8') as file:
+            with open(os.path.join(get_app_root(), 'config/modelsv2.json'), 'r', encoding='utf-8') as file:
                 self.models = {model['name']: model for model in json.load(file)['characters']}
 
     def _load_custom_models(self):
@@ -221,12 +225,12 @@ class ModelApp(FallTalkFluentWindow):
             os.makedirs(os.path.join(get_app_root(), "models/"), exist_ok=True)
             os.makedirs(os.path.join(get_app_root(), "config/"), exist_ok=True)
             old_json = None
-            if os.path.exists(os.path.join(get_app_root(),'config/models.json')):
-                with open(os.path.join(get_app_root(), 'config/models.json'), 'r', encoding="utf-8") as old_file:
+            if os.path.exists(os.path.join(get_app_root(),'config/modelsv2.json')):
+                with open(os.path.join(get_app_root(), 'config/modelsv2.json'), 'r', encoding="utf-8") as old_file:
                     old_json = json.load(old_file)
-            huggingface_hub.hf_hub_download(REPO, "config/models.json", local_dir=get_app_root())
+            huggingface_hub.hf_hub_download(REPO, "config/modelsv2.json", local_dir=get_app_root())
 
-            with open(os.path.join(get_app_root(), 'config/models.json'), 'r', encoding="utf-8") as new_file:
+            with open(os.path.join(get_app_root(), 'config/modelsv2.json'), 'r', encoding="utf-8") as new_file:
                 new_json = json.load(new_file)
 
             diff = get_model_diff(old_json, new_json)
@@ -240,7 +244,7 @@ class ModelApp(FallTalkFluentWindow):
             huggingface_hub.hf_hub_download(REPO, "config/characters.json", local_dir=get_app_root())
         except Exception as e:
             logger.exception("Unable to load configs")
-            if not os.path.exists(os.path.join(get_app_root(), 'config/characters.json')) and not os.path.exists(os.path.join(get_app_root(), 'config/models.json')):
+            if not os.path.exists(os.path.join(get_app_root(), 'config/characters.json')) and not os.path.exists(os.path.join(get_app_root(), 'config/modelsv2.json')):
                 self.createErrorInfoBar("Unable to Download Configs", "Unable to download the required configuration files, please check your network")
 
     def cpu_checked(self, checked):
@@ -271,6 +275,8 @@ class ModelApp(FallTalkFluentWindow):
             self.gpu2_action.setChecked(True)
 
     def initUI(self):
+
+
         # Initialize all engine widgets
         self.engine_widgets[EngineType.XTTS_V2] = XttsWidget(self)
         self.engine_widgets[EngineType.GPT_SOVITS] = GPT_SoVITSWidget(self)
@@ -281,6 +287,7 @@ class ModelApp(FallTalkFluentWindow):
         self.engine_widgets[EngineType.ORPHEUS] = OrpheusWidget(self)
         self.engine_widgets[EngineType.LLASA] = LlasaWidget(self)
         self.engine_widgets[EngineType.RVC] = RVCWidget(self)
+        self.engine_widgets[EngineType.SPARK] = SparkWidget(self)
 
         self.faq_widget = FaqWidget(self)
         self.characters_widget = CharactersWidget(self)
@@ -320,6 +327,7 @@ class ModelApp(FallTalkFluentWindow):
         self.engine_actions[EngineType.DIA] = self.dia_action
         self.engine_actions[EngineType.LLASA] = self.llasa_action
         self.engine_actions[EngineType.ORPHEUS] = self.orpheus_action
+        self.engine_actions[EngineType.SPARK] = self.spark_action
 
         # Connect action signals
         for engine_type, action in self.engine_actions.items():
@@ -333,15 +341,17 @@ class ModelApp(FallTalkFluentWindow):
         self.gpu_action.triggered.connect(self.gpu_checked)
         self.gpu2_action.triggered.connect(self.gpu2_checked)
 
+        self.generate_widget.setEnabled(True)
+        self.engine_widgets[EngineType.GPT_SOVITS].setEnabled(True)
         QApplication.processEvents()
 
     @Slot(PySide6.QtCore.QObject, str, str)
-    def onError(self, parent, title, text):
+    def onError(self, parent: 'FallTalkApp', title, text):
         parent.complete_loader()
         parent.createErrorInfoBar(title, text)
 
     @Slot(PySide6.QtCore.QObject, str, str)
-    def onWarn(self, parent, title, text):
+    def onWarn(self, parent: 'FallTalkApp', title, text):
         parent.createErrorInfoBar(title, text)
 
     def createErrorInfoBar(self, title, text):
@@ -435,43 +445,46 @@ class ModelApp(FallTalkFluentWindow):
         parent.bulk_generate_widget.setEnabled(True)
 
     @Slot(PySide6.QtCore.QObject)
-    def afterModelLoader(self, parent):
+    def afterModelLoader(self, parent: 'FallTalkApp'):
         parent.complete_loader()
         engine_type = EngineType(cfg.get(cfg.engine))
         widget = self.engine_widgets[engine_type]
         if engine_type == EngineType.RVC:
             self.stackedWidget.setCurrentWidget(self.generate_widget)
-        elif engine_type in [EngineType.GPT_SOVITS, EngineType.DIA, EngineType.F5, 
-                           EngineType.LLASA, EngineType.ORPHEUS, EngineType.FISH_SPEECH]:
-            if parent.tts_engine.is_base:
-                widget.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
-                widget.transcribe_button.setVisible(True)
-            else:
-                widget.text_input.setPlaceholderText("Please Enter Text")
-                widget.transcribe_button.setVisible(False)
+        elif (self.tts_engine.is_base or engine_type.needs_reference_when_trained) and engine_type.needs_transcription:
+            widget.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
+            widget.transcribe_button.setVisible(True)
+            self.stackedWidget.setCurrentWidget(self.reference_widget)
+        elif self.tts_engine.is_base or engine_type.needs_reference_when_trained:
+            widget.text_input.setPlaceholderText("Please Select Reference'")
+            widget.transcribe_button.setVisible(False)
             self.stackedWidget.setCurrentWidget(self.reference_widget)
         else:
-            self.stackedWidget.setCurrentWidget(self.reference_widget)
+            widget.text_input.setPlaceholderText("Please Enter Text")
+            widget.transcribe_button.setVisible(False)
+            widget.generate_button.setEnabled(True)
+            self.stackedWidget.setCurrentWidget(self.generate_widget)
+
 
     @Slot(PySide6.QtCore.QObject)
-    def afterGen(self, parent):
+    def afterGen(self, parent: 'FallTalkApp'):
         parent.complete_loader()
 
     @Slot(PySide6.QtCore.QObject)
-    def afterDownload(self, parent):
+    def afterDownload(self, parent: 'FallTalkApp'):
         parent.complete_loader()
 
     @Slot(PySide6.QtCore.QObject)
-    def afterModelDownload(self, parent):
+    def afterModelDownload(self, parent: 'FallTalkApp'):
         parent.complete_loader()
         parent.load_models_config()
 
     @Slot(PySide6.QtCore.QObject)
-    def afterModelConfigLoad(self, parent):
+    def afterModelConfigLoad(self, parent: 'FallTalkApp'):
         parent.complete_loader()
 
     @Slot(PySide6.QtCore.QObject)
-    def continueLoad(self, parent):
+    def continueLoad(self, parent: 'FallTalkApp'):
         self.bulk_generate_widget.setEnabled(True)
         parent.load_models_config()
         if parent.pending_bulk:
@@ -508,11 +521,19 @@ class ModelApp(FallTalkFluentWindow):
                     character['RVC'] = self.models[character_name]['RVC']
 
                 if cfg.get(cfg.engine) in self.models[character_name]:
-                    model_found = True
-                    c = copy.copy(character)
-                    c['display_name'] = self.models[character_name]['display_name']
-                    c[cfg.get(cfg.engine)] = self.models[character_name][cfg.get(cfg.engine)]
-                    trained_characters.append(c)
+                    model = self.models[character_name][cfg.get(cfg.engine)]
+                    engine_type = EngineType(cfg.get(cfg.engine))
+                    version = model.get('engine_version', 1)
+                    
+                    # Validate version compatibility
+                    if engine_type.is_version_supported(version):
+                        model_found = True
+                        c = copy.copy(character)
+                        c['display_name'] = self.models[character_name]['display_name']
+                        c[cfg.get(cfg.engine)] = model
+                        trained_characters.append(c)
+                    else:
+                        logger.warning(f"Skipping {character_name} - Engine version {version} not supported for {cfg.get(cfg.engine)}")
 
             if not model_found:
                 if 'display_name' not in character:
@@ -525,11 +546,17 @@ class ModelApp(FallTalkFluentWindow):
             self.characters_widget.loadUntrained(self, untrained_characters)
 
         if self.custom_models is not None:
-            # Filter custom models to only include those with the current engine
-            filtered_custom_models = {
-                name: model for name, model in self.custom_models.items()
-                if cfg.get(cfg.engine) in model
-            }
+            # Filter custom models to only include those with the current engine and supported versions
+            filtered_custom_models = {}
+            for name, model in self.custom_models.items():
+                if cfg.get(cfg.engine) in model:
+                    engine_type = EngineType(cfg.get(cfg.engine))
+                    version = model.get('engine_version', '1')
+                    if engine_type.is_version_supported(version):
+                        filtered_custom_models[name] = model
+                    else:
+                        logger.warning(f"Skipping custom model {name} - Engine version {version} not supported for {cfg.get(cfg.engine)}")
+            
             self.characters_widget.loadCustom(self, filtered_custom_models)
 
         self.bulk_generate_widget.populate_character_card()
@@ -555,7 +582,7 @@ class ModelApp(FallTalkFluentWindow):
             tr.start()
 
     @Slot(PySide6.QtCore.QObject, PySide6.QtCore.QObject)
-    def after_transcribe(self, parent, widget):
+    def after_transcribe(self, parent: 'FallTalkApp', widget):
         widget.clear()
         widget.load_data()
         parent.complete_loader()
@@ -618,7 +645,7 @@ class ModelApp(FallTalkFluentWindow):
         return sentence
 
     @Slot(PySide6.QtCore.QObject)
-    def after_upscale(self, parent):
+    def after_upscale(self, parent: 'FallTalkApp'):
         parent.complete_loader()
         parent.upscale_folder()
 
@@ -696,7 +723,7 @@ class ModelApp(FallTalkFluentWindow):
     def generate_audio(self, recording_file=None):
         references = self.reference_widget.reference_audio
         references_length = self.reference_widget.reference_audio_length
-        current_engine = cfg.get(cfg.engine)
+        current_engine = EngineType(cfg.get(cfg.engine))
         current_widget = self.engine_widgets.get(current_engine)
 
         if current_engine == EngineType.RVC:
@@ -745,57 +772,54 @@ class ModelApp(FallTalkFluentWindow):
                     output_file = self.get_output_file(current_widget.eleven_labs_widget)
                     tr = (threading.Thread(target=eleven_labs_inference, args=(self, text, output_file, current_widget.eleven_labs_widget.voice_combo.configItem.currentText(), current_widget), daemon=True))
                     tr.start()
-        elif current_engine == EngineType.XTTS_V2:
-            text = replace_numbers_with_words(self.ensure_sentence_punctuation(current_widget.text_input.toPlainText()))
-            if references is None or not references:
-                self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select Reference Audio")
-            elif references_length < 10:
-                self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select at least 10 seconds of Reference Audio")
-            elif not text or text == '':
-                self.showErrorPopup(current_widget, current_widget.generate_button, "Please Enter Some Text to Generate...")
-            else:
-                self.showLoaderPopup("Generating Audio", "Please Wait")
-                tr = (threading.Thread(target=xtts_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget), daemon=True))
-                tr.start()
-        elif current_engine in [EngineType.GPT_SOVITS, EngineType.DIA, EngineType.F5, 
-                              EngineType.LLASA, EngineType.ORPHEUS, EngineType.FISH_SPEECH]:
-            text = replace_numbers_with_words(self.ensure_sentence_punctuation(current_widget.text_input.toPlainText()))
+        else:
             transcribe_state = None
-            if self.tts_engine.is_base:
-                transcribe_state = current_widget.transcribe_state
-            if references is None or not references:
-                self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select Reference Audio")
-            elif self.tts_engine.is_base and (references_length > 15 or references_length < 3):
-                self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select between 3 and 10 seconds of Reference Audio")
-            elif not self.tts_engine.is_base and references_length < 3:
-                self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select at least 3 seconds of Reference Audio")
-            elif self.tts_engine.is_base and transcribe_state is None:
-                self.showErrorPopup(current_widget, current_widget.generate_button, "Please Transcribe your reference audio")
-            elif not text or text == '':
-                self.showErrorPopup(current_widget, current_widget.generate_button, "Please Enter Some Text to Generate...")
-            else:
-                self.showLoaderPopup("Generating Audio", "Please Wait")
-                if current_engine == EngineType.GPT_SOVITS:
-                    threading.Thread(target=gpt_sovits_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references) if self.tts_engine.is_base else references, current_widget, transcribe_state), daemon=True).start()
-                elif current_engine == EngineType.DIA:
-                    threading.Thread(target=dia_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
-                elif current_engine == EngineType.F5:
-                    start_word = current_widget.start_dropdown_card.getWordInfo()
-                    end_word = current_widget.end_dropdown_card.getWordInfo()
-                    start_time = start_word['start'] if start_word is not None else None
-                    end_time = end_word['end'] if end_word is not None else None
-                    if start_time is None and end_time is None and cfg.get(cfg.f5_mode) != 'tts':
-                        self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select Words to Edit")
-                    elif cfg.get(cfg.f5_mode) == "edit" and start_time > end_time:
-                        self.showErrorPopup(current_widget, current_widget.generate_button, "Start must come before the end time")
-                    else:
-                        threading.Thread(target=f5_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, start_time, end_time, transcribe_state), daemon=True).start()
-                elif current_engine == EngineType.LLASA:
-                    threading.Thread(target=llasa_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
-                elif current_engine == EngineType.ORPHEUS:
-                    threading.Thread(target=orpheus_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
-                elif current_engine == EngineType.FISH_SPEECH:
-                    threading.Thread(target=fish_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+            text = replace_numbers_with_words(self.ensure_sentence_punctuation(current_widget.text_input.toPlainText()))
+
+            if current_engine.needs_reference_when_trained or self.tts_engine.is_base:
+                if references is None or not references:
+                    self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select Reference Audio")
+                    return
+                elif references_length > current_engine.max_reference_length or references_length < 3:
+                    self.showErrorPopup(current_widget, current_widget.generate_button, f"Please Select between 3 and {current_engine.max_reference_length} seconds of Reference Audio")
+                    return
+                elif references_length < 3:
+                    self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select at least 3 seconds of Reference Audio")
+                    return
+
+            if references:
+                if current_engine.needs_transcription and current_widget.transcribe_state is None:
+                    self.showErrorPopup(current_widget, current_widget.generate_button, "Please Transcribe your reference audio")
+                    return
+
+            self.showLoaderPopup("Generating Audio", "Please Wait")
+            if current_engine == EngineType.GPT_SOVITS:
+                threading.Thread(target=gpt_sovits_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+            elif current_engine == EngineType.DIA:
+                threading.Thread(target=dia_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+            elif current_engine == EngineType.F5:
+                start_word = current_widget.start_dropdown_card.getWordInfo()
+                end_word = current_widget.end_dropdown_card.getWordInfo()
+                start_time = start_word['start'] if start_word is not None else None
+                end_time = end_word['end'] if end_word is not None else None
+                if cfg.get(cfg.f5_mode) == "edit" and start_time is None and end_time is None:
+                    self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select Words to Edit")
+                elif cfg.get(cfg.f5_mode) == "edit" and start_time > end_time:
+                    self.showErrorPopup(current_widget, current_widget.generate_button, "Start must come before the end time")
+                else:
+                    threading.Thread(target=f5_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, start_time, end_time, transcribe_state), daemon=True).start()
+            elif current_engine == EngineType.XTTS_V2:
+                threading.Thread(target=xtts_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+            elif current_engine == EngineType.LLASA:
+                threading.Thread(target=llasa_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+            elif current_engine == EngineType.ORPHEUS:
+                threading.Thread(target=orpheus_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+            elif current_engine == EngineType.FISH_SPEECH:
+                threading.Thread(target=fish_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+            elif current_engine == EngineType.SPARK:
+                threading.Thread(target=spark_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+            elif current_engine == EngineType.STYLE_TTS2:
+                threading.Thread(target=styletts2_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
 
     def showErrorPopup(self, parent, target, content):
         Flyout.create(
@@ -829,12 +853,6 @@ class ModelApp(FallTalkFluentWindow):
             tr = (threading.Thread(target=load_model, args=(self, character['name'], rvc, character['display_name'], base_model), daemon=True))
             tr.start()
 
-    def load_custom_model(self, character, model, rvc):
-        if cfg.get(cfg.engine) in model:
-            self.load_trained_model(character, model, rvc)
-        else:
-            self.load_base_model(character, model, rvc)
-
     def load_trained_model(self, character, model, rvc):
         if self.tts_engine is None and cfg.engine is not None:
             self.pending_character = character
@@ -844,23 +862,32 @@ class ModelApp(FallTalkFluentWindow):
             self.onEngineChange(cfg.engine)
         else:
             if model:
+                # Validate engine version
+                engine_type = EngineType(cfg.get(cfg.engine))
+                version = model[engine_type.value].get('engine_version', "1")
+                if not engine_type.is_version_supported(version):
+                    self.showErrorPopup(self, self.characters_widget, f"Engine version {version} is not supported for {cfg.get(cfg.engine)}")
+                    return
+
                 if cfg.get(cfg.fallout_4_directory) == "fallout4.exe not found":
                     self.verifyFallout()
                 else:
                     self.reference_widget.addDataToReferencesTable(model)
-            self.update_reference_table(model)
-            self.pending_character = None
-            self.pending_model = None
-            self.pending_rvc = None
+            
+                self.update_reference_table(model)
+                self.pending_character = None
+                self.pending_model = None
+                self.pending_rvc = None
 
-            # Enable RVC for all widgets if RVC is available
-            for widget in self.engine_widgets.values():
-                if hasattr(widget, 'rvc_enabled'):
-                    widget.rvc_enabled.setVisible(rvc is not None)
+                # Enable RVC for all widgets if RVC is available
+                for widget in self.engine_widgets.values():
+                    if hasattr(widget, 'rvc_enabled'):
+                        widget.rvc_enabled.setVisible(rvc is not None)
 
-            self.showLoaderPopup("Loading Model", f"Loading {character}")
-            tr = (threading.Thread(target=load_model, args=(self, character, rvc, model['display_name'], False), daemon=True))
-            tr.start()
+
+                self.showLoaderPopup("Loading Model", f"Loading {character}")
+                tr = (threading.Thread(target=load_model, args=(self, character, rvc, model['display_name'], False, version), daemon=True))
+                tr.start()
 
     def download_model(self, character, model, rvc):
         self.showLoaderPopup("Downloading Model", f"Downloading {character}")

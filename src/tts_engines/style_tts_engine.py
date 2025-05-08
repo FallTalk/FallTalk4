@@ -2,6 +2,7 @@ import soundfile as sf
 from nltk.tokenize import word_tokenize
 from phonemizer.backend import EspeakBackend
 
+from src.enums.engine_type import EngineType
 from src.utils.filesystem_utils import get_app_root, get_app_code_root
 from src.utils.audio_utils import load_audio
 from src.utils import logging_utils
@@ -27,7 +28,8 @@ class StyleTTS2_Engine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up StyleTTS2 Engine")
-        self.engine_name = 'StyleTTS2'
+        self.engin_type = EngineType.DIA
+        self.engine_name = self.engin_type.value
         print(f"setting up TextCleaner")
         self.textclenaer = TextCleaner()
         print(f"setting up MelSpectrogram")

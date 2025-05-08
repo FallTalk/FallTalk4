@@ -1,48 +1,51 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.widgets import GenerationWidget
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from qfluentwidgets import (
-    FluentIcon as FIF, SettingCardGroup, RangeSettingCard, isDarkTheme
+    FluentIcon as FIF, SettingCardGroup, isDarkTheme
 )
 from qfluentwidgets import ScrollArea, ExpandLayout
 
-from src.config.config import cfg
-from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
 
 
-class F5Settings(ScrollArea):
-    def __init__(self, parent=None):
+from src.ui.cards import TextAreaCard
+from src.utils.icons import FallTalkIcons
+
+
+class GPTSoVITSHelp(ScrollArea):
+
+    def __init__(self, parent: GenerationWidget):
         super().__init__(parent)
 
         self.scroll_widget = QWidget()
         self.expand_layout = ExpandLayout(self.scroll_widget)
         self.settings_group = SettingCardGroup(self.tr(''), self.scroll_widget)
 
-        self.mode_card = RadioSettingCard(
-            cfg.f5_mode,
-            FIF.CUT,
-            self.tr('Mode'),
-            self.tr('Choose between TTS and edit modes'),
-            texts=["TTS", "Edit"],
-            parent=self.settings_group
+        self.why = TextAreaCard(
+            FallTalkIcons.VAULT_BOY.icon(),
+            self.tr('Parameters'),
+            text=
+            """
+            <ul>
+            <li>Temperature: Randomness in the generation.</br>
+                Low (e.g., 0.2) → very predictable, safe outputs.</br>
+                High (e.g., 1.2) → more variety, but you might get odd or jumbled speech     
+            </li>       
+            <li>Top p: Only pick words from the smallest group whose total probability reaches p (e.g., 0.9 means the top 90 % most likely words). Keeps things coherent by ignoring the long tail of rare options            
+            <li>Top k: Restricts each choice to the k most likely words (e.g., k=50). Smaller k makes speech more focused; larger k adds risk of weirdness
+            </ul> 
+            """,
+            height=150
         )
-
-        self.seed_card = RangeSettingCard(
-            cfg.f5_seed,
-            FIF.SETTING,
-            self.tr('Seed'),
-            self.tr('Random seed for generation (-1 for random)'),
-            parent=self.settings_group
-        )
-
-        self.speed_card = RangeSettingCardScaled(
-            cfg.f5_speed,
-            FIF.SPEED_OFF,
-            self.tr('Speed Factor'),
-            self.tr('Adjust the speed of generated audio'),
-            parent=self.settings_group
-        )
+        self.why.setExpand(True)
 
         self.__initWidget()
+
 
     def __initWidget(self):
         self.resize(1000, 800)
@@ -60,14 +63,13 @@ class F5Settings(ScrollArea):
 
     def __initLayout(self):
         # add cards to group
-        self.settings_group.addSettingCard(self.mode_card)
-        self.settings_group.addSettingCard(self.seed_card)
-        self.settings_group.addSettingCard(self.speed_card)
-
+        self.settings_group.addSettingCard(self.why)
         # add setting card group to layout
         self.expand_layout.setSpacing(28)
         self.expand_layout.setContentsMargins(15, 0, 15, 0)
         self.expand_layout.addWidget(self.settings_group)
+
+
 
     def __setQss(self):
         """ set style sheet """
@@ -78,4 +80,4 @@ class F5Settings(ScrollArea):
             self.setStyleSheet(f.read())
 
     def __connectSignalToSlot(self):
-        pass 
+        pass

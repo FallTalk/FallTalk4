@@ -2,6 +2,7 @@
 Widget module for FallTalk application.
 This module contains all the widgets used in the application.
 """
+from __future__ import annotations
 
 # Import all widgets to make them available from the module
 from src.widgets.falltalk_widget import FallTalkWidget
@@ -17,6 +18,7 @@ from src.widgets.orpheus_widget import OrpheusWidget
 from src.widgets.llasa_widget import LlasaWidget
 from src.widgets.dia_widget import DIAWidget
 from src.widgets.gpt_sovits_widget import GPT_SoVITSWidget
+from src.widgets.spark_widget import SparkWidget
 from src.widgets.rvc_widgets import (
     BaseRVCWidget, RVCMicrophoneWidget, RVCFileWidget, 
     RVCEdgeTTSWidget, RVCElevenLabsWidget, RVCWidget

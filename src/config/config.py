@@ -253,7 +253,7 @@ class Config(QConfig):
     dia_use_torch_compile = ConfigItem("DIA", "use_torch_compile", True, BoolValidator())
 
     # GPT_SoVITS
-    slice_mode = OptionsConfigItem("GPT_SoVITS", "slice_mode", "Slice once every 4 sentences", OptionsValidator(["No Slice", "Slice by English punct", "Slice by every punct", "Slice once every 4 sentences", "Slice once every 2 sentences"]))
+    slice_mode = OptionsConfigItem("GPT_SoVITS", "slice_mode", "No Slice", OptionsValidator(["No Slice", "Slice by English punct", "Slice by every punct", "Slice once every 4 sentences", "Slice once every 2 sentences"]))
     low_vram_gpt_sovits = ConfigItem("GPT_SoVITS", "low_vram", False, BoolValidator())
     top_p_gpt_sovits = RangeConfigItem("GPT_SoVITS", "top_p", 100, RangeValidator(0.0, 100))
     top_k_gpt_sovits = RangeConfigItem("GPT_SoVITS", "top_k", 15, RangeValidator(0, 100))
@@ -265,6 +265,13 @@ class Config(QConfig):
     style_alpha = RangeConfigItem("StyleTTS2", "alpha", 20, RangeValidator(0, 100))
     style_embedding_scale = RangeConfigItem("StyleTTS2", "embedding_scale", 1, RangeValidator(1, 3))
     style_diffusion_steps = RangeConfigItem("StyleTTS2", "diffusion_steps", 100, RangeValidator(1, 500))
+
+    # Spark
+    spark_language = OptionsConfigItem("Spark", "language", "English", OptionsValidator(["English", "Chinese"]))
+    spark_speaker = OptionsConfigItem("Spark", "speaker", "Default", OptionsValidator(["Default"]))
+    spark_quality = OptionsConfigItem("Spark", "quality", "High", OptionsValidator(["Low", "Medium", "High"]))
+    spark_speed = OptionsConfigItem("Spark", "speed", "Normal", OptionsValidator(["Slow", "Normal", "Fast"]))
+    spark_pitch = OptionsConfigItem("Spark", "pitch", "Normal", OptionsValidator(["Low", "Normal", "High"]))
 
     # theme
     themeColor = ColorConfigItem("QFluentWidgets", "ThemeColor", '#FFB642', restart=True)
@@ -331,19 +338,42 @@ class Config(QConfig):
         self.set(self.style_diffusion_steps, self.style_diffusion_steps.defaultValue)
 
     def resetF5(self):
-        print("todo")
+        self.set(self.f5_mode, self.f5_mode.defaultValue)
+        self.set(self.f5_seed, self.f5_seed.defaultValue)
+        self.set(self.f5_speed, self.f5_speed.defaultValue)
 
     def resetFishSpeech(self):
-        print("todo")
+        self.set(self.fish_use_torch_compile, self.fish_use_torch_compile.defaultValue)
+        self.set(self.fish_repetition, self.fish_repetition.defaultValue)
+        self.set(self.fish_top_p, self.fish_top_p.defaultValue)
+        self.set(self.fish_max_length, self.fish_max_length.defaultValue)
+        self.set(self.fish_use_cache, self.fish_use_cache.defaultValue)
+        self.set(self.fish_iterative_prompt, self.fish_iterative_prompt.defaultValue)
+        self.set(self.fish_seed, self.fish_seed.defaultValue)
+        self.set(self.fish_temperature, self.fish_temperature.defaultValue)
 
     def resetDIA(self):
-        print("todo")
+        self.set(self.dia_use_torch_compile, self.dia_use_torch_compile.defaultValue)
 
     def resetLlasa(self):
-        print("todo")
+        self.set(self.llasa_temperature, self.llasa_temperature.defaultValue)
+        self.set(self.llasa_seed, self.llasa_seed.defaultValue)
+        self.set(self.llasa_top_p, self.llasa_top_p.defaultValue)
+        self.set(self.llasa_max_length, self.llasa_max_length.defaultValue)
+        self.set(self.llasa_mode, self.llasa_mode.defaultValue)
 
     def resetOrpheus(self):
-        print("todo")
+        self.orpehus_temperature.resetToDefault()
+        self.orpehus_seed.resetToDefault()
+        self.orpehus_top_p.resetToDefault()
+        self.orpehus_repetition.resetToDefault()
+
+    def resetSpark(self):
+        self.spark_language.resetToDefault()
+        self.spark_speaker.resetToDefault()
+        self.spark_quality.resetToDefault()
+        self.spark_speed.resetToDefault()
+        self.spark_pitch.resetToDefault()
 
 
 YEAR = 2024

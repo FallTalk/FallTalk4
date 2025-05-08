@@ -1,3 +1,9 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.FallTalk import FallTalkApp
+    
 import csv
 
 from PySide6 import QtWidgets
@@ -17,7 +23,7 @@ from src.widgets.table_models import TableModel
 
 
 class BulkLipFuzWidget(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
         self.lip_dir = ConfigItem("bulk", "lip_dir", None, CustomFolderValidator())
 
@@ -97,7 +103,7 @@ class BulkLipFuzWidget(QWidget):
 
 
 class BulkGenerationRVCWidget(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
         self.rvc_dir = ConfigItem("bulk", "rvc_dir", None, CustomFolderValidator())
 
@@ -244,7 +250,7 @@ class BulkGenerationRVCWidget(QWidget):
 
 
 class BulkGenerationTableWidget(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
         self.bulk_table = TableView()
         self.bulk_table.setBorderVisible(True)
@@ -327,7 +333,7 @@ class BulkGenerationTableWidget(QWidget):
 
 class BulkGenerationWidget(FallTalkWidget):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="Bulk Generation", vertical=True)
         self.parent = parent
 
@@ -346,7 +352,7 @@ class BulkGenerationWidget(FallTalkWidget):
         self.addSubInterface(self.bulk_rvc_widget, 'bulk_rvc_widget', 'RVC')
         self.addSubInterface(self.bulk_fuz_widget, 'bulk_fuz_widget', 'FUZ')
 
-        self.generate_button = PrimaryPushButton("Bulk Generate Audio")
+        self.generate_button = PrimaryPushButton(text="Bulk Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.bulk_inference)
 
