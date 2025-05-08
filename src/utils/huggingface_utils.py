@@ -100,6 +100,7 @@ def downloadGPTSoVITS(parent: FallTalkApp) -> None:
         os.makedirs(os.path.join(get_app_root(),"models/GPT_SoVITS"), exist_ok=True)
         huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s2G2333k.pth", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v2/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt", local_dir=get_app_root())
+        huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v3/s1v3.ckpt", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v4/s2Gv4.pth", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/v4/vocoder.pth", local_dir=get_app_root())
         huggingface_hub.hf_hub_download(REPO, "models/GPT_SoVITS/chinese-roberta-wwm-ext-large/pytorch_model.bin", local_dir=get_app_root())

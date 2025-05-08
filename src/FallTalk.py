@@ -791,6 +791,8 @@ class FallTalkApp(FallTalkFluentWindow):
                 if current_engine.needs_transcription and current_widget.transcribe_state is None:
                     self.showErrorPopup(current_widget, current_widget.generate_button, "Please Transcribe your reference audio")
                     return
+                else:
+                    transcribe_state = current_widget.transcribe_state
 
             self.showLoaderPopup("Generating Audio", "Please Wait")
             if current_engine == EngineType.GPT_SOVITS:
