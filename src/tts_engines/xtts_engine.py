@@ -47,13 +47,9 @@ class XTTS_Engine(tts_engine):
         super().basic_unload_model()
 
     @torch.no_grad()
-    def generate_audio(self, text=None, voice=None, language=None, output_file=None, streaming=False):
-        self.inference(text=text, voice=voice, language=language, output_file=output_file, streaming=streaming)
-        if cfg.get(cfg.rvc_enabled) and self.rvc_model:
-            self.run_rvc(output_file)
-
-        rs_data = load_audio(output_file, 44100)
-        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
+    def generate_audio(self, text=None, voice=None, language=None, output_file=None, streaming=False, speaker=None):
+        audio_data, sample_rate = self.inference(text=text, voice=voice, language=language, output_file=output_file, streaming=streaming)
+        self.process_audio(audio_data, sample_rate, output_file)
 
     @torch.no_grad()
     def inference(self, text=None, voice=None, language=None, output_file=None, streaming=False):
@@ -101,10 +97,10 @@ class XTTS_Engine(tts_engine):
         # Add a batch dimension
         wav_tensor = wav_tensor.unsqueeze(0)
 
-        torchaudio.save(output_file, wav_tensor, 24000)
-
         if cfg.get(cfg.low_vram) and self.device == "cuda":
             self.handle_lowvram_change()
+
+        return wav_tensor.cpu().numpy(), 24000
 
 
     def load_model(self):

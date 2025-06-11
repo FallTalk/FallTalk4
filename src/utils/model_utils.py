@@ -15,7 +15,7 @@ from enums.engine_type import EngineType
 
 from src.utils.huggingface_utils import (
     downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA, downloadSpark,
-    downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models
+    downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models, downloadAPBWE, downloadCSM
 )
 
 logger = logging.getLogger('falltalk')
@@ -27,7 +27,7 @@ def load_model(parent: 'FallTalkApp', character=None, rvc=None, display_name=Non
     try:
         if not character.startswith("custom_"):
             if rvc is not None:
-                download_rvc_models(character, rvc)
+                download_rvc_models(parent, character, rvc)
                 downloadRVC(parent)
 
         if parent.tts_engine is not None:
@@ -38,7 +38,20 @@ def load_model(parent: 'FallTalkApp', character=None, rvc=None, display_name=Non
                 parent.reference_time_label.setText("00:00")
                 parent.character_label.setText(f"Base Model")
 
-            parent.tts_engine.setup(character, rvc is not None, base_model, model_engine_version)
+            # Check if this is a shared model
+            is_shared = False
+            shared_model_name = None
+            characters = None
+
+            if not base_model and character in parent.models:
+                engine_name = parent.tts_engine.engin_type.value
+                if engine_name in parent.models[character]:
+                    model_info = parent.models[character][engine_name]
+                    is_shared = model_info.get('is_shared', False)
+                    shared_model_name = model_info.get('shared_model_name')
+                    characters = model_info.get('characters', [character])
+
+            parent.tts_engine.setup(character, rvc is not None, base_model, model_engine_version, is_shared, shared_model_name, characters)
             QMetaObject.invokeMethod(parent, "afterModelLoader", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception("Unable to load model")
@@ -77,9 +90,11 @@ def generic_engine_loader(parent: 'FallTalkApp', engine_class, download_func, en
     try:
         download_func(parent)
         downloadRVC(parent)
+        downloadAPBWE(parent)
         parent.tts_engine = engine_class()
         print(f"{engine_name} Loaded")
         load_whisper(parent)
+        load_apbwe(parent)
         print(f"Done Loading")
         if not api:
             QMetaObject.invokeMethod(parent, "after_engine_load", Qt.QueuedConnection, 
@@ -164,6 +179,25 @@ def load_spark(parent: 'FallTalkApp'):
     from src.tts_engines.spark_engine import SparkEngine
     generic_engine_loader(parent, SparkEngine, downloadSpark, EngineType.SPARK.value)
 
+def load_csm(parent: 'FallTalkApp'):
+    from src.tts_engines.csm_engine import CSM1BEngine
+    generic_engine_loader(parent, CSM1BEngine, downloadCSM, EngineType.CSM.value)
+
+def load_apbwe(parent: 'FallTalkApp'):
+    try:
+        if parent.apbwe_engine is None:
+            from src.tts_engines.apbwe_engine import APBWE_SR
+            parent.apbwe_engine = APBWE_SR()
+            if parent.tts_engine is not None:
+                parent.tts_engine.apbwe_engine = parent.apbwe_engine
+            print("apbwe Loaded")
+    except Exception as e:
+        logger.exception(f"Error: {e}")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection,
+                               Q_ARG(PySide6.QtCore.QObject, parent),
+                               Q_ARG(str, "Unable to Load apbwe_engine"),
+                               Q_ARG(str, "An Error Occurred while loading the apbwe_engine. Please check your logs and report the issue if needed"))
+
 
 def load_upscaler(parent: 'FallTalkApp', api=False):
     try:
@@ -195,5 +229,3 @@ def seed_everything(seed):
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
-
-

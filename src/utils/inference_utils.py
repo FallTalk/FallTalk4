@@ -105,7 +105,7 @@ def edge_tts_inference(parent: 'FallTalkApp', text, output_file, voice, panel, a
             QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Generate Audio"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
 
 
-def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=None, panel=None, transcribe_state=None, start_time=None, end_time=None, api=False):
+def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=None, panel=None, transcribe_state=None, start_time=None, end_time=None, api=False, speaker=None):
     try:
         # Common parameters for all engines
         kwargs = {
@@ -122,6 +122,8 @@ def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=N
             kwargs['start_time'] = start_time
         if end_time is not None:
             kwargs['end_time'] = end_time
+        if speaker is not None:
+            kwargs['speaker'] = speaker
 
         # Generate audio with the engine
         parent.tts_engine.generate_audio(**kwargs)
@@ -145,7 +147,7 @@ def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=N
 
 def rvc_inference(parent: 'FallTalkApp', input_file, panel, api=False):
     try:
-        parent.tts_engine.run_rvc(input_file)
+        parent.tts_engine.run_rvc_file(input_file)
         if not api:
             QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, 
                                    Q_ARG(PySide6.QtCore.QObject, panel), 
@@ -163,55 +165,32 @@ def rvc_inference(parent: 'FallTalkApp', input_file, panel, api=False):
                                    Q_ARG(str, "An Error Occurred while attempting to generate audio. Please check your logs and report the issue if needed"))
 
 
-def xtts_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, api=False):
+def xtts_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, api=api)
 
-
-def dia_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
+def dia_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
 
+def orpheus_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
+    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)
 
-def orpheus_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
+def llasa_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
+    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)
+
+def fish_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
 
-
-def llasa_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
-    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
-
-
-def fish_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
-    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
-
-
-def f5_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, start_time, end_time, transcribe_state, api=False):
+def f5_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, start_time, end_time, transcribe_state, speaker=None, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, start_time, end_time, api=api)
 
+def gpt_sovits_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
+    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)
 
-def gpt_sovits_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, api=False):
-    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api)
-
-
-def styletts2_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, api=False):
+def styletts2_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, api=api)
 
+def spark_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
+    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)
 
-def spark_inference(parent: 'FallTalkApp', output_file, text, language, speaker_id, widget):
-    try:
-        if parent.tts_engine is None:
-            raise ValueError("TTS engine not loaded")
-
-        # Generate audio
-        parent.tts_engine.synthesize(
-            text=text,
-            output_path=output_file,
-            speaker_id=speaker_id,
-            language=language
-        )
-
-        # Update media player
-        parent.updateMediaplayer(widget, output_file)
-        parent.afterGen(parent)
-
-    except Exception as e:
-        logger.exception(f"Error in Spark-TTS inference: {str(e)}")
-        parent.onError(parent, "Error", str(e))
+def csm_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
+    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)

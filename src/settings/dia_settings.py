@@ -18,27 +18,11 @@ class DIASettings(ScrollArea):
         self.expand_layout = ExpandLayout(self.scroll_widget)
         self.settings_group = SettingCardGroup(self.tr(''), self.scroll_widget)
 
-        self.torch_compile_card = SwitchSettingCard(
-            FallTalkIcons.COMPILE.icon(),
-            self.tr('Use Torch Compile'),
-            self.tr('Enable PyTorch compilation for faster inference'),
-            configItem=cfg.dia_use_torch_compile,
-            parent=self.settings_group
-        )
-
         self.temperature_card = RangeSettingCardScaled(
             cfg.dia_temperature,
             FIF.FRIGID,
             self.tr('Temperature'),
             self.tr('Control randomness in generation'),
-            parent=self.settings_group
-        )
-
-        self.seed_card = RangeSettingCard(
-            cfg.dia_seed,
-            FIF.SEED,
-            self.tr('Seed'),
-            self.tr('Random seed for generation (-1 for random)'),
             parent=self.settings_group
         )
 
@@ -50,12 +34,12 @@ class DIASettings(ScrollArea):
             parent=self.settings_group
         )
 
-        self.repetition_card = RangeSettingCardScaled(
-            cfg.dia_repetition,
-            FIF.REPEAT,
-            self.tr('Repetition Penalty'),
-            self.tr('Higher values reduce repetition in generation'),
-            parent=self.settings_group
+        self.top_k_card = RangeSettingCard(
+            cfg.dia_top_k,
+            FIF.UP,
+            self.tr('Top K'),
+            self.tr('Lower values make it more predictable and coherent'),
+            parent=self
         )
 
         self.__initWidget()
@@ -76,11 +60,9 @@ class DIASettings(ScrollArea):
 
     def __initLayout(self):
         # add cards to group
-        self.settings_group.addSettingCard(self.torch_compile_card)
         self.settings_group.addSettingCard(self.temperature_card)
-        self.settings_group.addSettingCard(self.seed_card)
         self.settings_group.addSettingCard(self.top_p_card)
-        self.settings_group.addSettingCard(self.repetition_card)
+        self.settings_group.addSettingCard(self.top_k_card)
 
         # add setting card group to layout
         self.expand_layout.setSpacing(28)

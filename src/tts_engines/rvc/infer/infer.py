@@ -174,6 +174,8 @@ class RVCPipeline:
     def voice_conversion(
             self,
             sid=0,
+            audio_data=None,
+            sample_rate=16000,
             input_audio_path=None,
             f0_up_key=None,
             f0_file=None,
@@ -190,10 +192,51 @@ class RVCPipeline:
             filter_radius=None,
             embedder_model=None,
     ):
+        """
+        Process audio data through voice conversion
+
+        Args:
+            sid: Speaker ID
+            audio_data (numpy.ndarray): Audio data as numpy array
+            sample_rate (int): Sample rate of the audio data
+            input_audio_path: Path to input audio file (for backward compatibility)
+            f0_up_key: Pitch shift
+            f0_file: F0 file
+            f0_method: Pitch extraction method
+            file_index: Path to index file
+            index_rate: Index influence
+            resample_sr: Target sample rate
+            rms_mix_rate: Volume envelope
+            protect: Protection
+            hop_length: Hop length
+            output_path: Path to output audio file (optional)
+            split_audio: Whether to split audio
+            f0autotune: Whether to autotune
+            filter_radius: Filter radius
+            embedder_model: Embedder model
+
+        Returns:
+            tuple: (output_sample_rate, processed_audio)
+        """
         f0_up_key = int(f0_up_key)
         try:
-            print(f"Loading audio from {input_audio_path}") if self.debug_rvc else None
-            audio = load_audio(input_audio_path, 16000)
+            # Handle both direct audio data and file path inputs
+            if audio_data is None and input_audio_path is not None:
+                print(f"Loading audio from {input_audio_path}") if self.debug_rvc else None
+                audio = load_audio(input_audio_path, 16000)
+                sample_rate = 16000  # Loaded audio is always at 16kHz
+            elif audio_data is not None:
+                print(f"Using provided audio data with sample rate {sample_rate}") if self.debug_rvc else None
+                audio = audio_data
+
+                # Resample to 16kHz if needed for processing
+                if sample_rate != 16000:
+                    print(f"Resampling input from {sample_rate} to 16000 Hz for processing") if self.debug_rvc else None
+                    audio = librosa.resample(audio, orig_sr=sample_rate, target_sr=16000)
+                    sample_rate = 16000
+            else:
+                raise ValueError("Either audio_data or input_audio_path must be provided")
+
             audio_max = np.abs(audio).max() / 0.95
 
             if audio_max > 1:
@@ -204,61 +247,50 @@ class RVCPipeline:
                 self.load_hubert(embedder_model)
             if_f0 = self.cpt.get("f0", 1)
 
-            file_index = (
-                file_index.strip(" ")
-                .strip('"')
-                .strip("\n")
-                .strip('"')
-                .strip(" ")
-                .replace("trained", "added")
-            )
+            if file_index is not None:
+                file_index = (
+                    file_index.strip(" ")
+                    .strip('"')
+                    .strip("\n")
+                    .strip('"')
+                    .strip(" ")
+                    .replace("trained", "added")
+                )
             if self.tgt_sr != resample_sr >= 16000:
                 self.tgt_sr = resample_sr
-            if split_audio == "True":
-                print("Splitting audio") if self.debug_rvc else None
-                result, new_dir_path = process_audio(input_audio_path)
-                if result == "Error":
-                    return "Error with Split Audio", None
-                dir_path = (
-                    new_dir_path.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
-                )
-                if dir_path != "":
-                    paths = [
-                        os.path.join(root, name)
-                        for root, _, files in os.walk(dir_path, topdown=False)
-                        for name in files
-                        if name.endswith(".wav") and root == dir_path
-                    ]
-                try:
-                    for path in paths:
-                        self.voice_conversion(
-                            sid,
-                            path,
-                            f0_up_key,
-                            None,
-                            f0_method,
-                            file_index,
-                            index_rate,
-                            resample_sr,
-                            rms_mix_rate,
-                            protect,
-                            hop_length,
-                            path,
-                            False,
-                            f0autotune,
-                            embedder_model,
-                        )
-                except Exception as error:
-                    print(f"Error processing segmented audio: {error}")
-                    return f"Error {error}"
-                print("Finished processing segmented audio, now merging audio...") if self.debug_rvc else None
-                merge_timestamps_file = os.path.join(
-                    os.path.dirname(new_dir_path),
-                    f"{os.path.basename(input_audio_path).split('.')[0]}_timestamps.txt",
-                )
-                self.tgt_sr, audio_opt = merge_audio(merge_timestamps_file)
-                os.remove(merge_timestamps_file)
 
+            # Generate a unique identifier for the audio data for caching purposes
+            if input_audio_path is None:
+                # Create a hash of the audio data to use as a key
+                import hashlib
+                audio_hash = hashlib.md5(audio.tobytes()).hexdigest()
+                input_audio_path = f"memory_audio_{audio_hash}"
+
+            if split_audio == "True":
+                print("Split audio not supported for in-memory audio processing") if self.debug_rvc else None
+                # For now, we'll just process the audio directly without splitting
+                print("Processing audio with VC pipeline") if self.debug_rvc else None
+                audio_opt = self.vc.pipeline(
+                    self.hubert_model,
+                    self.net_g,
+                    sid,
+                    audio,
+                    input_audio_path,
+                    f0_up_key,
+                    f0_method,
+                    file_index,
+                    index_rate,
+                    if_f0,
+                    filter_radius,
+                    self.tgt_sr,
+                    resample_sr,
+                    rms_mix_rate,
+                    self.version,
+                    protect,
+                    hop_length,
+                    f0autotune,
+                    f0_file=f0_file,
+                )
             else:
                 print("Processing audio with VC pipeline") if self.debug_rvc else None
                 audio_opt = self.vc.pipeline(
@@ -283,12 +315,13 @@ class RVCPipeline:
                     f0_file=f0_file,
                 )
 
-            # Resample the audio to the target sample rate before saving
+            # Resample the audio to the target sample rate if needed
             if self.tgt_sr != resample_sr and resample_sr >= 16000 and resample_sr:
                 print(f"Resampling audio from {self.tgt_sr} to {resample_sr}") if self.debug_rvc else None
-                audio_opt = librosa.resample(audio_opt, self.tgt_sr, resample_sr)
+                audio_opt = librosa.resample(audio_opt, orig_sr=self.tgt_sr, target_sr=resample_sr)
                 self.tgt_sr = resample_sr
 
+            # Write to file if output_path is provided
             if output_path is not None:
                 print(f"Saving file to {output_path}") if self.debug_rvc else None
                 sf.write(output_path, audio_opt, self.tgt_sr, format="WAV")
@@ -298,6 +331,8 @@ class RVCPipeline:
 
         except Exception as error:
             print(f"Error during voice conversion: {error}")
+            if audio_data is not None:
+                return sample_rate, audio_data
             return None, None
 
     def get_vc(self, weight_root, sid, file_index=None, training_data_size=10000, debug_rvc=True):
@@ -316,8 +351,8 @@ class RVCPipeline:
             protect,
             hop_length,
             f0method,
-            audio_input_path,
-            audio_output_path,
+            audio_data,
+            sample_rate,
             model_path,
             index_path,
             split_audio,
@@ -326,6 +361,30 @@ class RVCPipeline:
             training_data_size,
             debug_rvc,
     ):
+        """
+        Process audio data through RVC
+
+        Args:
+            f0up_key: Pitch shift
+            filter_radius: Filter radius
+            index_rate: Index influence
+            rms_mix_rate: Volume envelope
+            protect: Protection
+            hop_length: Hop length
+            f0method: Pitch extraction method
+            audio_data (numpy.ndarray): Audio data as numpy array
+            sample_rate (int): Sample rate of the audio data
+            model_path: Path to the model file
+            index_path: Path to the index file
+            split_audio: Whether to split audio
+            f0autotune: Whether to autotune
+            embedder_model: Embedder model
+            training_data_size: Training data size
+            debug_rvc: Whether to print debug info
+
+        Returns:
+            tuple: (processed_audio, output_sample_rate)
+        """
         self.debug_rvc = debug_rvc
         if index_path is None or index_path.strip() == "":
             file_index = None
@@ -335,9 +394,10 @@ class RVCPipeline:
 
         try:
             start_time = time.time()
-            self.voice_conversion(
+            output_sr, output_audio = self.voice_conversion(
                 sid=0,
-                input_audio_path=audio_input_path,
+                audio_data=audio_data,
+                sample_rate=sample_rate,
                 f0_up_key=f0up_key,
                 f0_file=None,
                 f0_method=f0method,
@@ -346,7 +406,7 @@ class RVCPipeline:
                 rms_mix_rate=float(rms_mix_rate),
                 protect=float(protect),
                 hop_length=hop_length,
-                output_path=audio_output_path,
+                output_path=None,
                 split_audio=split_audio,
                 f0autotune=f0autotune,
                 filter_radius=filter_radius,
@@ -355,7 +415,10 @@ class RVCPipeline:
 
             end_time = time.time()
             elapsed_time = end_time - start_time
-            logging_utils.logger.debug(f"Conversion completed. Output file: '{audio_output_path}' in {elapsed_time:.2f} seconds.") if debug_rvc else None
+            logging_utils.logger.debug(f"Conversion completed in {elapsed_time:.2f} seconds.") if debug_rvc else None
+
+            return output_sr, output_audio
 
         except Exception as error:
             logging_utils.logger.exception(f"Voice conversion failed: {error}")
+            return sample_rate, audio_data

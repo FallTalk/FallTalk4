@@ -28,17 +28,14 @@ class StyleTTS2Widget(GenerationWidget):
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
 
-        # Add settings button
-        self.settings_button = PushButton(text="")
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.setFixedWidth(50)
-        self.settings_button.clicked.connect(lambda: self.show_settings(StyleTTS2Settings(self)))
-
         # Add to layout
         self.buttons_layout = QHBoxLayout()
         self.buttons_layout.addWidget(self.settings_button, stretch=1)
         self.buttons_layout.addWidget(self.generate_button, stretch=5)
+        self.settings_drawer.addWidget(StyleTTS2Settings(self))
+        self.help_drawer.addWidget(StyleTTS2Settings(self))
+        self.buttons_layout.addWidget(self.settings_button)
+        self.buttons_layout.addWidget(self.help_button)
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
         

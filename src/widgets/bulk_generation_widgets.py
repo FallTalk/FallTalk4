@@ -1,6 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from PySide6.QtGui import QFont
+
+
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
     
@@ -11,7 +14,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QGroupBox, QHeaderView, QAbstractItemView, QFileDialog, QSpacerItem
 from qfluentwidgets import (
     FluentIcon as FIF, TableView, SegmentedWidget,
-    SwitchSettingCard, ConfigItem, PushSettingCard, RangeSettingCard, PrimaryPushButton, MessageBox
+    SwitchSettingCard, ConfigItem, PushSettingCard, RangeSettingCard, PrimaryPushButton, MessageBox, ToolButton,
+    BodyLabel, TextEdit, StrongBodyLabel
 )
 from qfluentwidgets.components.widgets.combo_box import ComboItem
 
@@ -20,9 +24,48 @@ from src.ui.cards import SpinSettingCard, RvcComboBoxSettingsCard, RangeSettingC
 from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.widgets.table_models import TableModel
+from src.widgets.drawer import RightDrawer
+from src.settings.rvc_settings import RVCSettings
+from src.help.bulk_csv_help import BulkCSVHelp
+from src.help.bulk_fuz_help import BulkFuzHelp
+from src.help.bulk_rvc_help import BulkRVCHelp
 
 
-class BulkLipFuzWidget(QWidget):
+class BaseBulkWidget(QWidget):
+
+    def __init__(self, parent: FallTalkApp):
+        super().__init__(parent)
+        self.parent = parent
+        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
+        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
+
+        self.settings_button = ToolButton()
+        self.settings_button.setIcon(FIF.SETTING)
+        self.settings_button.setEnabled(True)
+        self.settings_button.clicked.connect(lambda: self.toggle_settings_drawer())
+        self.settings_button.setFixedWidth(50)
+
+        self.help_button = ToolButton()
+        self.help_button.setIcon(FIF.QUESTION)
+        self.help_button.setEnabled(True)
+        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
+        self.help_button.setFixedWidth(50)
+
+        self.generate_button = PrimaryPushButton(text="Bulk Generate Audio")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.bulk_inference)
+
+        self.buttons_layout = QHBoxLayout()
+        self.buttons_layout.addWidget(self.generate_button, stretch=1)
+
+
+    def toggle_settings_drawer(self):
+        self.settings_drawer.open_drawer()
+
+    def toggle_help_drawer(self):
+        self.help_drawer.open_drawer()
+
+class BulkLipFuzWidget(BaseBulkWidget):
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
         self.lip_dir = ConfigItem("bulk", "lip_dir", None, CustomFolderValidator())
@@ -87,7 +130,14 @@ class BulkLipFuzWidget(QWidget):
         self.fuz_widget_view.addWidget(self.threads_card)
         self.fuz_widget_view.addWidget(self.gen_settings)
         self.fuz_widget_view.addWidget(self.f_c_)
+        self.help_drawer.addWidget(BulkFuzHelp(self))
+
+        self.buttons_layout.addWidget(self.help_button)
+        self.fuz_widget_view.addLayout(self.buttons_layout)
         # self.rvc_widget_view.addWidget(self.r_and_sub)
+
+
+
 
         self.lip_dir_card.clicked.connect(self.__onFolderCardClicked)
 
@@ -102,7 +152,7 @@ class BulkLipFuzWidget(QWidget):
         self.lip_dir_card.setContent(folder)
 
 
-class BulkGenerationRVCWidget(QWidget):
+class BulkGenerationRVCWidget(BaseBulkWidget):
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
         self.rvc_dir = ConfigItem("bulk", "rvc_dir", None, CustomFolderValidator())
@@ -176,8 +226,10 @@ class BulkGenerationRVCWidget(QWidget):
         self.gen_settings.setStyleSheet("border: none")
         self.gen_settings_layout = QHBoxLayout(self.gen_settings)
         self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
-        self.gen_settings_layout.addWidget(self.rvc_dir_card, 2)
-        self.gen_settings_layout.addWidget(self.character_card, 2)
+        self.gen_settings_layout.addWidget(self.rvc_dir_card, 3)
+        self.gen_settings_layout.addWidget(self.character_card, 3)
+        self.gen_settings_layout.addWidget(self.threads_card, 3)
+
         self.gen_settings.setLayout(self.gen_settings_layout)
 
         self.f_c_ = QGroupBox()
@@ -187,44 +239,8 @@ class BulkGenerationRVCWidget(QWidget):
         self.f_c__layout.addWidget(self.xwm_card, 3)
         self.f_c__layout.addWidget(self.delete_leftovers, 3)
         self.f_c__layout.addWidget(self.use_existing_lip, 3)
+
         self.f_c_.setLayout(self.f_c__layout)
-
-        self.rvc_protect_card = RangeSettingCardScaled(
-            cfg.rvc_protect,
-            FIF.BROOM,
-            self.tr("Breath Sounds Envelope"),
-            self.tr("Prevents sound artifacts and breath noises"),
-        )
-
-        self.rvc_filter_radius_card = RangeSettingCard(
-            cfg.rvc_filter_radius,
-            FIF.FILTER,
-            self.tr("Filter Radius"),
-            self.tr("If >= 3, potential to decrease respiration."),
-        )
-
-        self.p_f = QGroupBox()
-        self.p_f.setStyleSheet("border: none")
-        self.p_f_layout = QHBoxLayout(self.p_f)
-        self.p_f_layout.setContentsMargins(0, 0, 0, 0)
-        self.p_f_layout.addWidget(self.rvc_protect_card, 3)
-        self.p_f_layout.addWidget(self.rvc_filter_radius_card, 3)
-        self.p_f.setLayout(self.p_f_layout)
-
-        self.rvc_pitch_card = RangeSettingCard(
-            cfg.rvc_pitch,
-            FIF.MARKET,
-            self.tr("Pitch Adjustment"),
-            self.tr("Set the pitch of the audio, for opposite gender."),
-        )
-
-        self.p_t = QGroupBox()
-        self.p_t.setStyleSheet("border: none")
-        self.p_t_layout = QHBoxLayout(self.p_t)
-        self.p_t_layout.setContentsMargins(0, 0, 0, 0)
-        self.p_t_layout.addWidget(self.threads_card, 3)
-        self.p_t_layout.addWidget(self.rvc_pitch_card, 3)
-        self.p_t.setLayout(self.p_t_layout)
 
         self.setContentsMargins(0, 0, 0, 0)
 
@@ -233,10 +249,14 @@ class BulkGenerationRVCWidget(QWidget):
         self.rvc_widget_view.setContentsMargins(0, 0, 0, 0)
         self.rvc_widget_view.addItem(self.spacer)
         self.rvc_widget_view.addWidget(self.gen_settings)
-        self.rvc_widget_view.addWidget(self.p_t)
-        self.rvc_widget_view.addWidget(self.p_f)
         self.rvc_widget_view.addWidget(self.r_and_sub)
         self.rvc_widget_view.addWidget(self.f_c_)
+        self.settings_drawer.addWidget(RVCSettings())
+        self.buttons_layout.addWidget(self.settings_button)
+        self.help_drawer.addWidget(BulkRVCHelp(self))
+        self.buttons_layout.addWidget(self.help_button)
+        self.rvc_widget_view.addLayout(self.buttons_layout)
+
 
     def __onFolderCardClicked(self):
         """ download folder card clicked slot """
@@ -249,7 +269,7 @@ class BulkGenerationRVCWidget(QWidget):
         self.rvc_dir_card.setContent(folder)
 
 
-class BulkGenerationTableWidget(QWidget):
+class BulkGenerationTableWidget(BaseBulkWidget):
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent)
         self.bulk_table = TableView()
@@ -269,19 +289,11 @@ class BulkGenerationTableWidget(QWidget):
             self.upload_file.value,
         )
 
-        self.started_card = PushSettingCard(
-            self.tr('Getting Started'),
-            FIF.QUESTION,
-            self.tr("Guide"),
-            self.tr("Required Fields and Schema"),
-        )
-
         self.f_and_u = QGroupBox()
         self.f_and_u.setStyleSheet("border: none")
         self.f_and_u_layout = QHBoxLayout()
         self.f_and_u_layout.setContentsMargins(0, 0, 0, 0)
         self.f_and_u_layout.addWidget(self.upload_file_card, 1)
-        self.f_and_u_layout.addWidget(self.started_card, 1)
         self.f_and_u.setLayout(self.f_and_u_layout)
 
         self.headers = ["filename", "character", "text", "reference", "output_dir"]
@@ -329,6 +341,10 @@ class BulkGenerationTableWidget(QWidget):
         self.gen_settings.setLayout(self.gen_settings_layout)
 
         self.bulk_widget_view.addWidget(self.gen_settings)
+        self.help_drawer.addWidget(BulkCSVHelp(self))
+        self.buttons_layout.addWidget(self.help_button)
+        self.bulk_widget_view.addLayout(self.buttons_layout)
+
 
 
 class BulkGenerationWidget(FallTalkWidget):
@@ -341,28 +357,21 @@ class BulkGenerationWidget(FallTalkWidget):
         self.stackedWidget = QStackedWidget(self)
 
         # Create a TabView instance
-        self.bulk_csv_widget = BulkGenerationTableWidget(self)
-        self.bulk_rvc_widget = BulkGenerationRVCWidget(self)
-        self.bulk_fuz_widget = BulkLipFuzWidget(self)
+        self.bulk_csv_widget = BulkGenerationTableWidget(parent)
+        self.bulk_rvc_widget = BulkGenerationRVCWidget(parent)
+        self.bulk_fuz_widget = BulkLipFuzWidget(parent)
 
         self.bulk_csv_widget.upload_file_card.clicked.connect(self.__onOutputFolderCardClicked)
-        self.bulk_csv_widget.started_card.clicked.connect(self.__onShowGettingStarted)
 
         self.addSubInterface(self.bulk_csv_widget, 'bulk_csv_widget', 'CSV')
         self.addSubInterface(self.bulk_rvc_widget, 'bulk_rvc_widget', 'RVC')
         self.addSubInterface(self.bulk_fuz_widget, 'bulk_fuz_widget', 'FUZ')
-
-        self.generate_button = PrimaryPushButton(text="Bulk Generate Audio")
-        self.generate_button.setIcon(FIF.SEND)
-        self.generate_button.clicked.connect(self.parent.bulk_inference)
 
         self.boxLayout.addWidget(self.pivot, 0, Qt.AlignmentFlag.AlignLeft)
         self.boxLayout.addWidget(self.stackedWidget)
         self.stackedWidget.currentChanged.connect(self.onCurrentIndexChanged)
         self.stackedWidget.setCurrentWidget(self.bulk_csv_widget)
         self.pivot.setCurrentItem(self.bulk_csv_widget.objectName())
-
-        self.addToFrame(self.generate_button)
 
         self.setEnabled(cfg.engine.value != 'VoiceCraft')
 
@@ -399,44 +408,6 @@ class BulkGenerationWidget(FallTalkWidget):
             self.bulk_rvc_widget.character_card.configItem.addItem(i.text, userData=i.userData)
 
         self.bulk_rvc_widget.character_card.configItem.setCurrentIndex(0)
-
-    def __onShowGettingStarted(self):
-
-        title = 'Getting Started Guide'
-        content = """
-        The bulk file generation will use the currently loaded TTS engine, except voicecraft as its not suitable. 
-
-        Recommendations are StyleTTS2 or GPT_SoVITS. RVC will run with each engine as needed, you do not need to set the engine to RVC. 
-
-        Accepts a CSV file with no header. Fields must be int he following order:
-
-        "filename",  "character", "text", "reference", output_dir
-
-        fileName <optional>: The name of the output, will be randomly generated if blank
-            - accepted values: a0231s_1, a0231s_2.wav, or blank
-
-        character <required>: The fallout4 game name of the character. 
-            - accepted values: playervoicemale01, robotsentrybot, etc
-
-        text: <required>: The text you would like to regenerate.
-            - tts accepted value: text string,
-            - rvc accepted value: path of a file example: samples/sentrybot_falltalk_rvc.wav, C:/Audio/Sample.wav
-
-        reference <required>: You are using a "TTS" engine. Not needed for RVC.
-            - tts accepted value: fuz file name: 00091381_1.fuz, 
-
-        output_dir <optional>: 
-            - accepted values: any valid directory C:\\Output, ./output, etc, 
-
-        Each bulk run will be placed in the bulk_outputs folder in the main directory. 
-
-        Once data is loaded in the table, you can edit each field as needed.
-
-        """
-
-        w = MessageBox(title, content, self.parent.window())
-        if w.exec():
-            pass
 
     def __onOutputFolderCardClicked(self):
 

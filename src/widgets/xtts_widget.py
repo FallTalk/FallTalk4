@@ -12,6 +12,7 @@ from qfluentwidgets import FluentIcon as FIF, PushButton, Flyout, FlyoutView, Fl
 from PySide6.QtWidgets import QHBoxLayout
 from PySide6.QtCore import QPoint
 from src.settings.xtts_settings import XTTSSettings
+from src.help.xtts_help import XttsHelp
 
 class XttsWidget(GenerationWidget):
 
@@ -26,17 +27,15 @@ class XttsWidget(GenerationWidget):
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
 
-        # Add settings button
-        self.settings_button = ToolButton()
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.setFixedWidth(50)
-        self.settings_button.clicked.connect(lambda: self.show_settings(XTTSSettings(self)))
         
         # Add to layout
         self.buttons_layout = QHBoxLayout()
         self.buttons_layout.addWidget(self.settings_button, stretch=1)
         self.buttons_layout.addWidget(self.generate_button, stretch=5)
+        self.settings_drawer.addWidget(XTTSSettings(self))
+        self.help_drawer.addWidget(XttsHelp(self))
+        self.buttons_layout.addWidget(self.settings_button)
+        self.buttons_layout.addWidget(self.help_button)
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
@@ -14,6 +15,7 @@ from settings.llasa_settings import LLASASettings
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.widgets import GenerationWidget
+from src.help.llasa_help import LlasaHelp
 
 
 class LlasaWidget(GenerationWidget):
@@ -39,11 +41,12 @@ class LlasaWidget(GenerationWidget):
         self.generate_button.clicked.connect(self.parent.generate_audio)
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
 
-        self.settings_button = ToolButton()
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.clicked.connect(lambda: self.show_settings(LLASASettings(self)))
-        self.settings_button.setFixedWidth(50)
+        self.settings_drawer.addWidget(LLASASettings(self))
+        self.help_drawer.addWidget(LlasaHelp(self))
+
+        self.buttons_layout.addWidget(self.settings_button)
+        self.buttons_layout.addWidget(self.help_button)
+
         self.buttons_layout.addWidget(self.settings_button)
 
         self.boxLayout.addLayout(self.buttons_layout)

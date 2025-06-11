@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from qfluentwidgets import (
-    FluentIcon as FIF, SettingCardGroup, RangeSettingCard, isDarkTheme, SwitchSettingCard
+    FluentIcon as FIF, SettingCardGroup, RangeSettingCard, isDarkTheme, SwitchSettingCard, OptionsSettingCard
 )
 from qfluentwidgets import ScrollArea, ExpandLayout
 
@@ -19,7 +19,7 @@ class GPTSoVITSSettings(ScrollArea):
         self.expand_layout = ExpandLayout(self.scroll_widget)
         self.settings_group = SettingCardGroup(self.tr(''), self.scroll_widget)
 
-        self.mode_card = RadioSettingCard(
+        self.mode_card = OptionsSettingCard(
             cfg.slice_mode,
             FIF.CUT,
             self.tr('Slice Mode'),

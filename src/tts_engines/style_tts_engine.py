@@ -133,18 +133,14 @@ class StyleTTS2_Engine(tts_engine):
             clamp=False
         )
 
-    def generate_audio(self, text=None, voice=None, language=None, output_file=None, streaming=False):
+    def generate_audio(self, text=None, voice=None, language=None, output_file=None, streaming=False, speaker=None):
         alpha = cfg.get(cfg.style_alpha) / 100.0
         beta = cfg.get(cfg.style_beta) / 100.0
         diffusion_steps = cfg.get(cfg.style_diffusion_steps)
         embedding_scale = cfg.get(cfg.style_embedding_scale)
-        self.inference(text=text, ref_s=self.compute_style(voice), output_file=output_file, alpha=alpha, beta=beta, diffusion_steps=diffusion_steps, embedding_scale=embedding_scale)
-        rvc_enabled = cfg.get(cfg.rvc_enabled)
-        if rvc_enabled and self.rvc_model:
-            self.run_rvc(output_file)
+        audio_data, sample_rate = self.inference(text=text, ref_s=self.compute_style(voice), output_file=output_file, alpha=alpha, beta=beta, diffusion_steps=diffusion_steps, embedding_scale=embedding_scale)
+        self.process_audio(audio_data, sample_rate, output_file)
 
-        rs_data = load_audio(output_file, 44100)
-        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     def inference(self, text, ref_s, output_file, alpha=0.3, beta=0.7, diffusion_steps=5, embedding_scale=1):
         text = text.strip()
@@ -212,4 +208,6 @@ class StyleTTS2_Engine(tts_engine):
 
         wav_tensor = out.squeeze().cpu().numpy()[..., :-100]  # weird pulse at the end of the model, need to be fixed later
         #wav_tensor = out.squeeze().cpu().numpy()[..., :-50]  # weird pulse at the end of the model, need to be fixed later
-        sf.write(output_file, wav_tensor, 24000)
+
+        return wav_tensor.cpu().numpy(), 24000
+        # sf.write(output_file, wav_tensor, 24000)

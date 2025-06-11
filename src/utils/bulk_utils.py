@@ -112,7 +112,7 @@ def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent, direc
             if use_existing_lip and os.path.exists(wav_file.replace(".wav", ".lip")):
                 existing_lip = wav_file.replace(".wav", ".lip")
 
-        tts_engine.run_rvc(output_file)
+        tts_engine.run_rvc_file(output_file)
 
         if cfg.get(cfg.xwm_enabled):
             create_lip_and_fuz(parent, output_file, 44100, True, existing_lip)
@@ -194,7 +194,7 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
         #     load_rvc(parent, True)
 
         if not os.path.exists(os.path.join('models', model['name'], 'RVC')):
-            download_rvc_models(model['name'], model['RVC'])
+            download_rvc_models(parent, model['name'], model['RVC'])
 
         with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
             futures = []
@@ -256,10 +256,16 @@ def process_inference_data(parent, data, output_file, character, model, is_train
             if is_trained and not os.path.exists(os.path.join('models', character, parent.tts_engine.engine_name)):
                 download_models(parent, character, model[parent.tts_engine.engine_name], model['RVC'] if has_rvc else None, True)
             elif has_rvc and not os.path.exists(os.path.join('models', character, 'RVC')):
-                download_rvc_models(character, model['RVC'])
+                download_rvc_models(parent, character, model['RVC'])
 
-            if is_trained and character != parent.tts_engine.model_name:
-                parent.tts_engine.setup(character, has_rvc, False)
+            if parent.tts_engine.is_shared:
+                if character not in parent.tts_engine.characters:
+                    if is_trained and character != parent.tts_engine.model_name:
+                        parent.tts_engine.setup(character, has_rvc, False, model['version'], model.get('is_shared', False), model.get('shared_model_name', None),  model.get('characters', None))
+                    elif not is_trained and character != parent.tts_engine.model_name:
+                        parent.tts_engine.setup(character, has_rvc, True)
+            elif is_trained and character != parent.tts_engine.model_name:
+                parent.tts_engine.setup(character, has_rvc, False, model['version'], model.get('is_shared', False), model.get('shared_model_name', None),  model.get('characters', None))
             elif not is_trained and character != parent.tts_engine.model_name:
                 parent.tts_engine.setup(character, has_rvc, True)
 

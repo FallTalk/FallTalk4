@@ -13,10 +13,9 @@ num2words
 numpy==1.26.4
 sentencepiece
 transformers>=4.45.2
-xformers==v0.0.30
+xformers>=v0.0.30
 torchmetrics
 demucs
-soundfile
 encodec
 protobuf<3.21
 pesq
@@ -67,9 +66,9 @@ edge-tts
 elevenlabs
 pip-system-certs
 ctranslate2
-torch==2.7.0
-torchvision==0.22.0
-torchaudio==2.7.0
+torch==2.7.1
+torchvision==0.22.1
+torchaudio==2.7.1
 nltk==3.9.1
 torchfcpe
 phonemizer
@@ -78,7 +77,7 @@ unidecode
 torchlibrosa
 ftfy
 timm
-accelerate==1.6.0
+accelerate==1.7.0
 noisereduce
 torchdiffeq==0.2.5
 x-transformers
@@ -92,7 +91,7 @@ triton-windows>=3.3
 pywin32==308
 deepspeed==0.16.5
 descript-audio-codec
-vllm==0.8.4
+vllm==0.9.0.1
 wandb
 diffusers
 torchsde

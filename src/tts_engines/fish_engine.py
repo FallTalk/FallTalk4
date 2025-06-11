@@ -2,6 +2,7 @@ import time
 
 import numpy as np
 import torchaudio
+import librosa
 
 from enums.engine_type import EngineType
 from src.config.config import cfg
@@ -61,13 +62,8 @@ class FishSpeechEngine(tts_engine):
         logger.info(f"Time to load model: {time.time() - t0:.02f} seconds")
 
     def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False):
-        self.inference(text, transcript, voice, language, output_file, streaming)
-        rvc_enabled = cfg.get(cfg.rvc_enabled)
-        if rvc_enabled and self.rvc_model:
-            self.run_rvc(output_file)
-
-        rs_data = load_audio(output_file, 44100)
-        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
+        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming)
+        self.process_audio(audio_data, sample_rate, output_file)
 
     def unload_model(self):
         self.basic_unload_model()
@@ -75,6 +71,9 @@ class FishSpeechEngine(tts_engine):
         del self.decode_one_token
         self.vqgan_model = None
         self.decode_one_token = None
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def numpy_gen(self, input_path):
         logger.info(f"Processing in-place reconstruction of {input_path}")
@@ -156,7 +155,7 @@ class FishSpeechEngine(tts_engine):
             logger.warning("No audio was generated; nothing to save.")
         else:
             full_audio = np.concatenate(all_audio_chunks, axis=-1)
-            sf.write(output_file, full_audio, self.vqgan_model.spec_transform.sample_rate)
-            total_duration = full_audio.shape[-1] / self.vqgan_model.spec_transform.sample_rate
-            logger.info(f"Saved combined audio to {output_file}; total duration {total_duration:.2f}s")
-
+            return full_audio, self.vqgan_model.spec_transform.sample_rate
+            # sf.write(output_file, full_audio, self.vqgan_model.spec_transform.sample_rate)
+            # total_duration = full_audio.shape[-1] / self.vqgan_model.spec_transform.sample_rate
+            # logger.info(f"Saved combined audio to {output_file}; total duration {total_duration:.2f}s")

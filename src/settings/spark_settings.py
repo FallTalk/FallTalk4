@@ -1,84 +1,89 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from qfluentwidgets import (
-    FluentIcon as FIF, SubtitleLabel, ComboBoxSettingCard
+    FluentIcon as FIF, SubtitleLabel, ComboBoxSettingCard, RangeSettingCard, SettingCardGroup, isDarkTheme
 )
 from qfluentwidgets import ScrollArea, ExpandLayout
 
 from src.config.config import cfg
+from ui.cards import RangeSettingCardScaled
 
 
 class SparkSettings(ScrollArea):
     def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self.setObjectName("SparkSettings")
-        self.scrollWidget = QWidget()
-        self.expandLayout = ExpandLayout(self.scrollWidget)
+        super().__init__(parent)
 
-        # Settings title
-        self.settingLabel = SubtitleLabel("Spark-TTS Settings", self)
-        self.expandLayout.addWidget(self.settingLabel)
+        self.scroll_widget = QWidget()
+        self.expand_layout = ExpandLayout(self.scroll_widget)
+        self.settings_group = SettingCardGroup(self.tr(''), self.scroll_widget)
 
-        # Language settings
-        self.languageCard = ComboBoxSettingCard(
-            cfg.language,
-            FIF.SETTING,
-            "Language",
-            "Select the language for speech synthesis",
-            texts=["English", "Chinese"],
-            parent=self.scrollWidget
+        self.temperature_card = RangeSettingCardScaled(
+            cfg.spark_temperature,
+            FIF.FRIGID,
+            self.tr('Temperature'),
+            self.tr('Control randomness in generation'),
+            parent=self.settings_group
         )
-        self.expandLayout.addWidget(self.languageCard)
 
-        # Speaker settings
-        self.speakerCard = ComboBoxSettingCard(
-            cfg.speaker,
-            FIF.SETTING,
-            "Speaker",
-            "Select the speaker voice",
-            texts=["Default"],
-            parent=self.scrollWidget
+        self.top_p_card = RangeSettingCardScaled(
+            cfg.spark_top_p,
+            FIF.UP,
+            self.tr('Top P'),
+            self.tr('Higher values give more creativity in generation'),
+            parent=self.settings_group
         )
-        self.expandLayout.addWidget(self.speakerCard)
 
-        # Quality settings
-        self.qualityCard = ComboBoxSettingCard(
-            cfg.quality,
-            FIF.SETTING,
-            "Quality",
-            "Select the quality of speech synthesis",
-            texts=["Low", "Medium", "High"],
-            parent=self.scrollWidget
+        self.top_k_card = RangeSettingCard(
+            cfg.spark_top_k,
+            FIF.UP,
+            self.tr('Top K'),
+            self.tr('Lower values make it more predictable and coherent'),
+            parent=self
         )
-        self.expandLayout.addWidget(self.qualityCard)
 
-        # Speed settings
-        self.speedCard = ComboBoxSettingCard(
-            cfg.speed,
-            FIF.SETTING,
-            "Speed",
-            "Select the speech speed",
-            texts=["Slow", "Normal", "Fast"],
-            parent=self.scrollWidget
+        self.max_new_tokens_card = RangeSettingCard(
+            cfg.spark_max_new_tokens,
+            FIF.UP,
+            self.tr('Max New Tokens'),
+            self.tr('The max number of new speech tokens, settings too low can cause issues'),
+            parent=self
         )
-        self.expandLayout.addWidget(self.speedCard)
 
-        # Pitch settings
-        self.pitchCard = ComboBoxSettingCard(
-            cfg.pitch,
-            FIF.SETTING,
-            "Pitch",
-            "Select the pitch of the voice",
-            texts=["Low", "Normal", "High"],
-            parent=self.scrollWidget
-        )
-        self.expandLayout.addWidget(self.pitchCard)
+        self.__initWidget()
 
-        # Add stretch to push all settings to the top
-        self.expandLayout.addStretch(1)
-
-        # Set the scroll widget
-        self.setWidget(self.scrollWidget)
-        self.setWidgetResizable(True)
+    def __initWidget(self):
+        self.resize(1000, 800)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.viewport().setStyleSheet('background-color: transparent;') 
+        self.setViewportMargins(0, 0, 0, 20)
+        self.setWidget(self.scroll_widget)
+        self.setWidgetResizable(True)
+
+        # initialize style sheet
+        self.__setQss()
+
+        # initialize layout
+        self.__initLayout()
+        self.__connectSignalToSlot()
+
+    def __initLayout(self):
+        # add cards to group
+        self.settings_group.addSettingCard(self.temperature_card)
+        self.settings_group.addSettingCard(self.top_p_card)
+        self.settings_group.addSettingCard(self.top_k_card)
+        self.settings_group.addSettingCard(self.max_new_tokens_card)
+
+        # add setting card group to layout
+        self.expand_layout.setSpacing(28)
+        self.expand_layout.setContentsMargins(15, 0, 15, 0)
+        self.expand_layout.addWidget(self.settings_group)
+
+    def __setQss(self):
+        """ set style sheet """
+        self.scroll_widget.setObjectName('scrollWidget')
+
+        theme = 'dark' if isDarkTheme() else 'light'
+        with open(f'resource/qss/{theme}/setting_interface.qss', encoding='utf-8') as f:
+            self.setStyleSheet(f.read())
+
+    def __connectSignalToSlot(self):
+        pass

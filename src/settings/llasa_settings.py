@@ -76,7 +76,7 @@ class LLASASettings(ScrollArea):
 
     def __initLayout(self):
         # add cards to group
-        self.settings_group.addSettingCard(self.mode_card)
+        # self.settings_group.addSettingCard(self.mode_card)
         self.settings_group.addSettingCard(self.temperature_card)
         self.settings_group.addSettingCard(self.seed_card)
         self.settings_group.addSettingCard(self.top_p_card)

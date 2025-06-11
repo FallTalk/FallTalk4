@@ -1,6 +1,9 @@
+import collections
 import os
+import typing
 
 import librosa
+import omegaconf
 import soundfile as sf
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -13,6 +16,15 @@ from src.tts_engines.tts_engine import tts_engine
 from src.utils.audio_utils import load_audio
 
 
+torch.serialization.add_safe_globals([omegaconf.listconfig.ListConfig])
+torch.serialization.add_safe_globals([omegaconf.base.ContainerMetadata])
+torch.serialization.add_safe_globals([omegaconf.dictconfig.DictConfig])
+torch.serialization.add_safe_globals([typing.Any])
+torch.serialization.add_safe_globals([list])
+torch.serialization.add_safe_globals([collections.defaultdict])
+torch.serialization.add_safe_globals([dict])
+torch.serialization.add_safe_globals([int])
+
 class LlasaEngine(tts_engine):
 
     def __init__(self):
@@ -24,14 +36,11 @@ class LlasaEngine(tts_engine):
         self.codec_model = None
         self.tokenize = None
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False):
-        self.inference(text, transcript, voice, language, output_file, streaming)
-        rvc_enabled = cfg.get(cfg.rvc_enabled)
-        if rvc_enabled and self.rvc_model:
-            self.run_rvc(output_file)
+    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
+        # Get audio data and sample rate from inference
+        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming)
+        self.process_audio(audio_data, sample_rate, output_file)
 
-        rs_data = load_audio(output_file, 44100)
-        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
 
     def load_model(self):
         print("Loading Llasa Model")
@@ -48,14 +57,16 @@ class LlasaEngine(tts_engine):
             self.codec_model.eval().cpu()
             self.model.eval().cpu()
         else:
-            self.codec_model.eval().cuda()
+            self.codec_model.eval().cpu()
             self.model.eval().cuda()
 
 
 
 
     def unload_model(self):
-        pass
+        self.basic_unload_model()
+        del self.tokenizer
+        self.tokenizer = None
 
 
     @torch.no_grad()
@@ -128,7 +139,7 @@ class LlasaEngine(tts_engine):
         # Convert  token <|s_23456|> to int 23456
         speech_tokens = extract_speech_ids(speech_tokens)
 
-        speech_tokens = torch.tensor(speech_tokens).cuda().unsqueeze(0).unsqueeze(0)
+        speech_tokens = torch.tensor(speech_tokens).cpu().unsqueeze(0).unsqueeze(0)
 
         # Decode the speech tokens to speech waveform
         gen_wav = self.codec_model.decode_code(speech_tokens)
@@ -136,4 +147,5 @@ class LlasaEngine(tts_engine):
         # if only need the generated part
         gen_wav = gen_wav[:,:,prompt_wav.shape[1]:]
 
-        sf.write(output_file, gen_wav[0, 0, :].cpu().numpy(), 16000)
+        return gen_wav[0, 0, :].cpu().numpy(), 16000
+        # sf.write(output_file, , )

@@ -14,8 +14,7 @@ from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.settings.gpt_sovits_settings import GPTSoVITSSettings
-from src.widgets import GenerationWidget
-
+from src.widgets import GenerationWidget, RightDrawer
 
 class GPT_SoVITSWidget(GenerationWidget):
     def __init__(self, parent: FallTalkApp):
@@ -43,17 +42,8 @@ class GPT_SoVITSWidget(GenerationWidget):
         self.generate_button.clicked.connect(self.parent.generate_audio)
         self.buttons_layout.addWidget(self.generate_button, stretch=5)
 
-        self.settings_button = ToolButton()
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.clicked.connect(lambda: self.show_settings(GPTSoVITSSettings(self)))
-        self.settings_button.setFixedWidth(50)
-
-        self.help_button = ToolButton()
-        self.help_button.setIcon(FIF.QUESTION)
-        self.help_button.setEnabled(True)
-        self.help_button.clicked.connect(lambda: self.show_help(GPTSoVITSSettings(self)))
-        self.help_button.setFixedWidth(50)
+        self.settings_drawer.addWidget(GPTSoVITSSettings(self))
+        self.help_drawer.addWidget(GPTSoVITSHelp(self))
 
         self.buttons_layout.addWidget(self.settings_button)
         self.buttons_layout.addWidget(self.help_button)
@@ -72,6 +62,10 @@ class GPT_SoVITSWidget(GenerationWidget):
         elif self.parent.tts_engine:
             self.generate_button.setEnabled(False)
             self.transcribe_button.setEnabled(True)
+
+
+    def toggle_drawer(self):
+        self.drawer.open_drawer()
 
     def transcribe(self):
         self.parent.transcribe(self)

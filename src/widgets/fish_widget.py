@@ -15,7 +15,7 @@ from src.enums.engine_type import EngineType
 from src.settings.fish_speech_settings import FishSpeechSettings
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
 from src.widgets.generation_widget import GenerationWidget
-
+from src.help.fish_help import FishHelp
 
 class FishWidget(GenerationWidget):
 
@@ -102,14 +102,12 @@ class FishWidget(GenerationWidget):
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
-        
-        self.settings_button = ToolButton()
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.clicked.connect(lambda: self.show_settings(FishSpeechSettings(self)))
-        self.settings_button.setFixedWidth(50)
+
+        self.settings_drawer.addWidget(FishSpeechSettings(self))
+        self.help_drawer.addWidget(FishHelp(self))
         self.buttons_layout.addWidget(self.settings_button)
-        
+        self.buttons_layout.addWidget(self.help_button)
+
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 

@@ -29,12 +29,12 @@ from src.utils.icons import FallTalkIcons
 from src.utils.inference_utils import (
     do_transcribe, replace_numbers_with_words, eleven_labs_inference, edge_tts_inference,
     rvc_inference, xtts_inference, dia_inference, fish_inference, f5_inference,
-    gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference, spark_inference
+    gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference, spark_inference, csm_inference
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
     load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc, load_spark,
-    load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler
+    load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler, load_csm
 )
 
 from src.widgets.falltalk_fluent_window import FallTalkFluentWindow
@@ -47,8 +47,9 @@ from src.widgets import (
     StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget,
     DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget,
     XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, BulkGenerationWidget,
-    EzVoiceCreatorWidget, FallTalkWidget, SparkWidget
+    EzVoiceCreatorWidget, FallTalkWidget, SparkWidget, CSMWidget
 )
+
 
 class FallTalkApp(FallTalkFluentWindow):
     def __init__(self):
@@ -69,8 +70,10 @@ class FallTalkApp(FallTalkFluentWindow):
         self.pending_ez = False
         self.characters_data = None
         self.models = None
+        self.shared_models = None
         self.custom_models = None
         self.upscale_engine = None
+        self.apbwe_engine = None
 
         # Dictionary to store engine widgets
         self.engine_widgets = {}
@@ -87,7 +90,8 @@ class FallTalkApp(FallTalkFluentWindow):
             EngineType.FISH_SPEECH: load_fish,
             EngineType.F5: load_f5,
             EngineType.RVC: load_rvc,
-            EngineType.SPARK: load_spark
+            EngineType.SPARK: load_spark,
+            EngineType.CSM: load_csm
         }
 
         clean_folder("temp/")
@@ -126,7 +130,7 @@ class FallTalkApp(FallTalkFluentWindow):
         if self.characters_data is None:
             with open(os.path.join(get_app_root(), 'config/characters.json'), 'r', encoding='utf-8') as file:
                 self.characters_data = {character['name']: character for character in json.load(file)}
-            
+
             # Pre-sort and store reference files for each character
             self.sorted_references = {}
             for character_name, character in self.characters_data.items():
@@ -136,14 +140,46 @@ class FallTalkApp(FallTalkFluentWindow):
                     for voice_file in character['voicefiles']:
                         if voice_file.get('filename') and voice_file.get('dialogue'):
                             voice_files.append((voice_file['filename'], len(voice_file['dialogue'])))
-                    
+
                     # Sort by dialogue length and store top 15 filenames
                     voice_files.sort(key=lambda x: x[1], reverse=True)
                     self.sorted_references[character_name] = [filename for filename, _ in voice_files[:15]]
-        
+
         if self.models is None:
+            # Load character-specific models from modelsv2.json
             with open(os.path.join(get_app_root(), 'config/modelsv2.json'), 'r', encoding='utf-8') as file:
                 self.models = {model['name']: model for model in json.load(file)['characters']}
+
+        if self.shared_models is None:
+            # Load shared models from sharedmodels.json if it exists
+            shared_models_path = os.path.join(get_app_root(), 'config/sharedmodels.json')
+            if os.path.exists(shared_models_path):
+                with open(shared_models_path, 'r', encoding='utf-8') as file:
+                    self.shared_models = json.load(file)
+
+                    # Process each shared model
+                    for shared_model in self.shared_models:
+                        engine = shared_model.get('engine')
+                        engine_version = shared_model.get('engine_version', '1')
+                        model_version = shared_model.get('model_version', '1')
+                        model_name = shared_model.get('model_name')
+                        model_type = shared_model.get('model_type', 'safetensors')
+                        characters = shared_model.get('characters', [])
+
+                        # Add the shared model to each character's models
+                        for character_name in characters:
+                            if character_name in self.models:
+                                # If the character already exists, add the shared model to it
+                                # if engine not in self.models[character_name]:
+                                self.models[character_name][engine] = {
+                                    'version': model_version,
+                                    'engine_version': engine_version,
+                                    'engine': engine,
+                                    'type': model_type,
+                                    'is_shared': True,
+                                    'shared_model_name': model_name,
+                                    'characters':  characters
+                                }
 
     def _load_custom_models(self):
         """Load custom models from file - this can change during runtime"""
@@ -178,6 +214,7 @@ class FallTalkApp(FallTalkFluentWindow):
         QApplication.processEvents()
         self.show()
         QApplication.processEvents()
+        self.setMicaEffectEnabled(True)
 
     def verifyFallout(self):
         if cfg.get(cfg.fallout_4_directory_check):
@@ -288,6 +325,7 @@ class FallTalkApp(FallTalkFluentWindow):
         self.engine_widgets[EngineType.LLASA] = LlasaWidget(self)
         self.engine_widgets[EngineType.RVC] = RVCWidget(self)
         self.engine_widgets[EngineType.SPARK] = SparkWidget(self)
+        self.engine_widgets[EngineType.CSM] = CSMWidget(self)
 
         self.faq_widget = FaqWidget(self)
         self.characters_widget = CharactersWidget(self)
@@ -328,6 +366,7 @@ class FallTalkApp(FallTalkFluentWindow):
         self.engine_actions[EngineType.LLASA] = self.llasa_action
         self.engine_actions[EngineType.ORPHEUS] = self.orpheus_action
         self.engine_actions[EngineType.SPARK] = self.spark_action
+        self.engine_actions[EngineType.CSM] = self.csm_action
 
         # Connect action signals
         for engine_type, action in self.engine_actions.items():
@@ -388,8 +427,8 @@ class FallTalkApp(FallTalkFluentWindow):
 
     def onDeviceChange(self):
         logger.debug(f'Device Changed {cfg.get(cfg.device)}')
-        tr = (threading.Thread(target=self.clean_engines, daemon=True))
-        tr.start()
+        # tr = (threading.Thread(target=self.clean_engines, daemon=True))
+        # tr.start()
 
         if self.tts_engine is not None:
             self.onEngineChange(cfg.get(cfg.engine))
@@ -524,7 +563,7 @@ class FallTalkApp(FallTalkFluentWindow):
                     model = self.models[character_name][cfg.get(cfg.engine)]
                     engine_type = EngineType(cfg.get(cfg.engine))
                     version = model.get('engine_version', 1)
-                    
+
                     # Validate version compatibility
                     if engine_type.is_version_supported(version):
                         model_found = True
@@ -556,7 +595,7 @@ class FallTalkApp(FallTalkFluentWindow):
                         filtered_custom_models[name] = model
                     else:
                         logger.warning(f"Skipping custom model {name} - Engine version {version} not supported for {cfg.get(cfg.engine)}")
-            
+
             self.characters_widget.loadCustom(self, filtered_custom_models)
 
         self.bulk_generate_widget.populate_character_card()
@@ -796,9 +835,9 @@ class FallTalkApp(FallTalkFluentWindow):
 
             self.showLoaderPopup("Generating Audio", "Please Wait")
             if current_engine == EngineType.GPT_SOVITS:
-                threading.Thread(target=gpt_sovits_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+                threading.Thread(target=gpt_sovits_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.DIA:
-                threading.Thread(target=dia_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+                threading.Thread(target=dia_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.F5:
                 start_word = current_widget.start_dropdown_card.getWordInfo()
                 end_word = current_widget.end_dropdown_card.getWordInfo()
@@ -809,19 +848,21 @@ class FallTalkApp(FallTalkFluentWindow):
                 elif cfg.get(cfg.f5_mode) == "edit" and start_time > end_time:
                     self.showErrorPopup(current_widget, current_widget.generate_button, "Start must come before the end time")
                 else:
-                    threading.Thread(target=f5_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, start_time, end_time, transcribe_state), daemon=True).start()
+                    threading.Thread(target=f5_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, start_time, end_time, transcribe_state, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.XTTS_V2:
-                threading.Thread(target=xtts_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+                threading.Thread(target=xtts_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.LLASA:
-                threading.Thread(target=llasa_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+                threading.Thread(target=llasa_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.ORPHEUS:
-                threading.Thread(target=orpheus_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+                threading.Thread(target=orpheus_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.FISH_SPEECH:
-                threading.Thread(target=fish_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+                threading.Thread(target=fish_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+            elif current_engine == EngineType.CSM:
+                threading.Thread(target=csm_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.SPARK:
-                threading.Thread(target=spark_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+                threading.Thread(target=spark_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.STYLE_TTS2:
-                threading.Thread(target=styletts2_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state), daemon=True).start()
+                threading.Thread(target=styletts2_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
 
     def showErrorPopup(self, parent, target, content):
         Flyout.create(
@@ -875,7 +916,7 @@ class FallTalkApp(FallTalkFluentWindow):
                     self.verifyFallout()
                 else:
                     self.reference_widget.addDataToReferencesTable(model)
-            
+
                 self.update_reference_table(model)
                 self.pending_character = None
                 self.pending_model = None
@@ -947,5 +988,3 @@ class FallTalkApp(FallTalkFluentWindow):
                 json.dump(new_custom_models, file)
 
             self.load_models_config()
-
-

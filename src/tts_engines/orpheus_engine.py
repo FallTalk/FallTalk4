@@ -1,5 +1,6 @@
 import time
 import wave
+import librosa
 
 from enums.engine_type import EngineType
 from src.config.config import cfg
@@ -59,6 +60,9 @@ class OrpheusEngine(tts_engine):
         self.tokenizer = None
         self.snac_model = None
 
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
     def tokenise_audio(self, waveform):
         waveform = torch.from_numpy(waveform).unsqueeze(0)
         waveform = waveform.to(dtype=torch.float32)
@@ -98,14 +102,10 @@ class OrpheusEngine(tts_engine):
         audio_hat = self.snac_model.decode(codes)
         return audio_hat
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False):
-        self.inference(text, transcript, voice, language, output_file, streaming)
-        rvc_enabled = cfg.get(cfg.rvc_enabled)
-        if rvc_enabled and self.rvc_model:
-            self.run_rvc(output_file)
-
-        rs_data = load_audio(output_file, 44100)
-        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
+    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
+        # Get audio data and sample rate from inference
+        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming)
+        self.process_audio(audio_data, sample_rate, output_file)
 
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
 
@@ -152,12 +152,12 @@ class OrpheusEngine(tts_engine):
             generated_ids = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                max_new_tokens=990,
+                max_new_tokens=cfg.get(cfg.orpehus_max_new_tokens),
                 do_sample=True,
-                temperature=0.5,
+                temperature=float(cfg.get(cfg.orpehus_temperature) / 100.0),
                 # top_k=40,
-                top_p=0.9,
-                repetition_penalty=1.1,
+                top_p=(cfg.get(cfg.fish_top_p) / 100.0),
+                repetition_penalty=(cfg.get(cfg.orpehus_repetition) / 10.0),
                 num_return_sequences=1,
                 eos_token_id=128258,
             )
@@ -201,4 +201,5 @@ class OrpheusEngine(tts_engine):
         combined = torch.cat([s.detach().squeeze().cpu() for s in my_samples], dim=-1)
 
         # Convert to numpy and save
-        sf.write(output_file, combined.numpy(), samplerate=24000)
+        return combined.numpy(), 24000
+        # sf.write(output_file, combined.numpy(), samplerate=24000)

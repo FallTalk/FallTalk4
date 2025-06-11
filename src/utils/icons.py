@@ -44,6 +44,7 @@ class FallTalkIcons(FluentIconBase, Enum):
     MAGIC = "magic"
     UP = "up"
     SPARK = "spark"
+    CSM = "sesame"
 
     # Stroke-only icons
     ALPHA = "alpha"

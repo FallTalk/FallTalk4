@@ -1,19 +1,21 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
 from PySide6 import QtWidgets
-from PySide6.QtWidgets import QHBoxLayout, QGroupBox, QFileDialog, QSpacerItem
-from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton, SwitchSettingCard, ConfigItem, PushSettingCard, OptionsValidator, OptionsConfigItem
-
+from PySide6.QtWidgets import QHBoxLayout, QGroupBox, QFileDialog, QSpacerItem, QWidget
+from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton, SwitchSettingCard, ConfigItem, PushSettingCard, \
+    OptionsValidator, OptionsConfigItem, ToolButton
 
 from src.config.config import cfg, CustomFolderValidator
 from src.ui.cards import RadioSettingCard
 from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget
-
+from src.widgets import RightDrawer
+from src.help.upscale_help import UpscaleHelp
 
 class UpscaleWidget(FallTalkWidget):
     def __init__(self, parent: FallTalkApp):
@@ -93,7 +95,37 @@ class UpscaleWidget(FallTalkWidget):
         self.addToFrame(self.mode_card)
         self.addToFrame(self.mo_sampe)
         self.addToFrame(self.r_and_sub)
-        self.addToFrame(self.generate_button)
+
+        # Buttons layout
+        self.buttons_layout = QHBoxLayout()
+        self.buttons_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
+        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
+        self.help_drawer.addWidget(UpscaleHelp(self))
+
+        self.settings_button = ToolButton()
+        self.settings_button.setIcon(FIF.SETTING)
+        self.settings_button.setEnabled(True)
+        self.settings_button.clicked.connect(lambda: self.toggle_settings_drawer())
+        self.settings_button.setFixedWidth(50)
+
+        self.help_button = ToolButton()
+        self.help_button.setIcon(FIF.QUESTION)
+        self.help_button.setEnabled(True)
+        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
+        self.help_button.setFixedWidth(50)
+
+        self.buttons_layout.addWidget(self.generate_button)
+        self.buttons_layout.addWidget(self.help_button)
+        # self.buttons_layout.addWidget(self.settings_button)
+
+        # Create a widget to hold the buttons layout
+        self.buttons_widget = QWidget()
+        self.buttons_widget.setLayout(self.buttons_layout)
+
+
+        self.addToFrame(self.buttons_widget)
 
     def __onFolderCardClicked(self):
         """ download folder card clicked slot """
@@ -104,3 +136,9 @@ class UpscaleWidget(FallTalkWidget):
 
         self.upscale_dir.value = folder
         self.upscale_dir_card.setContent(folder)
+
+    def toggle_settings_drawer(self):
+        self.settings_drawer.open_drawer()
+
+    def toggle_help_drawer(self):
+        self.help_drawer.open_drawer()

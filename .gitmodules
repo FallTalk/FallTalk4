@@ -16,3 +16,9 @@
 [submodule "orpheus"]
 	path = third_party/orpheus
 	url = https://github.com/canopyai/Orpheus-TTS
+[submodule "third_party/spark"]
+	path = third_party/spark
+	url = https://github.com/SparkAudio/Spark-TTS
+[submodule "third_party/chatterbox"]
+	path = third_party/chatterbox
+	url = https://github.com/resemble-ai/chatterbox

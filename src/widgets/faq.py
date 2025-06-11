@@ -35,7 +35,7 @@ class FAQPage(ScrollArea):
         self.about_group = SettingCardGroup(self.tr('About'), self.scroll_widget)
         self.models_group = SettingCardGroup(self.tr('Models'), self.scroll_widget)
 
-        self.why = TextAreaCard(
+        self.info = TextAreaCard(
             FallTalkIcons.VAULT_BOY.icon(),
             self.tr('Why did you make this?'),
             text=
@@ -271,7 +271,7 @@ class FAQPage(ScrollArea):
 
     def __initLayout(self):
         # add cards to group
-        self.settings_group.addSettingCard(self.why)
+        self.settings_group.addSettingCard(self.info)
         self.settings_group.addSettingCard(self.eginesuse)
         self.settings_group.addSettingCard(self.reference)
         self.settings_group.addSettingCard(self.rvc)

@@ -1,27 +1,26 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
-from qfluentwidgets import (PrimaryPushButton, LineEdit, ComboBox,
-                            BodyLabel, FluentIcon as FIF, ToolButton,
-                            TextEdit)
+from PySide6.QtWidgets import QHBoxLayout
+from qfluentwidgets import (PrimaryPushButton, FluentIcon as FIF)
 
 
 from audio.audio_player import StandardAudioPlayerBar
-from settings.spark_settings import SparkSettings
+from src.settings.spark_settings import SparkSettings
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.widgets import GenerationWidget
+from src.help.spark_help import SparkHelp
 
 
 class SparkWidget(GenerationWidget):
 
     def __init__(self, parent: FallTalkApp):
-        super().__init__(parent=parent, text=EngineType.LLASA.value)
+        super().__init__(parent=parent, text=EngineType.SPARK.value)
         self.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
         self.transcribe_state = None
         self.words_data = None
@@ -41,18 +40,19 @@ class SparkWidget(GenerationWidget):
         self.generate_button.clicked.connect(self.parent.generate_audio)
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
 
-        self.settings_button = ToolButton()
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.clicked.connect(lambda: self.show_settings(SparkSettings(self)))
-        self.settings_button.setFixedWidth(50)
+        self.settings_drawer.addWidget(SparkSettings(self))
+        self.help_drawer.addWidget(SparkSettings(self))
         self.buttons_layout.addWidget(self.settings_button)
+        self.buttons_layout.addWidget(self.help_button)
+
+        self.settings_drawer.addWidget(SparkSettings(self))
+        self.help_drawer.addWidget(SparkHelp(self))
 
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 
-        self.setVisible(cfg.engine.value == EngineType.LLASA.value)
-        self.media_player.setVisible(cfg.engine.value == EngineType.LLASA.value)
+        self.setVisible(cfg.engine.value == EngineType.SPARK.value)
+        self.media_player.setVisible(cfg.engine.value == EngineType.SPARK.value)
         self.setEnabled(False)
 
     def onReferenceSelect(self):

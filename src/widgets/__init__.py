@@ -7,6 +7,7 @@ from __future__ import annotations
 # Import all widgets to make them available from the module
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.widgets.falltalk_fluent_window import FallTalkFluentWindow, CustomCommandBar
+from src.widgets.drawer import RightDrawer
 from src.widgets.faq_widget import FaqWidget
 from src.widgets.settings_widget import SettingsWidget
 from src.widgets.generation_widget import GenerationWidget
@@ -19,6 +20,7 @@ from src.widgets.llasa_widget import LlasaWidget
 from src.widgets.dia_widget import DIAWidget
 from src.widgets.gpt_sovits_widget import GPT_SoVITSWidget
 from src.widgets.spark_widget import SparkWidget
+from src.widgets.csm_widget import CSMWidget
 from src.widgets.rvc_widgets import (
     BaseRVCWidget, RVCMicrophoneWidget, RVCFileWidget, 
     RVCEdgeTTSWidget, RVCElevenLabsWidget, RVCWidget
@@ -41,6 +43,7 @@ __all__ = [
     'FallTalkWidget',
     'FallTalkFluentWindow',
     'CustomCommandBar',
+    'RightDrawer',
     'FaqWidget',
     'SettingsWidget',
     'GenerationWidget',
@@ -70,5 +73,6 @@ __all__ = [
     'BulkGenerationRVCWidget',
     'BulkGenerationTableWidget',
     'BulkGenerationWidget',
-    'EzVoiceCreatorWidget'
+    'EzVoiceCreatorWidget',
+    'CSMWidget',
 ]

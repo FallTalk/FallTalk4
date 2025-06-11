@@ -16,7 +16,7 @@ from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, ComboBoxWords
 from src.widgets.generation_widget import GenerationWidget
 from src.enums.engine_type import EngineType
 from src.settings.f5_settings import F5Settings
-
+from src.help.f5_help import F5Help
 
 class F5Widget(GenerationWidget):
 
@@ -98,14 +98,12 @@ class F5Widget(GenerationWidget):
         self.generate_button.clicked.connect(self.parent.generate_audio)
         self.generate_button.setEnabled(False)
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
-        
-        self.settings_button = ToolButton()
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.clicked.connect(lambda: self.show_settings(F5Settings(self)))
-        self.settings_button.setFixedWidth(50)
+
+        self.settings_drawer.addWidget(F5Settings(self))
+        self.help_drawer.addWidget(F5Help(self))
         self.buttons_layout.addWidget(self.settings_button)
-        
+        self.buttons_layout.addWidget(self.help_button)
+
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
@@ -23,6 +24,8 @@ from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.enums.engine_type import EngineType
 from src.settings.rvc_settings import RVCSettings
+from src.widgets.drawer import RightDrawer
+from src.help.rvc_help import RVCHelp
 
 
 class BaseRVCWidget(QWidget):
@@ -131,13 +134,24 @@ class BaseRVCWidget(QWidget):
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
 
-        # Add settings button
+        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
+        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
+
         self.settings_button = ToolButton()
         self.settings_button.setIcon(FIF.SETTING)
         self.settings_button.setEnabled(True)
+        self.settings_button.clicked.connect(lambda: self.toggle_settings_drawer())
         self.settings_button.setFixedWidth(50)
-        self.settings_button.clicked.connect(lambda: self.show_settings(RVCSettings(self)))
-        
+
+        self.help_button = ToolButton()
+        self.help_button.setIcon(FIF.QUESTION)
+        self.help_button.setEnabled(True)
+        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
+        self.help_button.setFixedWidth(50)
+
+        self.settings_drawer.addWidget(RVCSettings(self))
+        self.help_drawer.addWidget(RVCHelp(self))
+
         # Add to layout
         self.buttons_layout = QHBoxLayout()
         self.buttons_layout.addWidget(self.settings_button, stretch=1)
@@ -177,6 +191,11 @@ class BaseRVCWidget(QWidget):
         w = Flyout.make(view, center_point, self, aniType=FlyoutAnimationType.NONE)
         view.closed.connect(w.close)
 
+    def toggle_settings_drawer(self):
+        self.settings_drawer.open_drawer()
+
+    def toggle_help_drawer(self):
+        self.help_drawer.open_drawer()
 
 class RVCMicrophoneWidget(BaseRVCWidget):
 

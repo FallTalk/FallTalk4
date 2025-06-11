@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 import os
 import sys
 import types
@@ -23,7 +22,6 @@ _fake_gradio.outputs = lambda *args, **kwargs: []
 sys.modules["gradio"] = _fake_gradio
 
 import numpy as np
-import soundfile as sf
 
 from src.enums.engine_type import EngineType
 from src.utils import logging_utils
@@ -35,7 +33,6 @@ if TYPE_CHECKING:
     from third_party.GPT_SoVITS.GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config
 
 from src.config.config import cfg
-from src.utils.audio_utils import load_audio
 from src.tts_engines.tts_engine import tts_engine
 import torch
 
@@ -51,6 +48,7 @@ def patch_gpt_sovits_imports():
 
         sys.path.insert(0, os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS')))
         sys.path.insert(0, os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS/GPT_SoVITS')))
+        sys.path.insert(0, os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS/GPT_SoVITS/eres2net')))
         sys.path.insert(0, os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS/GPT_SoVITS/AR')))
         sys.path.insert(0, os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS/GPT_SoVITS/module')))
         sys.path.insert(0, os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'GPT_SoVITS/tools', 'AP_BWE_main')))
@@ -142,39 +140,40 @@ class GPT_SoVITS_Engine(tts_engine):
             del self.config
             self.config: Optional['TTS_Config'] = None
 
-    def generate_audio(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
-        with patch_gpt_sovits_imports():
-            self.inference(text=text, voice=voice, transcript=transcript, language=language, output_file=output_file, streaming=streaming)
-            if cfg.get(cfg.rvc_enabled) and self.rvc_model:
-                self.run_rvc(output_file)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
-            rs_data = load_audio(output_file, 44100)
-            sf.write(output_file, rs_data, 44100, subtype='PCM_16')
+    def generate_audio(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
+        with patch_gpt_sovits_imports():
+            # Get audio data and sample rate from inference
+            audio_data, sample_rate = self.inference(text=text, voice=voice, transcript=transcript, language=language, output_file=output_file, streaming=streaming)
+
+            self.process_audio(audio_data, sample_rate, output_file)
 
     def get_config(self):
         configs: dict = {}
-        if self.model_engine_version == '1' or self.model_engine_version == '2':
+        if not self.is_base and (self.model_engine_version == '1' or self.model_engine_version == '2'):
             configs: dict = {
                 "version": "v2",
                 "v2": {
                     "device": self.device,
                     "is_half": self.is_half,
                     "version": "v2",
-                    "t2s_weights_path": self.get_model(self.engin_type, "ckpt"),
+                    "t2s_weights_path": self.get_model(self.engin_type, "ckpt", shared_model_name=self.shared_model_name),
                     "vits_weights_path": os.path.abspath(self.model_path),
                     "cnhuhbert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-hubert-base"),
                     "bert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
                     "languages": ["auto", "auto_yue", "en", "zh", "ja", "yue", "ko", "all_zh", "all_ja", "all_yue", "all_ko"]
                 }
             }
-        elif self.model_engine_version == '3' or self.model_engine_version == '4':
+        elif not self.is_base and self.model_engine_version == 'v2ProPlus':
             configs: dict = {
-                "version": "v4",
+                "version": "v2ProPlus",
                 "custom": {
                     "device": self.device,
                     "is_half": self.is_half,
-                    "version": "v4",
-                    "t2s_weights_path": self.get_model(self.engin_type, "ckpt"),
+                    "version": "v2ProPlus",
+                    "t2s_weights_path": self.get_model(self.engin_type, "ckpt",  shared_model_name=self.shared_model_name),
                     "vits_weights_path": os.path.abspath(self.model_path),
                     "cnhuhbert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-hubert-base"),
                     "bert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
@@ -183,13 +182,13 @@ class GPT_SoVITS_Engine(tts_engine):
             }
         elif self.is_base:
             configs: dict = {
-                "version": "v4",
+                "version": "v2ProPlus",
                 "custom": {
                     "device": self.device,
                     "is_half": self.is_half,
-                    "version": "v4",
+                    "version": "v2ProPlus",
                     "t2s_weights_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/v3/s1v3.ckpt"),
-                    "vits_weights_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/v4/s2Gv4.pth"),
+                    "vits_weights_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/v2Pro/s2Gv2ProPlus.pth"),
                     "cnhuhbert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-hubert-base"),
                     "bert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
                     "languages": ["auto", "auto_yue", "en", "zh", "ja", "yue", "ko", "all_zh", "all_ja", "all_yue", "all_ko"]
@@ -200,11 +199,36 @@ class GPT_SoVITS_Engine(tts_engine):
 
     def load_model(self):
 
-
-
         with patch_gpt_sovits_imports():
             from third_party.GPT_SoVITS.GPT_SoVITS import utils
             from third_party.GPT_SoVITS.GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config
+            from third_party.GPT_SoVITS.GPT_SoVITS.eres2net.ERes2NetV2 import ERes2NetV2
+            from third_party.GPT_SoVITS.GPT_SoVITS.eres2net import kaldi as Kaldi
+
+            import os, torch
+            sv_path = os.path.join(get_app_code_root(), "models/GPT_SoVITS/sv/pretrained_eres2netv2w24s4ep4.ckpt")
+
+            class SV_Overide:
+                def __init__(self, device, is_half):
+                    pretrained_state = torch.load(sv_path, map_location='cpu', weights_only=False)
+                    embedding_model = ERes2NetV2(baseWidth=24, scale=4, expansion=4)
+                    embedding_model.load_state_dict(pretrained_state)
+                    embedding_model.eval()
+                    self.embedding_model = embedding_model
+                    if not is_half:
+                        self.embedding_model = self.embedding_model.to(device)
+                    else:
+                        self.embedding_model = self.embedding_model.half().to(device)
+                    self.is_half = is_half
+
+                def compute_embedding3(self, wav):
+                    with torch.no_grad():
+                        if self.is_half == True: wav = wav.half()
+                        feat = torch.stack(
+                            [Kaldi.fbank(wav0.unsqueeze(0), num_mel_bins=80, sample_frequency=16000, dither=0) for wav0
+                             in wav])
+                        sv_emb = self.embedding_model.forward3(feat)
+                    return sv_emb
 
             torch.serialization.add_safe_globals([utils.HParams])
 
@@ -212,6 +236,12 @@ class GPT_SoVITS_Engine(tts_engine):
                 def __init__(self, configs: Union[dict, str, TTS_Config]):
                     with patch_gpt_sovits_imports():
                         super().__init__(configs)
+
+                def init_sv_model(self):
+                    with patch_gpt_sovits_imports():
+                        if self.sv_model is not None:
+                            return
+                        self.sv_model = SV_Overide(self.configs.device, self.configs.is_half)
 
                 def init_vocoder(self, version: str):
                     with patch_gpt_sovits_imports():
@@ -282,6 +312,7 @@ class GPT_SoVITS_Engine(tts_engine):
 
             if audio_data:
                 combined_audio = np.concatenate(audio_data)
-                sf.write(output_file, combined_audio, sample_rate)
-                return output_file
-            return None
+                # sf.write(output_file, combined_audio, sample_rate)
+                return combined_audio, sample_rate
+            else:
+                return None, None

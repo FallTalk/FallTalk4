@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QGroupBox, QHeaderView, QAbstractItemView, QFileDialog
 from qfluentwidgets import (
     FluentIcon as FIF, TableView, PushButton, PrimaryPushButton,
-    ConfigItem, PushSettingCard, MessageBox, SwitchSettingCard, SearchLineEdit
+    ConfigItem, PushSettingCard, MessageBox, SwitchSettingCard, SearchLineEdit, ToolButton
 )
 
 
@@ -20,7 +20,8 @@ from src.config.config import cfg, FileValidator
 from src.utils.filesystem_utils import get_app_root
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.widgets.table_models import TableModel
-
+from src.help.ez_voice_creator_help import EzVoiceCreatorHelp
+from src.widgets import RightDrawer
 
 class EzVoiceCreatorWidget(FallTalkWidget):
     def __init__(self, parent: FallTalkApp):
@@ -148,9 +149,29 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.buttons_layout.addWidget(self.run_xedit_button)
         self.buttons_layout.addWidget(self.generate_button)
 
+        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
+        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
+
+        self.help_drawer.addWidget(EzVoiceCreatorHelp(self))
+        self.settings_button = ToolButton()
+        self.settings_button.setIcon(FIF.SETTING)
+        self.settings_button.setEnabled(True)
+        self.settings_button.clicked.connect(lambda: self.toggle_settings_drawer())
+        self.settings_button.setFixedWidth(50)
+
+        self.help_button = ToolButton()
+        self.help_button.setIcon(FIF.QUESTION)
+        self.help_button.setEnabled(True)
+        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
+        self.help_button.setFixedWidth(50)
+
+        self.buttons_layout.addWidget(self.help_button)
+
         # Create a widget to hold the buttons layout
         self.buttons_widget = QWidget()
         self.buttons_widget.setLayout(self.buttons_layout)
+
+
 
         # Add widgets to frame
         self.addToFrame(self.dialogue_table)
@@ -268,4 +289,10 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         if model and text:
             for row in range(model.rowCount()):
                 match = any(text.lower() in model.full_data(row, col).lower() for col in range(model.columnCount()))
-                self.dialogue_table.setRowHidden(row, not match) 
+                self.dialogue_table.setRowHidden(row, not match)
+
+    def toggle_settings_drawer(self):
+        self.settings_drawer.open_drawer()
+
+    def toggle_help_drawer(self):
+        self.help_drawer.open_drawer()

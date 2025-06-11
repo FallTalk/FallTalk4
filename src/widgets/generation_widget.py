@@ -7,13 +7,14 @@ if TYPE_CHECKING:
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QGroupBox, QHBoxLayout
-from qfluentwidgets import TextEdit, FluentIcon as FIF, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem, Flyout, FlyoutAnimationType, FlyoutView, ScrollArea
+from qfluentwidgets import TextEdit, FluentIcon as FIF, RangeSettingCard, SwitchSettingCard, ConfigValidator, \
+    ConfigItem, Flyout, FlyoutAnimationType, FlyoutView, ScrollArea, ToolButton
 
 from src.config.config import cfg
 from src.ui.cards import TextSettingCard, RangeSettingCardScaled
 from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget
-
+from src.widgets.drawer import RightDrawer
 
 class GenerationWidget(FallTalkWidget):
 
@@ -88,6 +89,22 @@ class GenerationWidget(FallTalkWidget):
         self.addToFrame(self.gen_settings2)
         self.addToFrame(self.gen_settings)
 
+        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
+        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
+
+        self.settings_button = ToolButton()
+        self.settings_button.setIcon(FIF.SETTING)
+        self.settings_button.setEnabled(True)
+        self.settings_button.clicked.connect(lambda: self.toggle_settings_drawer())
+        self.settings_button.setFixedWidth(50)
+
+        self.help_button = ToolButton()
+        self.help_button.setIcon(FIF.QUESTION)
+        self.help_button.setEnabled(True)
+        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
+        self.help_button.setFixedWidth(50)
+
+
     def addTempAndRep(self):
         self.temperature_card = RangeSettingCardScaled(
             cfg.model_temperature,
@@ -132,42 +149,8 @@ class GenerationWidget(FallTalkWidget):
         self.temp_and_rep.setLayout(self.temp_and_rep_layout)
         self.addToFrame(self.temp_and_rep)
 
+    def toggle_settings_drawer(self):
+        self.settings_drawer.open_drawer()
 
-
-    def show_flyout(self, widget, icon, title):
-        view = FlyoutView(
-            title=title,
-            content="",
-            icon=icon,
-            parent=self,
-            isClosable=True
-        )
-
-        # Add settings widget
-        view.vBoxLayout.addWidget(widget)
-        window_rect = self.window().geometry()
-
-        # Determine and set flyout size explicitly
-        width = max(1000, int(window_rect.width() * 0.75))
-        height = max(600, int(window_rect.height() * 0.75))
-        view.resize(width, height)
-
-        # Calculate dynamic offsets based on window size
-        x_offset = -(window_rect.width() * 0.3)  # Move left by 30% of window width
-        y_offset = -(window_rect.height() * 0.2)  # Move up by 20% of window height
-
-        # Calculate center point using explicit width/height
-        center_point = QPoint(
-            int(window_rect.x() + (window_rect.width() - width) // 2 + x_offset),
-            int(window_rect.y() + (window_rect.height() - height) // 2 + y_offset)
-        )
-
-        # Show the flyout at the center point
-        w = Flyout.make(view, center_point, self, aniType=FlyoutAnimationType.NONE)
-        view.closed.connect(w.close)
-
-    def show_settings(self, settings):
-        self.show_flyout(settings,FIF.SETTING,'Advanced Settings')
-
-    def show_help(self, help):
-        self.show_flyout(help,FIF.QUESTION,'Help')
+    def toggle_help_drawer(self):
+        self.help_drawer.open_drawer()

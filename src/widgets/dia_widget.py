@@ -1,19 +1,19 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
-from PySide6.QtWidgets import QGroupBox, QHBoxLayout
-from qfluentwidgets import FluentIcon as FIF, RangeSettingCard, PrimaryPushButton, PushButton, Flyout, FlyoutView, FlyoutAnimationType, ToolButton
+from PySide6.QtWidgets import QHBoxLayout
+from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton
 
 from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.settings.dia_settings import DIASettings
-from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
 from src.widgets.generation_widget import GenerationWidget
-
+from src.help.dia_help import DIAHelp
 
 class DIAWidget(GenerationWidget):
 
@@ -22,69 +22,6 @@ class DIAWidget(GenerationWidget):
         self.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
         self.transcribe_state = None
         self.words_data = None
-
-        self.mode_card = RadioSettingCard(
-            cfg.slice_mode,
-            FIF.CUT,
-            self.tr('Slice Mode'),
-            self.tr('How to slice the sentence for longer TTS generation'),
-            texts=["No Slice", "Basic punctuation . ! ? ...", "Every punctuation", "Every 4 sentences", "Every 2 sentences"],
-            parent=self
-        )
-
-        self.temperature_card = RangeSettingCardScaled(
-            cfg.temperature_gpt_sovits,
-            FIF.FRIGID,
-            self.tr('Temperature'),
-            self.tr('Controls the randomness of the generation'),
-            parent=self
-
-        )
-
-        self.speed_card = RangeSettingCardScaled(
-            cfg.speed_gpt_sovits,
-            FIF.SPEED_OFF,
-            self.tr('Speed'),
-            self.tr('Increase or decrease the generated audio speed'),
-            parent=self
-
-        )
-
-        self.temp_and_speed = QGroupBox()
-        self.temp_and_speed.setStyleSheet("border: none")
-        self.temp_and_speed_layout = QHBoxLayout()
-        self.temp_and_speed_layout.setContentsMargins(0, 0, 0, 0)
-        self.temp_and_speed_layout.addWidget(self.temperature_card, 3)
-        self.temp_and_speed_layout.addWidget(self.speed_card, 3)
-        self.temp_and_speed.setLayout(self.temp_and_speed_layout)
-
-        self.top_p_card = RangeSettingCardScaled(
-            cfg.top_p_gpt_sovits,
-            FIF.UP,
-            self.tr('Top P'),
-            self.tr('Higher values give more creativity in generation.'),
-            parent=self
-        )
-
-        self.top_k_card = RangeSettingCard(
-            cfg.top_k_gpt_sovits,
-            FIF.UP,
-            self.tr('Top K'),
-            self.tr('Lower values make it more predictable and coherent'),
-            parent=self
-        )
-
-        self.addToFrame(self.mode_card)
-        self.addToFrame(self.temp_and_speed)
-
-        self.p_and_k = QGroupBox()
-        self.p_and_k.setStyleSheet("border: none")
-        self.p_and_k_layout = QHBoxLayout()
-        self.p_and_k_layout.setContentsMargins(0, 0, 0, 0)
-        self.p_and_k_layout.addWidget(self.top_p_card, 3)
-        self.p_and_k_layout.addWidget(self.top_k_card, 3)
-        self.p_and_k.setLayout(self.p_and_k_layout)
-        self.addToFrame(self.p_and_k)
 
         self.addGenSettings()
 
@@ -101,13 +38,11 @@ class DIAWidget(GenerationWidget):
         self.generate_button.clicked.connect(self.parent.generate_audio)
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
         
-        self.settings_button = ToolButton()
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.clicked.connect(lambda: self.show_settings(DIASettings(self)))
-        self.settings_button.setFixedWidth(50)
+        self.settings_drawer.addWidget(DIASettings(self))
+        self.help_drawer.addWidget(DIAHelp(self))
         self.buttons_layout.addWidget(self.settings_button)
-        
+        self.buttons_layout.addWidget(self.help_button)
+
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
 

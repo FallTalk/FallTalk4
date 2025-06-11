@@ -164,6 +164,8 @@ class Config(QConfig):
         "App", "custom_references", os.path.join(get_app_root(), "references"), FolderValidator())
     output_dir = ConfigItem("App", "output_dir", os.path.join(get_app_root(), "output"), FolderValidator())
     rvc_enabled = ConfigItem("App", "rvc_enabled", True, BoolValidator())
+    apbwe_enabled = ConfigItem("App", "apbwe_enabled", True, BoolValidator())
+
     keep_only_fuz = ConfigItem("App", "keep_only_fuz", True, BoolValidator())
     use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
     huggingface_cache_dir = ConfigItem("App", "huggingface_cache_dir", None, CustomFolderValidator(), restart=True)
@@ -231,13 +233,15 @@ class Config(QConfig):
     llasa_seed = RangeConfigItem("Llasa", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
     llasa_top_p = RangeConfigItem("Llasa", "top_p", 100, RangeValidator(0.0, 100))
     llasa_max_length = RangeConfigItem("Llasa", "max_length", 2048, RangeValidator(1, 2048))
-    llasa_mode = OptionsConfigItem("Llasa", "mode", "3B", OptionsValidator(["3B", "1B", "8B"]))
+    llasa_mode = OptionsConfigItem("Llasa", "mode", "1B", OptionsValidator(["3B", "1B", "8B"]))
 
     #Orpehus
-    orpehus_temperature = RangeConfigItem("Orpehus", "model_temperature", 80, RangeValidator(1, 100))
+    orpehus_temperature = RangeConfigItem("Orpehus", "model_temperature", 60, RangeValidator(1, 100))
     orpehus_seed = RangeConfigItem("Orpehus", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
-    orpehus_top_p = RangeConfigItem("Orpehus", "top_p", 100, RangeValidator(0.0, 100))
-    orpehus_repetition = RangeConfigItem("Orpehus", "model_repetition", 11, RangeValidator(1, 20))
+    orpehus_top_p = RangeConfigItem("Orpehus", "top_p", 90, RangeValidator(0.0, 100))
+    orpehus_repetition = RangeConfigItem("Orpehus", "model_repetition", 13, RangeValidator(11, 20))
+    orpehus_top_k = RangeConfigItem("Orpehus", "top_k", 90, RangeValidator(0.0, 100))
+    orpehus_max_new_tokens = RangeConfigItem("Orpehus", "max_new_tokens", 990, RangeValidator(0.0, 2048))
 
     #FishSpeech
     fish_use_torch_compile = ConfigItem("FishSpeech", "use_torch_compile", True, BoolValidator())
@@ -251,6 +255,9 @@ class Config(QConfig):
 
     #DIA
     dia_use_torch_compile = ConfigItem("DIA", "use_torch_compile", True, BoolValidator())
+    dia_top_p = RangeConfigItem("DIA", "top_p", 95, RangeValidator(0.0, 100))
+    dia_temperature = RangeConfigItem("DIA", "model_temperature", 130, RangeValidator(1, 200))
+    dia_top_k = RangeConfigItem("DIA", "top_k", 45, RangeValidator(0, 100))
 
     # GPT_SoVITS
     slice_mode = OptionsConfigItem("GPT_SoVITS", "slice_mode", "No Slice", OptionsValidator(["No Slice", "Slice by English punct", "Slice by every punct", "Slice once every 4 sentences", "Slice once every 2 sentences"]))
@@ -267,11 +274,10 @@ class Config(QConfig):
     style_diffusion_steps = RangeConfigItem("StyleTTS2", "diffusion_steps", 100, RangeValidator(1, 500))
 
     # Spark
-    spark_language = OptionsConfigItem("Spark", "language", "English", OptionsValidator(["English", "Chinese"]))
-    spark_speaker = OptionsConfigItem("Spark", "speaker", "Default", OptionsValidator(["Default"]))
-    spark_quality = OptionsConfigItem("Spark", "quality", "High", OptionsValidator(["Low", "Medium", "High"]))
-    spark_speed = OptionsConfigItem("Spark", "speed", "Normal", OptionsValidator(["Slow", "Normal", "Fast"]))
-    spark_pitch = OptionsConfigItem("Spark", "pitch", "Normal", OptionsValidator(["Low", "Normal", "High"]))
+    spark_top_p = RangeConfigItem("Spark", "top_p", 95, RangeValidator(0.0, 100))
+    spark_temperature = RangeConfigItem("Spark", "model_temperature", 80, RangeValidator(1, 200))
+    spark_top_k = RangeConfigItem("Spark", "top_k", 50, RangeValidator(0, 100))
+    spark_max_new_tokens = RangeConfigItem("Spark", "max_new_tokens", 2048, RangeValidator(800, 2048))
 
     # theme
     themeColor = ColorConfigItem("QFluentWidgets", "ThemeColor", '#FFB642', restart=True)
@@ -363,20 +369,15 @@ class Config(QConfig):
         self.set(self.llasa_mode, self.llasa_mode.defaultValue)
 
     def resetOrpheus(self):
-        self.orpehus_temperature.resetToDefault()
-        self.orpehus_seed.resetToDefault()
-        self.orpehus_top_p.resetToDefault()
-        self.orpehus_repetition.resetToDefault()
+        pass
 
     def resetSpark(self):
-        self.spark_language.resetToDefault()
-        self.spark_speaker.resetToDefault()
-        self.spark_quality.resetToDefault()
-        self.spark_speed.resetToDefault()
-        self.spark_pitch.resetToDefault()
+        pass
 
+    def resetCSM(self):
+        pass
 
-YEAR = 2024
+YEAR = 2025
 AUTHOR = "Bryant21"
 VERSION = '2.0.0'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"

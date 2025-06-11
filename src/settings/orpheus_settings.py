@@ -49,6 +49,23 @@ class OrpheusSettings(ScrollArea):
             parent=self.settings_group
         )
 
+
+        self.top_k_card = RangeSettingCard(
+            cfg.orpehus_top_k,
+            FIF.UP,
+            self.tr('Top K'),
+            self.tr('Lower values make it more predictable and coherent'),
+            parent=self
+        )
+
+        self.max_new_tokens_card = RangeSettingCard(
+            cfg.orpehus_max_new_tokens,
+            FIF.UP,
+            self.tr('Max New Tokens'),
+            self.tr('The max number of new speech tokens, settings too low can cause issues'),
+            parent=self
+        )
+
         self.__initWidget()
 
     def __initWidget(self):
@@ -70,6 +87,8 @@ class OrpheusSettings(ScrollArea):
         self.settings_group.addSettingCard(self.temperature_card)
         self.settings_group.addSettingCard(self.seed_card)
         self.settings_group.addSettingCard(self.top_p_card)
+        self.settings_group.addSettingCard(self.top_k_card)
+        self.settings_group.addSettingCard(self.max_new_tokens_card)
         self.settings_group.addSettingCard(self.repetition_card)
 
         # add setting card group to layout

@@ -1,3 +1,5 @@
+import librosa
+
 from enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 import soundfile as sf
@@ -21,8 +23,11 @@ class RVC_Engine(tts_engine):
     def unload_model(self):
         pass
 
-    def run_rvc(self, input_tts_path):
-        super().run_rvc(input_tts_path)
+    def run_rvc_file(self, input_tts_path):
+        audio_data, sample_rate = super().run_rvc_file(input_tts_path)
 
-        rs_data = load_audio(input_tts_path, 44100)
-        sf.write(input_tts_path, rs_data, 44100, subtype='PCM_16')
+        if sample_rate != 44100:
+            audio_data = librosa.resample(audio_data, orig_sr=sample_rate, target_sr=44100)
+            sample_rate = 44100
+
+        sf.write(input_tts_path, audio_data, sample_rate, subtype='PCM_16')

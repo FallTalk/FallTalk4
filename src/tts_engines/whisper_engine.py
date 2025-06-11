@@ -31,10 +31,13 @@ class WhisperxModel:
     def transcribe(self, audio_path):
         if self.model is None:
             self.model = load_model(self.model_name, self.device, language='en', compute_type=self.compute_type, asr_options={"suppress_numerals": True, "max_new_tokens": None, "clip_timestamps": None, "hallucination_silence_threshold": None})
-
+        self.model.model.model.load_model(True)
         segments = self.model.transcribe(audio_path, batch_size=8)["segments"]
         for segment in segments:
             segment['text'] = replace_numbers_with_words(segment['text'])
+
+        #VRAM Savings
+        self.model.model.model.unload_model(True)
         return self.align_model.align(segments, audio_path)
 
 

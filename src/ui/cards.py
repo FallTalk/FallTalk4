@@ -2,10 +2,12 @@
 from textwrap import dedent
 from typing import Union
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QButtonGroup, QGroupBox
-from qfluentwidgets import (ConfigItem, OptionsConfigItem, RangeConfigItem, SettingCard, FluentIconBase, SpinBox, DoubleSpinBox, BodyLabel, ComboBox, LineEdit, Slider, RadioButton, qconfig, ExpandSettingCard, FluentIcon as FIF)
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QIcon, QPainter, QColor
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QButtonGroup, QGroupBox, QSizePolicy, QVBoxLayout, QFrame
+from qfluentwidgets import (ConfigItem, OptionsConfigItem, RangeConfigItem, SettingCard, FluentIconBase, SpinBox,
+                            DoubleSpinBox, BodyLabel, ComboBox, LineEdit, Slider, RadioButton, qconfig,
+                            ExpandSettingCard, FluentIcon as FIF, isDarkTheme)
 
 
 class TextAreaCard(ExpandSettingCard):
@@ -35,6 +37,34 @@ class StyledSettingCard(SettingCard):
     def __init__(self, icon: Union[str, QIcon, FluentIconBase], title, content, parent=None):
         super().__init__(icon, title, content, parent)
         self.setContentsMargins(0, 0, 10, 0)
+
+
+class TextCard(QFrame):
+    def __init__(self, text: str, parent=None, height=100):
+        super().__init__(parent)
+
+        # Label setup
+        self.label = QLabel(self)
+        self.label.setText(dedent(text).strip())
+        self.label.setWordWrap(True)
+        self.label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.label.setContentsMargins(0, 0, 0, 0)
+
+        # Layout setup
+        self.vBoxLayout = QVBoxLayout(self)
+        self.vBoxLayout.setContentsMargins(12, 12, 12, 12)
+        self.vBoxLayout.setSpacing(0)
+        self.vBoxLayout.addWidget(self.label)
+
+        self.setMaximumHeight(height)
+
+    def paintEvent(self, e):
+        painter = QPainter(self)
+        painter.setRenderHints(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(QColor(255, 255, 255, 170 if not isDarkTheme() else 13))
+        painter.setPen(QColor(0, 0, 0, 19 if not isDarkTheme() else 50))
+        painter.drawRoundedRect(self.rect().adjusted(1, 1, -1, -1), 6, 6)
 
 
 class SpinSettingCard(StyledSettingCard):
@@ -322,3 +352,5 @@ class TextSettingCard(StyledSettingCard):
 
     def setValue(self, value):
         self.configItem.value = self.lineEdit.text()
+
+

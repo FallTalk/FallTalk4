@@ -298,6 +298,23 @@ class VC(object):
             f0autotune,
             inp_f0=None,
     ):
+        """
+        Extract f0 from audio data
+
+        Args:
+            input_audio_path: Path to input audio file or unique identifier for in-memory audio
+            x: Audio data as numpy array
+            p_len: Length of the audio in frames
+            f0_up_key: Pitch shift
+            f0_method: Pitch extraction method
+            filter_radius: Filter radius
+            hop_length: Hop length
+            f0autotune: Whether to autotune
+            inp_f0: Input f0 (optional)
+
+        Returns:
+            tuple: (f0_coarse, f0bak)
+        """
         global input_audio_path2wav
         time_step = self.window / self.sr * 1000
         f0_min = 50
@@ -321,6 +338,7 @@ class VC(object):
                     f0, [[pad_size, p_len - len(f0) - pad_size]], mode="constant"
                 )
         elif f0_method == "harvest":
+            # Store the audio data in the global dictionary for caching
             input_audio_path2wav[input_audio_path] = x.astype(np.double)
             f0 = cache_harvest_f0(input_audio_path, self.sr, f0_max, f0_min, 10)
             if int(filter_radius) > 2:
@@ -365,6 +383,7 @@ class VC(object):
             del self.model_fcpe
             gc.collect()
         elif "hybrid" in f0_method:
+            # Store the audio data in the global dictionary for caching
             input_audio_path2wav[input_audio_path] = x.astype(np.double)
             f0 = self.get_f0_hybrid_computation(
                 f0_method,

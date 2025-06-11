@@ -50,6 +50,9 @@ class F5Engine(tts_engine):
         del self.cfm_model
         self.cfm_model = None
 
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
     def switch_models(self):
         self.model.to('cpu')
         del self.model
@@ -132,16 +135,11 @@ class F5Engine(tts_engine):
         sf.write(voice, new_audio, sr)
 
         if self.mode == 'tts':
-            self.inference(text, transcript['transcript'], voice, language, output_file, streaming)
+            audio_data, sample_rate = self.inference(text, transcript['transcript'], voice, language, output_file, streaming)
         else:
-            self.edit_inference(text, transcript, voice, language, output_file, streaming, start_time=start_time, end_time=end_time)
+            audio_data, sample_rate = self.edit_inference(text, transcript, voice, language, output_file, streaming, start_time=start_time, end_time=end_time)
 
-        rvc_enabled = cfg.get(cfg.rvc_enabled)
-        if rvc_enabled and self.rvc_model:
-            self.run_rvc(output_file)
-
-        rs_data = load_audio(output_file, 44100)
-        sf.write(output_file, rs_data, 44100, subtype='PCM_16')
+        self.process_audio(audio_data, sample_rate, output_file)
 
     @torch.no_grad()
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, cross_fade_duration=0.15, nfe_step=32, speed=1, remove_silence=False):
@@ -159,15 +157,16 @@ class F5Engine(tts_engine):
             device=self.device,
         )
 
-        sf.write(output_file, final_wave, final_sample_rate)
+        # sf.write(output_file, final_wave, final_sample_rate)
 
         # Remove silence
         if remove_silence:
             utils_infer.remove_silence_for_generated_wav(output_file)
             final_wave, _ = torchaudio.load(output_file)
             final_wave = final_wave.squeeze().cpu().numpy()
-            sf.write(output_file, final_wave, final_sample_rate)
+            # sf.write(output_file, final_wave, final_sample_rate)
 
+        return final_wave, final_sample_rate
 
     @torch.no_grad()
     def edit_inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, cross_fade_duration=0.15, nfe_step=32, speed=1, remove_silence=False, start_time=0, end_time=0):
@@ -290,4 +289,6 @@ class F5Engine(tts_engine):
             if rms < target_rms:
                 generated_wave = generated_wave * rms / target_rms
 
-            torchaudio.save(output_file, generated_wave, target_sample_rate)
+            # torchaudio.save(output_file, generated_wave, target_sample_rate)
+
+            return generated_wave.cpu().numpy(), target_sample_rate

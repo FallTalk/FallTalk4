@@ -1,11 +1,26 @@
 import os
-import torch
-from huggingface_hub import snapshot_download
+import sys
+
+import numpy as np
 
 from enums.engine_type import EngineType
-from src.tts_engines.tts_engine import tts_engine
 from src.config.config import cfg
-from src.utils import logging_utils
+from src.tts_engines.tts_engine import tts_engine
+from src.utils.filesystem_utils import get_app_code_root, get_app_root
+
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark', 'sparktts')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark', 'sparktts', 'utils')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark', 'sparktts', 'models')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark', 'sparktts', 'modules')))
+
+import re
+import torch
+from typing import Tuple
+from pathlib import Path
+from transformers import AutoTokenizer, AutoModelForCausalLM
+
+from third_party.spark.sparktts.models.audio_tokenizer import BiCodecTokenizer
 
 class SparkEngine(tts_engine):
     def __init__(self):
@@ -15,54 +30,155 @@ class SparkEngine(tts_engine):
         self.model_type = "pth"
         self.model = None
         self.device = cfg.get(cfg.device)
+        self.tokenizer = None
+        self.audio_tokenizer = None
         
     def load_model(self):
-        try:
-            if self.model is None:
-                # Download model from HuggingFace if not already downloaded
-                model_dir = os.path.join("models", self.model_name, self.engine_name)
-                if not os.path.exists(model_dir):
-                    os.makedirs(model_dir, exist_ok=True)
-                    snapshot_download("SparkAudio/Spark-TTS-0.5B", local_dir=model_dir)
-                
-                # Load the model
-                from sparktts import SparkTTS
-                self.model = SparkTTS(model_dir)
-                self.model.to(self.device)
-                logging_utils.logger.info(f"Loaded Spark-TTS model: {self.model_name}")
-        except Exception as e:
-            logging_utils.logger.error(f"Error loading Spark-TTS model: {str(e)}")
-            raise
+        if self.is_base:
+            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B' "LLM"))))
+            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B' "LLM"))))
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+            self.model = AutoModelForCausalLM.from_pretrained(self.model_path)
+
+        self.audio_tokenizer = BiCodecTokenizer(Path(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B' ))), device=self.device)
+        self.audio_tokenizer.model.to(self.device)
+        self.model.to(self.device)
 
     def unload_model(self):
-        if self.model is not None:
-            del self.model
-            self.model = None
-            torch.cuda.empty_cache()
-            logging_utils.logger.info("Unloaded Spark-TTS model")
+        self.basic_unload_model()
+        del self.tokenizer
+        self.tokenizer = None
+        del self.audio_tokenizer
+        self.audio_tokenizer = None
 
-    def synthesize(self, text, output_path, speaker_id=None, language=None):
-        try:
-            if self.model is None:
-                raise ValueError("Model not loaded")
-            
-            # Generate speech
-            audio = self.model.synthesize(
-                text,
-                speaker_id=speaker_id,
-                language=language
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def process_prompt(self,
+            text: str,
+            prompt_speech_path: Path,
+            prompt_text: str = None,
+    ) -> Tuple[str, torch.Tensor]:
+        """
+        Process input for voice cloning.
+
+        Args:
+            text (str): The text input to be converted to speech.
+            prompt_speech_path (Path): Path to the audio file used as a prompt.
+            prompt_text (str, optional): Transcript of the prompt audio.
+
+        ReturI:
+            Tuple[str, torch.Tensor]: Input prompt; global tokens
+        """
+        global_token_ids = None
+
+        # Prepare the input tokens for the model
+        if prompt_text is not None:
+            global_token_ids, semantic_token_ids = self.audio_tokenizer.tokenize(
+                prompt_speech_path
             )
-            
-            # Save the audio
-            import soundfile as sf
-            sf.write(output_path, audio, self.model.sample_rate)
-            
-            # Apply RVC if enabled
-            if self.rvc_model:
-                self.run_rvc(output_path)
-                
-            return output_path
-            
-        except Exception as e:
-            logging_utils.logger.error(f"Error in Spark-TTS synthesis: {str(e)}")
-            raise 
+            global_tokens = "".join(
+                [f"<|bicodec_global_{i}|>" for i in global_token_ids.squeeze()]
+            )
+
+            semantic_tokens = "".join(
+                [f"<|bicodec_semantic_{i}|>" for i in semantic_token_ids.squeeze()]
+            )
+            inputs = [
+                "<|task_tts|>",
+                "<|start_content|>",
+                prompt_text,
+                text,
+                "<|end_content|>",
+                "<|start_global_token|>",
+                global_tokens,
+                "<|end_global_token|>",
+                "<|start_semantic_token|>",
+                semantic_tokens,
+            ]
+        else:
+            inputs = [
+                "<|task_tts|>",
+                "<|start_content|>",
+                text,
+                "<|end_content|>",
+                "<|start_global_token|>"
+            ]
+
+        inputs = "".join(inputs)
+
+        return inputs, global_token_ids
+
+
+    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
+        # Get audio data and sample rate from inference
+        audio_data, sample_rate = self.inference(text, voice, transcript, speaker)
+        self.process_audio(audio_data, sample_rate, output_file)
+
+    @torch.no_grad()
+    def inference(
+        self,
+        text: str,
+        voice: Path = None,
+        transcript: str = None,
+        speaker: str = None,
+    ):
+        text = f"{speaker}: " + text if speaker else text
+
+        prompt, global_token_ids = self.process_prompt(
+            text, voice, transcript
+        )
+
+        model_inputs = self.tokenizer([prompt], return_tensors="pt").to(self.device)
+
+        # Generate speech using the model
+        generated_ids = self.model.generate(
+            **model_inputs,
+            max_new_tokens=cfg.get(cfg.spark_max_new_tokens),
+            do_sample=True,
+            top_k=cfg.get(cfg.spark_top_k),
+            top_p=cfg.get(cfg.spark_top_p) / 100.0,
+            temperature=cfg.get(cfg.spark_temperature) / 100.0,
+            eos_token_id=self.tokenizer.eos_token_id,  # Stop token
+            pad_token_id=self.tokenizer.pad_token_id  # Use models pad token id
+        )
+
+        generated_ids_trimmed = generated_ids[:, model_inputs.input_ids.shape[1]:]
+
+        predicts_text = self.tokenizer.batch_decode(generated_ids_trimmed, skip_special_tokens=True)[0]
+        # print(f"\nGenerated Text (for parsing):\n{predicts_text}\n") # Debugging
+
+        # Extract semantic token IDs using regex
+        semantic_matches = re.findall(r"<\|bicodec_semantic_(\d+)\|>", predicts_text)
+        if not semantic_matches:
+            print("Warning: No semantic tokens found in the generated output.")
+            # Handle appropriately - perhaps return silence or raise error
+            return np.array([], dtype=np.float32)
+
+        pred_semantic_ids = torch.tensor([int(token) for token in semantic_matches]).long().unsqueeze(0)  # Add batch dim
+
+        # Extract global token IDs using regex (assuming controllable mode also generates these)
+        global_matches = re.findall(r"<\|bicodec_global_(\d+)\|>", predicts_text)
+        if not global_matches:
+            print(
+                "Warning: No global tokens found in the generated output (controllable mode). Might use defaults or fail.")
+            pred_global_ids = torch.zeros((1, 1), dtype=torch.long)
+        else:
+            pred_global_ids = torch.tensor([int(token) for token in global_matches]).long().unsqueeze(0)  # Add batch dim
+
+        pred_global_ids = pred_global_ids.unsqueeze(0)  # Shape becomes (1, 1, N_global)
+
+        if global_token_ids is not None:
+            wav_np = self.audio_tokenizer.detokenize(
+                global_token_ids.to(self.device).squeeze(0),
+                pred_semantic_ids.to(self.device)  # Shape (1, N_semantic)
+            )
+        else:
+            wav_np = self.audio_tokenizer.detokenize(
+                pred_global_ids.to(self.device).squeeze(0),  # Shape (1, N_global)
+                pred_semantic_ids.to(self.device)  # Shape (1, N_semantic)
+            )
+
+        return wav_np.cpu().numpy(), 16000
+        # sf.write(output_file, wav.cpu().numpy(), 16000)

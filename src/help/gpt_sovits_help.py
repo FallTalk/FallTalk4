@@ -13,7 +13,7 @@ from qfluentwidgets import ScrollArea, ExpandLayout
 
 
 
-from src.ui.cards import TextAreaCard
+from src.ui.cards import TextAreaCard, TextSettingCard, TextCard
 from src.utils.icons import FallTalkIcons
 
 
@@ -24,11 +24,9 @@ class GPTSoVITSHelp(ScrollArea):
 
         self.scroll_widget = QWidget()
         self.expand_layout = ExpandLayout(self.scroll_widget)
-        self.settings_group = SettingCardGroup(self.tr(''), self.scroll_widget)
+        self.settings_group = SettingCardGroup(self.tr('About'), self.scroll_widget)
 
-        self.why = TextAreaCard(
-            FallTalkIcons.VAULT_BOY.icon(),
-            self.tr('Parameters'),
+        self.info = TextCard(
             text=
             """
             <ul>
@@ -40,9 +38,8 @@ class GPTSoVITSHelp(ScrollArea):
             <li>Top k: Restricts each choice to the k most likely words (e.g., k=50). Smaller k makes speech more focused; larger k adds risk of weirdness
             </ul> 
             """,
-            height=150
+            height=300
         )
-        self.why.setExpand(True)
 
         self.__initWidget()
 
@@ -63,13 +60,12 @@ class GPTSoVITSHelp(ScrollArea):
 
     def __initLayout(self):
         # add cards to group
-        self.settings_group.addSettingCard(self.why)
+        self.settings_group.addSettingCard(self.info)
+
         # add setting card group to layout
         self.expand_layout.setSpacing(28)
         self.expand_layout.setContentsMargins(15, 0, 15, 0)
         self.expand_layout.addWidget(self.settings_group)
-
-
 
     def __setQss(self):
         """ set style sheet """

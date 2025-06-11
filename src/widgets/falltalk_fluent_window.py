@@ -1,16 +1,33 @@
 from typing import Union, List
 
 import torch
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
-from qfluentwidgets import FluentIcon as FIF, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, NavigationTreeWidget, BodyLabel
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QListWidgetItem
+from qfluentwidgets import FluentIcon as FIF, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, \
+    setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, \
+    NavigationTreeWidget, BodyLabel, RoundMenu
+from qfluentwidgets.components.widgets.menu import createCheckableMenuItemDelegate, MenuAnimationType
 from qfluentwidgets.window.fluent_window import FluentWindowBase
 
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.utils.icons import FallTalkIcons
 
+class CheckableMenu(RoundMenu):
+    """ Checkable menu """
+
+    def __init__(self, title="", parent=None, indicatorType=MenuIndicatorType.CHECK):
+        super().__init__(title, parent)
+        self.view.setItemDelegate(createCheckableMenuItemDelegate(indicatorType))
+        self.view.setObjectName('checkableListWidget')
+
+    def _adjustItemText(self, item: QListWidgetItem, action: QAction):
+        w = super()._adjustItemText(item, action)
+        item.setSizeHint(QSize(w + 100, self.itemHeight))
+
+    def exec(self, pos, ani=True, aniType=MenuAnimationType.DROP_DOWN):
+        return super().exec(pos, ani, aniType)
 
 class CustomCommandBar(CommandBar):
 
@@ -44,16 +61,18 @@ class FallTalkFluentWindow(FluentWindowBase):
         self.reference_time_label = BodyLabel(self.tr("00:00"))
         self.reference_time_label.setFixedWidth(45)
 
-        self.rvc_action = Action(FallTalkIcons.VOICE_SQUARE.icon(stroke=True), self.tr('RVC'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.RVC.value)
-        self.gpt_sovits_action = Action(FallTalkIcons.G.icon(), self.tr('GPT_SoVITS'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.GPT_SOVITS.value)
-        self.xtts_action = Action(FallTalkIcons.FROG.icon(), self.tr('XTTSv2'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.XTTS_V2.value)
-        self.styletts2_action = Action(FallTalkIcons.STYLE.icon(), self.tr('StyleTTS2'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.STYLE_TTS2.value)
-        self.fish_action = Action(FallTalkIcons.FISH.icon(), self.tr('FishSpeech'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.FISH_SPEECH.value)
-        self.f5_action = Action(FallTalkIcons.F5.icon(), self.tr('F5'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.F5.value)
-        self.dia_action = Action(FallTalkIcons.DIA.icon(stroke=True), self.tr('DIA'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.DIA.value)
-        self.llasa_action = Action(FallTalkIcons.LLAMA.icon(), self.tr('Llasa'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.LLASA.value)
-        self.orpheus_action = Action(FallTalkIcons.TRIANGLE.icon(), self.tr('Orpheus'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.ORPHEUS.value)
-        self.spark_action = Action(FallTalkIcons.SPARK.icon(), self.tr('Spark'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.SPARK.value)
+        self.rvc_action = Action(FallTalkIcons.VOICE_SQUARE.icon(stroke=True), self.tr('RVC\t\t0.5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.RVC.value)
+        self.gpt_sovits_action = Action(FallTalkIcons.G.icon(), self.tr('GPT_SoVITS\t\t4 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.GPT_SOVITS.value)
+        self.xtts_action = Action(FallTalkIcons.FROG.icon(), self.tr('XTTSv2\t\t6 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.XTTS_V2.value)
+        self.styletts2_action = Action(FallTalkIcons.STYLE.icon(), self.tr('StyleTTS2\t\t16 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.STYLE_TTS2.value)
+        self.fish_action = Action(FallTalkIcons.FISH.icon(), self.tr('FishSpeech\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.FISH_SPEECH.value)
+        self.f5_action = Action(FallTalkIcons.F5.icon(), self.tr('F5\t\t3 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.F5.value)
+        self.dia_action = Action(FallTalkIcons.DIA.icon(stroke=True), self.tr('DIA\t\t10 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.DIA.value)
+        self.llasa_action = Action(FallTalkIcons.LLAMA.icon(), self.tr('Llasa\t\t8 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.LLASA.value)
+        self.orpheus_action = Action(FallTalkIcons.TRIANGLE.icon(), self.tr('Orpheus\t\t8 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.ORPHEUS.value)
+        self.spark_action = Action(FallTalkIcons.SPARK.icon(), self.tr('Spark\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.SPARK.value)
+        self.csm_action = Action(FallTalkIcons.CSM.icon(), self.tr('CSM\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.CSM.value)
+
         self.cpu_action = Action(FallTalkIcons.CPU.icon(), self.tr('CPU'), checkable=True, checked=cfg.get(cfg.device) == 'cpu')
         self.gpu_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU'), checkable=True, checked=cfg.get(cfg.device) == 'cuda')
         self.gpu2_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU 2'), checkable=True, checked=cfg.get(cfg.device) == 'cuda:1')
@@ -129,6 +148,7 @@ class FallTalkFluentWindow(FluentWindowBase):
             self.llasa_action,
             self.orpheus_action,
             self.spark_action,
+            self.csm_action,
             self.gpt_sovits_action,
             self.xtts_action,
             self.styletts2_action,
@@ -187,6 +207,10 @@ class FallTalkFluentWindow(FluentWindowBase):
             cfg.resetLlasa()
         elif cfg.get(cfg.engine) == "Orpheus":
             cfg.resetOpheus()
+        elif cfg.get(cfg.engine) == "Spark":
+            cfg.resetSpark()
+        elif cfg.get(cfg.engine) == "CSM":
+            cfg.resetCSM()
 
         cfg.resetRvc()
 
