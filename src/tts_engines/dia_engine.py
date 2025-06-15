@@ -39,7 +39,7 @@ class DIA_Engine(tts_engine):
     def load_model(self):
         logging_utils.logger.debug(f"Loading {self.model_path}")
         if self.is_base:
-            self.dia = Dia.from_pretrained(os.path.abspath(os.path.join(get_app_root(), 'models', 'DIA', '0.1')), compute_dtype="bfloat16", device=self.device)
+            self.dia = Dia.from_pretrained(os.path.abspath(os.path.join(get_app_root(), 'models', 'DIA', '0.1')), compute_dtype=torch_utils.get_compute_dtype(), device=self.device)
         else:
             self.dia = Dia.from_pretrained(os.path.abspath(self.model_path), compute_dtype=str(torch_utils.get_compute_dtype()), device=self.device)
 

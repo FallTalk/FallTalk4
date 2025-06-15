@@ -35,53 +35,6 @@ class BaseRVCWidget(QWidget):
         self.view = QVBoxLayout(self)
         self.view.setContentsMargins(0, 0, 0, 0)
 
-    def addButtons(self):
-        self.rvc_index_influence_card = RangeSettingCardScaled(
-            cfg.rvc_index_influence,
-            FIF.DICTIONARY,
-            self.tr("Index Influence Ratio"),
-            self.tr("Higher Values detail but risk artifacts. Increase until artifacts appear."),
-        )
-
-        self.rvc_filter_radius_card = RangeSettingCard(
-            cfg.rvc_filter_radius,
-            FIF.FILTER,
-            self.tr("Filter Radius"),
-            self.tr("Using median filtering on tones ≥ 3 can reduce respiration"),
-        )
-
-        self.train_infu = QGroupBox()
-        self.train_infu.setStyleSheet("border: none")
-        self.train_infu_layout = QHBoxLayout()
-        self.train_infu_layout.setContentsMargins(0, 0, 0, 0)
-        self.train_infu_layout.addWidget(self.rvc_filter_radius_card, 3)
-        self.train_infu_layout.addWidget(self.rvc_index_influence_card, 3)
-        self.train_infu.setLayout(self.train_infu_layout)
-        self.view.addWidget(self.train_infu)
-
-        self.rvc_autotune_card = SwitchSettingCard(
-            FIF.MUSIC,
-            self.tr("Autotune"),
-            self.tr("Apply a soft autotune to your inferences, recommended signing."),
-            configItem=cfg.rvc_autotune,
-        )
-
-        self.rvc_split_audio_card = SwitchSettingCard(
-            FIF.CUT,
-            self.tr("Split Audio"),
-            self.tr("Split the audio into chunks for better results with large audio."),
-            configItem=cfg.rvc_split_audio,
-        )
-
-        self.auto_and_split = QGroupBox()
-        self.auto_and_split.setStyleSheet("border: none")
-        self.auto_and_split_layout = QHBoxLayout()
-        self.auto_and_split_layout.setContentsMargins(0, 0, 0, 0)
-        self.auto_and_split_layout.addWidget(self.rvc_split_audio_card, 3)
-        self.auto_and_split_layout.addWidget(self.rvc_autotune_card, 3)
-        self.auto_and_split.setLayout(self.auto_and_split_layout)
-        self.view.addWidget(self.auto_and_split)
-
     def addGenSettings(self):
         self.output_name = ConfigItem("TTS", "output_name", None, ConfigValidator())
 
@@ -130,10 +83,6 @@ class BaseRVCWidget(QWidget):
         self.gen_settings.setLayout(self.gen_settings_layout)
         self.view.addWidget(self.gen_settings)
 
-        self.generate_button = PrimaryPushButton(text="Generate Audio")
-        self.generate_button.setIcon(FIF.SEND)
-        self.generate_button.clicked.connect(self.parent.generate_audio)
-
         self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
         self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
 
@@ -151,12 +100,6 @@ class BaseRVCWidget(QWidget):
 
         self.settings_drawer.addWidget(RVCSettings(self))
         self.help_drawer.addWidget(RVCHelp(self))
-
-        # Add to layout
-        self.buttons_layout = QHBoxLayout()
-        self.buttons_layout.addWidget(self.settings_button, stretch=1)
-        self.buttons_layout.addWidget(self.generate_button, stretch=5)
-        self.view.addLayout(self.buttons_layout)
 
     def show_settings(self, settings):
         view = FlyoutView(
@@ -206,16 +149,9 @@ class RVCMicrophoneWidget(BaseRVCWidget):
         self.view.addWidget(self.media_recorder)
         self.spacer = QSpacerItem(0, 0, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.view.addItem(self.spacer)
-        self.rvc_pitch_card = RangeSettingCard(
-            cfg.rvc_pitch,
-            FIF.MARKET,
-            self.tr("Pitch Adjustment"),
-            self.tr("Set the pitch of the audio, useful for opposite gender."),
-        )
-        self.view.addWidget(self.rvc_pitch_card)
-        self.addButtons()
         self.addGenSettings()
-
+        self.gen_settings_layout.addWidget(self.settings_button, stretch=1)
+        self.gen_settings_layout.addWidget(self.help_button, stretch=1)
 
 class RVCFileWidget(BaseRVCWidget):
 
@@ -243,8 +179,17 @@ class RVCFileWidget(BaseRVCWidget):
         )
         self.view.addWidget(self.rvc_pitch_card)
 
-        self.addButtons()
         self.addGenSettings()
+
+        # Add to layout
+        self.buttons_layout = QHBoxLayout()
+        self.generate_button = PrimaryPushButton(text="Generate Audio")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.generate_audio)
+        self.buttons_layout.addWidget(self.generate_button, stretch=5)
+        self.buttons_layout.addWidget(self.settings_button, stretch=1)
+        self.buttons_layout.addWidget(self.help_button, stretch=1)
+        self.view.addLayout(self.buttons_layout)
 
     def __onFileCardClicked(self):
         allowed_file_types = "WAV files (*.wav);;MP3 files (*.mp3)"
@@ -275,9 +220,18 @@ class RVCEdgeTTSWidget(BaseRVCWidget):
             self.tr('Voice'),
             self.tr('Which base voice should we use?'))
 
-        self.addButtons()
         self.addGenSettings()
         self.gen_settings_1_layout.addWidget(self.voice_combo, 3)
+
+        # Add to layout
+        self.buttons_layout = QHBoxLayout()
+        self.generate_button = PrimaryPushButton(text="Generate Audio")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.generate_audio)
+        self.buttons_layout.addWidget(self.generate_button, stretch=5)
+        self.buttons_layout.addWidget(self.settings_button, stretch=1)
+        self.buttons_layout.addWidget(self.help_button, stretch=1)
+        self.view.addLayout(self.buttons_layout)
 
     def populate_voice_combo(self):
         if self.voice_combo.configItem.count() == 0:
@@ -316,9 +270,18 @@ class RVCElevenLabsWidget(BaseRVCWidget):
         self.eleven_labs_key.lineEdit.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.view.addWidget(self.eleven_labs_key)
-        self.addButtons()
         self.addGenSettings()
         self.gen_settings_1_layout.addWidget(self.voice_combo, 3)
+
+        # Add to layout
+        self.buttons_layout = QHBoxLayout()
+        self.generate_button = PrimaryPushButton(text="Generate Audio")
+        self.generate_button.setIcon(FIF.SEND)
+        self.generate_button.clicked.connect(self.parent.generate_audio)
+        self.buttons_layout.addWidget(self.generate_button, stretch=5)
+        self.buttons_layout.addWidget(self.settings_button, stretch=1)
+        self.buttons_layout.addWidget(self.help_button, stretch=1)
+        self.view.addLayout(self.buttons_layout)
 
     def populate_voice_combo(self):
         self.voice_combo.configItem.clear()
@@ -361,6 +324,7 @@ class RVCWidget(FallTalkWidget):
         self.setEnabled(False)
         self.setVisible(cfg.engine.value == EngineType.RVC.value)
         self.media_player.setVisible(cfg.engine.value == EngineType.RVC.value)
+
 
     def onCurrentIndexChanged(self, index):
         widget = self.stackedWidget.widget(index)

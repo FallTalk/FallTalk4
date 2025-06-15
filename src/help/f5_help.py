@@ -29,12 +29,10 @@ class F5Help(ScrollArea):
             text=
             """
             <ul>
-            <li>F5 is a text-to-speech model designed for high-fidelity voice synthesis.</li>
-            <li>It excels at producing natural-sounding speech with accurate pronunciation.</li>
-            <li>The model can handle a wide range of speaking styles and emotional tones.</li>
+            <li>If the generated speech is too fast, adjust the speed factor/li>
             </ul> 
             """,
-            height=300
+            height=50
         )
 
         self.text = TextCard(
@@ -44,10 +42,9 @@ class F5Help(ScrollArea):
             <li>For best results, provide clear and well-punctuated text.</li>
             <li>The model works best with sentences of moderate length. Very long sentences may be broken up during processing.</li>
             <li>If you need to generate speech with specific emotional qualities, try adjusting the temperature and other parameters.</li>
-            <li>Using RVC upscaler is recommended for enhancing the quality of the generated audio.</li>
             </ul>
             """,
-            height=300
+            height=200
         )
 
         self.__initWidget()

@@ -67,18 +67,10 @@ class F5Widget(GenerationWidget):
 
         # self.addToFrame(self.edit_mode_card)
 
-        self.speed_card = RangeSettingCardScaled(
-            cfg.f5_speed,
-            FallTalkIcons.LOOP.icon(),
-            self.tr('Speed Factor'),
-            self.tr('Increase or Decrease generated speed'),
-            scale=10
-        )
         self.temp_and_rep = QGroupBox()
         self.temp_and_rep.setStyleSheet("border: none")
         self.temp_and_rep_layout = QHBoxLayout()
         self.temp_and_rep_layout.setContentsMargins(0, 0, 0, 0)
-        self.temp_and_rep_layout.addWidget(self.speed_card, 3)
         self.temp_and_rep.setLayout(self.temp_and_rep_layout)
         self.temp_and_rep.setVisible(cfg.get(cfg.f5_mode) == "edit")
         self.addToFrame(self.temp_and_rep)

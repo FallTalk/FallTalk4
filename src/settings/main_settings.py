@@ -27,7 +27,7 @@ class FallTalkSettings(ScrollArea):
             FIF.DEVELOPER_TOOLS,
             self.tr('Engine'),
             self.tr('Backend to use for generation'),
-            texts=[e.value for e in EngineType],
+            texts=[e.value for e in EngineType if e.enabled],
             parent=self.settings_group
         )
 

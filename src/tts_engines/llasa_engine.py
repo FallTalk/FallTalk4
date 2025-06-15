@@ -14,7 +14,7 @@ from src.utils.filesystem_utils import get_app_root
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
 from src.utils.audio_utils import load_audio
-
+from src.utils import torch_utils
 
 torch.serialization.add_safe_globals([omegaconf.listconfig.ListConfig])
 torch.serialization.add_safe_globals([omegaconf.base.ContainerMetadata])
@@ -47,8 +47,8 @@ class LlasaEngine(tts_engine):
         self.codec_model = XCodec2Model.from_pretrained(os.path.abspath(os.path.join(get_app_root(), 'models', 'Llasa', 'xcodec2')))
 
         if self.is_base:
-            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Llasa', str(cfg.get(cfg.llasa_mode))))))
-            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Llasa', str(cfg.get(cfg.llasa_mode))))))
+            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Llasa', str(cfg.get(cfg.llasa_mode))))), torch_dtype=torch_utils.get_compute_dtype())
+            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Llasa', str(cfg.get(cfg.llasa_mode))))), torch_dtype=torch_utils.get_compute_dtype())
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
             self.model = AutoModelForCausalLM.from_pretrained(self.model_path)

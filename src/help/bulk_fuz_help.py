@@ -35,7 +35,7 @@ class BulkFuzHelp(ScrollArea):
             <li>The tool simplifies the process of creating game-ready audio files with lip synchronization.</li>
             </ul> 
             """,
-            height=300
+            height=200
         )
 
         self.text = TextCard(

@@ -65,14 +65,6 @@ class FishSpeechSettings(ScrollArea):
             parent=self.settings_group
         )
 
-        self.seed_card = RangeSettingCard(
-            cfg.fish_seed,
-            FIF.SETTING,
-            self.tr('Seed'),
-            self.tr('Random seed for generation (-1 for random)'),
-            parent=self.settings_group
-        )
-
         self.temperature_card = RangeSettingCardScaled(
             cfg.fish_temperature,
             FIF.FRIGID,

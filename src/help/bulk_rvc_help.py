@@ -35,7 +35,7 @@ class BulkRVCHelp(ScrollArea):
             <li>For example, you can extract all voice lines for a character and convert them to sound like another character.</li>
             </ul> 
             """,
-            height=300
+            height=200
         )
 
         self.text = TextCard(

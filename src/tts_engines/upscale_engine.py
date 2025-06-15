@@ -31,7 +31,7 @@ class UpscaleEngine:
         self.sr = 44100
         self.denoise = True
 
-    def upscale_dir(self, directory, replace=True, include_subdir=False, mode="denoise", sr=44100, ddim_steps=50, guidance_scale=3.5, seed=None):
+    def upscale_dir(self, directory, replace=True, include_subdir=False, mode="denoise", sr=44100, ddim_steps=50, guidance_scale=3.5):
         try:
             self.sr = sr
             print(f'Starting Enhancement {mode}')
@@ -61,27 +61,27 @@ class UpscaleEngine:
             QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Starting: {count}/{total}"))
 
             for flac_file in flac_files:
-                self.do_flac(ddim_steps, guidance_scale, seed, replace, flac_file)
+                self.do_flac(ddim_steps, guidance_scale,  replace, flac_file)
                 count += 1
                 QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
 
             for mp3_file in mp3_files:
-                self.do_mp3(ddim_steps, guidance_scale, seed, replace, mp3_file)
+                self.do_mp3(ddim_steps, guidance_scale,  replace, mp3_file)
                 count += 1
                 QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
 
             for wav_file in wav_files:
-                self.do_wav(ddim_steps, guidance_scale, seed, replace, wav_file)
+                self.do_wav(ddim_steps, guidance_scale,  replace, wav_file)
                 count += 1
                 QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
 
             for xwm_file in xwm_files:
-                self.do_xwm(ddim_steps, guidance_scale, seed, replace, xwm_file)
+                self.do_xwm(ddim_steps, guidance_scale,  replace, xwm_file)
                 count += 1
                 QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
 
             for fuz_file in fuz_files:
-                self.do_fuz(ddim_steps, guidance_scale, seed, replace, fuz_file)
+                self.do_fuz(ddim_steps, guidance_scale,  replace, fuz_file)
                 count += 1
                 QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
 
@@ -104,13 +104,13 @@ class UpscaleEngine:
             logging_utils.logger.exception(f"Error: {e}")
             QMetaObject.invokeMethod(self.parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, self.parent), Q_ARG(str, "Error During Enhancement"), Q_ARG(str, "An Error Occured while loading the cleaner. Please check your logs and report the issue if needed"))
 
-    def do_mp3(self, ddim_steps, guidance_scale, seed, replace, mp3_file):
+    def do_mp3(self, ddim_steps, guidance_scale,  replace, mp3_file):
         try:
             audio = AudioSegment.from_mp3(mp3_file)
             wav_file = mp3_file.replace(".mp3", ".wav")
             audio.export(wav_file, format="wav")
 
-            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
+            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale)
 
             if replace:
                 output_file = mp3_file
@@ -126,13 +126,13 @@ class UpscaleEngine:
         except Exception as e:
             logging_utils.logger.exception(f"Error: {e}")
 
-    def do_flac(self, ddim_steps, guidance_scale, seed, replace, flac_file):
+    def do_flac(self, ddim_steps, guidance_scale,  replace, flac_file):
         try:
             data, sample_rate = sf.read(flac_file)
             wav_file = flac_file.replace(".flac", ".wav")
             sf.write(wav_file, data, sample_rate)
 
-            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
+            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale)
 
             if replace:
                 output_file = flac_file
@@ -148,45 +148,45 @@ class UpscaleEngine:
         except Exception as e:
             logging_utils.logger.exception(f"Error: {e}")
 
-    def do_wav(self, ddim_steps, guidance_scale, seed, replace, wav_file):
+    def do_wav(self, ddim_steps, guidance_scale,  replace, wav_file):
         try:
             if replace:
                 output_file = wav_file
             else:
                 output_file = wav_file.replace(".wav", "_enhanced.wav")
 
-            self.do_upscale(wav_file, output_file, ddim_steps, guidance_scale, seed)
+            self.do_upscale(wav_file, output_file, ddim_steps, guidance_scale)
 
         except Exception as e:
             logging_utils.logger.exception(f"Error: {e}")
 
-    def do_xwm(self, ddim_steps, guidance_scale, seed, replace, xwm_file):
+    def do_xwm(self, ddim_steps, guidance_scale,  replace, xwm_file):
         try:
             wav_file = xwm_file.replace(".xwm", ".wav")
             create_xwm(xwm_file, wav_file, encode=False)
 
-            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
+            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale)
 
             if replace:
                 create_xwm(wav_file, xwm_file, encode=True)
         except Exception as e:
             logging_utils.logger.exception(f"Error: {e}")
 
-    def do_fuz(self, ddim_steps, guidance_scale, seed, replace, fuz_file):
+    def do_fuz(self, ddim_steps, guidance_scale,  replace, fuz_file):
         try:
             extract_fuz(fuz_file)
             xwm_file = fuz_file.replace(".fuz", ".xwm")
             wav_file = fuz_file.replace(".fuz", ".wav")
             create_xwm(xwm_file, wav_file, encode=False)
 
-            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale, seed)
+            self.do_upscale(wav_file, wav_file, ddim_steps, guidance_scale)
 
             if replace:
                 create_lip_and_fuz(self.parent, wav_file, True)
         except Exception as e:
             logging_utils.logger.exception(f"Error: {e}")
 
-    def do_upscale(self, input_file, output_file, ddim_steps, guidance_scale, seed):
+    def do_upscale(self, input_file, output_file, ddim_steps, guidance_scale):
         if self.p:
             self.p.predict(
                 input_file,
@@ -194,7 +194,7 @@ class UpscaleEngine:
                 sr=self.sr,
                 ddim_steps=ddim_steps,
                 guidance_scale=guidance_scale,
-                seed=seed
+                seed=cfg.get(cfg.seed)
             )
             self.remove_silence_at_end(output_file)
 
@@ -204,18 +204,18 @@ class UpscaleEngine:
         if self.denoise:
             self.denoise_file(input_file, output_file)
 
-    def upscale_file(self, input_file, replace=True, sr=44100, ddim_steps=50, guidance_scale=3.5, model_name="basic", seed=None):
+    def upscale_file(self, input_file, replace=True, sr=44100, ddim_steps=50, guidance_scale=3.5, model_name="basic"):
         self.p = Predictor()
         self.p.setup(model_name, cfg.get(cfg.device))
 
         if ".wav" in input_file:
-            self.do_wav(sr, ddim_steps, guidance_scale, seed, replace, input_file)
+            self.do_wav(sr, ddim_steps, guidance_scale,  replace, input_file)
 
         if ".xwm" in input_file:
-            self.do_xwm(sr, ddim_steps, guidance_scale, seed, replace, input_file)
+            self.do_xwm(sr, ddim_steps, guidance_scale,  replace, input_file)
 
         if ".fuz" in input_file:
-            self.do_fuz(sr, ddim_steps, guidance_scale, seed, replace, input_file)
+            self.do_fuz(sr, ddim_steps, guidance_scale,  replace, input_file)
 
         self.p.audiosr.to('cpu')
         del self.p.audiosr

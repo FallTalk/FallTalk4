@@ -1,28 +1,18 @@
-import time
-import wave
-import librosa
+import os
+import sys
 
 from enums.engine_type import EngineType
 from src.config.config import cfg
-
-import sys
-import os
-import torch
 from src.tts_engines.tts_engine import tts_engine
-from src.utils.filesystem_utils import get_app_root, get_app_code_root
 from src.utils.audio_utils import load_audio
+from src.utils.filesystem_utils import get_app_root, get_app_code_root
 
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'orpheus', 'orpheus_tts_pypi', 'orpheus_tts')))
 
 from snac import SNAC
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-import torch
-from transformers import AutoModelForCausalLM, Trainer, TrainingArguments, AutoTokenizer
-import numpy as np
-import soundfile as sf
-from huggingface_hub import snapshot_download
-import torchaudio.transforms as T
-import torch
+from src.utils import torch_utils
 
 
 
@@ -45,9 +35,9 @@ class OrpheusEngine(tts_engine):
         self.snac_model = SNAC.from_pretrained('models/Orpheus/snac')
 
         if self.is_base:
-            self.model = AutoModelForCausalLM.from_pretrained(os.path.join(get_app_root(), 'models/Orpheus'), torch_dtype=torch.bfloat16)
+            self.model = AutoModelForCausalLM.from_pretrained(os.path.join(get_app_root(), 'models/Orpheus'), torch_dtype=torch_utils.get_compute_dtype())
         else:
-            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(self.model_path)))
+            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(self.model_path)), torch_dtype=torch_utils.get_compute_dtype())
 
         self.model.to(self.device)
 

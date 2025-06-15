@@ -417,8 +417,8 @@ class RVCPipeline:
             elapsed_time = end_time - start_time
             logging_utils.logger.debug(f"Conversion completed in {elapsed_time:.2f} seconds.") if debug_rvc else None
 
-            return output_sr, output_audio
+            return output_audio, output_sr
 
         except Exception as error:
             logging_utils.logger.exception(f"Voice conversion failed: {error}")
-            return sample_rate, audio_data
+            return audio_data, sample_rate

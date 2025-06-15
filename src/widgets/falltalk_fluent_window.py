@@ -144,7 +144,7 @@ class FallTalkFluentWindow(FluentWindowBase):
             self.f5_action,
             self.rvc_action,
             self.fish_action,
-            self.dia_action,
+            # self.dia_action,
             self.llasa_action,
             self.orpheus_action,
             self.spark_action,

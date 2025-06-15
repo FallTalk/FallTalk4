@@ -152,7 +152,7 @@ class Config(QConfig):
     rvc_embedder_model = OptionsConfigItem("RVC", "rvc_embedding_model", "contentvec", OptionsValidator(["contentvec", "hubert"]))
 
     # General Model
-    engine = OptionsConfigItem("TTS", "engine", EngineType.F5.value, OptionsValidator([e.value for e in EngineType]))
+    engine = OptionsConfigItem("TTS", "engine", EngineType.SPARK.value, OptionsValidator([e.value for e in EngineType if e.enabled]))
     load_engine_art_start = ConfigItem("TTS", "load_at_start", False, BoolValidator())
     auto_update_models = ConfigItem("TTS", "auto_update_models", False, BoolValidator())
     device = OptionsConfigItem("TTS", "device", "cuda" if torch.cuda.is_available() else "cpu", DeviceValidator())
@@ -225,19 +225,16 @@ class Config(QConfig):
 
     #F5
     f5_mode = OptionsConfigItem("F5", "mode", "tts", OptionsValidator(["edit", "tts"]))
-    f5_seed = RangeConfigItem("F5", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
     f5_speed = RangeConfigItem("F5", "speed_factor", 10, RangeValidator(-100, 100))
 
     #LASA
     llasa_temperature = RangeConfigItem("Llasa", "model_temperature", 80, RangeValidator(1, 100))
-    llasa_seed = RangeConfigItem("Llasa", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
     llasa_top_p = RangeConfigItem("Llasa", "top_p", 100, RangeValidator(0.0, 100))
     llasa_max_length = RangeConfigItem("Llasa", "max_length", 2048, RangeValidator(1, 2048))
     llasa_mode = OptionsConfigItem("Llasa", "mode", "1B", OptionsValidator(["3B", "1B", "8B"]))
 
     #Orpehus
     orpehus_temperature = RangeConfigItem("Orpehus", "model_temperature", 60, RangeValidator(1, 100))
-    orpehus_seed = RangeConfigItem("Orpehus", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
     orpehus_top_p = RangeConfigItem("Orpehus", "top_p", 90, RangeValidator(0.0, 100))
     orpehus_repetition = RangeConfigItem("Orpehus", "model_repetition", 13, RangeValidator(11, 20))
     orpehus_top_k = RangeConfigItem("Orpehus", "top_k", 90, RangeValidator(0.0, 100))
@@ -250,7 +247,6 @@ class Config(QConfig):
     fish_max_length = RangeConfigItem("FishSpeech", "max_length", 2048, RangeValidator(0, 2048))
     fish_use_cache = ConfigItem("FishSpeech", "use_memory_cache", True, BoolValidator())
     fish_iterative_prompt = ConfigItem("FishSpeech", "iterative_prompt", True, BoolValidator())
-    fish_seed = RangeConfigItem("FishSpeech", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
     fish_temperature = RangeConfigItem("FishSpeech", "model_temperature", 80, RangeValidator(1, 100))
 
     #DIA
@@ -345,7 +341,6 @@ class Config(QConfig):
 
     def resetF5(self):
         self.set(self.f5_mode, self.f5_mode.defaultValue)
-        self.set(self.f5_seed, self.f5_seed.defaultValue)
         self.set(self.f5_speed, self.f5_speed.defaultValue)
 
     def resetFishSpeech(self):
@@ -355,7 +350,6 @@ class Config(QConfig):
         self.set(self.fish_max_length, self.fish_max_length.defaultValue)
         self.set(self.fish_use_cache, self.fish_use_cache.defaultValue)
         self.set(self.fish_iterative_prompt, self.fish_iterative_prompt.defaultValue)
-        self.set(self.fish_seed, self.fish_seed.defaultValue)
         self.set(self.fish_temperature, self.fish_temperature.defaultValue)
 
     def resetDIA(self):
@@ -363,7 +357,6 @@ class Config(QConfig):
 
     def resetLlasa(self):
         self.set(self.llasa_temperature, self.llasa_temperature.defaultValue)
-        self.set(self.llasa_seed, self.llasa_seed.defaultValue)
         self.set(self.llasa_top_p, self.llasa_top_p.defaultValue)
         self.set(self.llasa_max_length, self.llasa_max_length.defaultValue)
         self.set(self.llasa_mode, self.llasa_mode.defaultValue)

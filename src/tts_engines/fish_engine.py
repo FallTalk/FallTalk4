@@ -15,11 +15,9 @@ from src.utils.filesystem_utils import get_app_code_root, get_app_root
 from src.utils.logging_utils import logger
 from src.utils.audio_utils import load_audio
 
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'fish-speech/fish_speech')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'fish/fish_speech')))
 
-from third_party.fish.fish_speech.models.vqgan import inference as vqgan_inference
-from third_party.fish.fish_speech.models.text2semantic.inference import load_model, generate_long
-import soundfile as sf
+from third_party.fish.fish_speech.models.text2semantic.inference import init_model as fish_load, generate_long
 
 class FishSpeechEngine(tts_engine):
 
@@ -30,24 +28,20 @@ class FishSpeechEngine(tts_engine):
         self.engine_name = self.engin_type.value
         self.device = cfg.get(cfg.device)
         self.fish = None
-        self.vqgan_model = None
         self.decode_one_token = None
 
 
     def load_model(self):
-        vqgan_path = str(os.path.abspath(os.path.join(get_app_root(), 'models', 'FishSpeech', "1.5" 'firefly-gan-vq-fsq-8x1024-21hz-generator.pth')))
-        self.vqgan_model = vqgan_inference.load_model("firefly_gan_vq", vqgan_path, self.device)
-
         logger.info("Loading model ...")
         t0 = time.time()
 
         if(self.is_base):
             checkpoint_path = str(os.path.abspath(os.path.join(get_app_root(), 'models', 'FishSpeech', "1.5")))
-            self.model, self.decode_one_token = load_model(
+            self.model, self.decode_one_token = fish_load(
                 checkpoint_path, self.device, torch.bfloat16, compile=cfg.get(cfg.fish_use_torch_compile)
             )
         else:
-            self.model, self.decode_one_token = load_model(
+            self.model, self.decode_one_token = fish_load(
                 self.model_path, self.device, torch.bfloat16, compile=cfg.get(cfg.fish_use_torch_compile)
             )
         with torch.device(self.device):
@@ -67,34 +61,11 @@ class FishSpeechEngine(tts_engine):
 
     def unload_model(self):
         self.basic_unload_model()
-        del self.vqgan_model
         del self.decode_one_token
-        self.vqgan_model = None
         self.decode_one_token = None
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-
-    def numpy_gen(self, input_path):
-        logger.info(f"Processing in-place reconstruction of {input_path}")
-        # Load audio
-        audio, sr = torchaudio.load(str(input_path))
-        if audio.shape[0] > 1:
-            audio = audio.mean(0, keepdim=True)
-        audio = torchaudio.functional.resample(
-            audio, sr, self.vqgan_model.spec_transform.sample_rate
-        )
-        audios = audio[None].to(self.device)
-        logger.info(
-            f"Loaded audio with {audios.shape[2] / self.vqgan_model.spec_transform.sample_rate:.2f} seconds"
-        )
-        # VQ Encoder
-        audio_lengths = torch.tensor([audios.shape[2]], device=self.device, dtype=torch.long)
-        indices = self.vqgan_model.encode(audios, audio_lengths)[0][0]
-
-        logger.info(f"Generated indices of shape {indices.shape}")
-        # Save indices
-        return indices.cpu().numpy()
 
     @torch.no_grad()
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
@@ -114,7 +85,6 @@ class FishSpeechEngine(tts_engine):
             iterative_prompt=cfg.get(cfg.fish_iterative_prompt),
             chunk_length=150,
             prompt_text=transcript,
-            prompt_tokens=self.numpy_gen(voice),
         )
 
         idx = 0
@@ -126,35 +96,17 @@ class FishSpeechEngine(tts_engine):
                 codes.append(response.codes)
                 logger.info(f"Sampled text: {response.text}")
             elif response.action == "next":
-                if not codes:
-                    logger.info("No codes to process; skipping.")
-                else:
-                    all_codes = torch.cat(codes, dim=1).to(self.device)
-
-                    feature_lengths = torch.tensor([all_codes.shape[1]], device=self.device)
-                    fake_audios, _ = self.vqgan_model.decode(
-                        indices=all_codes[None],  # add batch dim
-                        feature_lengths=feature_lengths[None]
-                    )
-
-                    fake_audio_np = fake_audios[0, 0].float().cpu().numpy()
-                    all_audio_chunks.append(fake_audio_np)
-
-                    audio_time = fake_audio_np.shape[-1] / self.vqgan_model.spec_transform.sample_rate
-                    logger.info(
-                        f"[{idx}] Chunk shape={fake_audio_np.shape}, duration={audio_time:.2f}s"
-                    )
-
-                # reset for next segment
+                if codes:
+                    all_audio_chunks.append(torch.cat(codes, dim=1).cpu().numpy())
                 codes = []
                 idx += 1
             else:
-                logger.error(f"Unknown action: {response}")
+                logger.error(f"Error: {response}")
 
         if not all_audio_chunks:
             logger.warning("No audio was generated; nothing to save.")
         else:
-            full_audio = np.concatenate(all_audio_chunks, axis=-1)
+            full_audio = np.concatenateconcatenate(all_audio_chunks, axis=-1)
             return full_audio, self.vqgan_model.spec_transform.sample_rate
             # sf.write(output_file, full_audio, self.vqgan_model.spec_transform.sample_rate)
             # total_duration = full_audio.shape[-1] / self.vqgan_model.spec_transform.sample_rate

@@ -1,25 +1,15 @@
 import hashlib
-import collections
 import os
-import typing
 
-import librosa
-import omegaconf
-import soundfile as sf
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoProcessor, CsmForConditionalGeneration
-from xcodec2.modeling_xcodec2 import XCodec2Model
+from transformers import AutoProcessor, CsmForConditionalGeneration
 
-from src.enums.engine_type import EngineType
-from src.utils.filesystem_utils import get_app_root
 from src.config.config import cfg
+from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
+from src.utils import torch_utils
 from src.utils.audio_utils import load_audio
-
-import torchaudio
-
-generator = load_csm_1b(device="cuda")
-
+from src.utils.filesystem_utils import get_app_root
 
 def string_to_int(s):
     return int(hashlib.sha256(s.encode()).hexdigest(), 16) % (10 ** 8)
@@ -42,16 +32,16 @@ class CSM1BEngine(tts_engine):
         self.process_audio(audio_data, sample_rate, output_file)
 
     def load_model(self):
-        print("Loading Llasa Model")
+        print("Loading CSM Model")
 
         if self.is_base:
             self.processor = AutoProcessor.from_pretrained(
                 str(os.path.abspath(os.path.join(get_app_root(), 'Sesame', 'csm-1b'))))
             self.model = CsmForConditionalGeneration.from_pretrained(
-                str(os.path.abspath(os.path.join(get_app_root(), 'Sesame', 'csm-1b'))), device_map=self.device)
+                str(os.path.abspath(os.path.join(get_app_root(), 'Sesame', 'csm-1b'))), device_map=self.device, torch_dtype=torch_utils.get_compute_dtype())
         else:
             self.processor = AutoProcessor.from_pretrained(self.model_path)
-            self.model = CsmForConditionalGeneration.from_pretrained(self.model_path, device_map=self.device)
+            self.model = CsmForConditionalGeneration.from_pretrained(self.model_path, device_map=self.device, torch_dtype=torch_utils.get_compute_dtype())
 
         if self.device == 'cpu':
             self.model.eval().cpu()

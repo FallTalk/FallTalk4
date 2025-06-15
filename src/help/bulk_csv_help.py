@@ -35,7 +35,7 @@ class BulkCSVHelp(ScrollArea):
             <li>The tool uses the currently loaded TTS engine to generate the audio files.</li>
             </ul> 
             """,
-            height=300
+            height=200
         )
 
         self.text = TextCard(
