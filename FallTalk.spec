@@ -1,6 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules
 from PyInstaller.utils.hooks import collect_data_files
+import PyInstaller.config
+PyInstaller.config.CONF['include_source_code'] = True
+
 
 py3langid_hiddenimports = collect_submodules('py3langid')
 fairseq_hiddenimports = collect_submodules('fairseq')
@@ -19,7 +22,14 @@ ffmpeg_hiddenimports = collect_submodules('ffmpeg')
 phonemizer_hiddenimports = collect_submodules('phonemizer')
 triton_hiddenimports = collect_submodules('triton')
 monotonic_align_hiddenimports = collect_submodules('monotonic_align')
+transformers_hiddenimports = collect_submodules('transformers')
+torchao_hiddenimports = collect_submodules('torchao')
+flash_attn_hiddenimports = collect_submodules('flash_attn')
+speechbrain_hiddenimports  = collect_submodules('speechbrain')
+accelerate_hiddenimports  = collect_submodules('accelerate')
 
+
+transformers_datas = collect_data_files('transformers', include_py_files=True)
 scipy_datas = collect_data_files('scipy')
 py3langid_datas = collect_data_files('py3langid')
 fairseq_datas = collect_data_files('fairseq', include_py_files=True)
@@ -36,7 +46,27 @@ ffmpeg_datas  = collect_data_files('ffmpeg', include_py_files=True)
 phonemizer_datas = collect_data_files('phonemizer', include_py_files=True)
 config_datas = collect_data_files('config', include_py_files=True)
 demucs_datas = collect_data_files('demucs', include_py_files=True)
+torchao_datas = collect_data_files('torchao', include_py_files=True)
+flash_attn_datas = collect_data_files('flash_attn', include_py_files=True)
+speechbrain_datas = collect_data_files('speechbrain', include_py_files=True)
 
+
+def collect_triton_all_files():
+    import triton
+    from pathlib import Path
+
+    triton_path = Path(triton.__file__).parent.parent
+    included_files = []
+
+    for p in triton_path.rglob('*'):
+        if p.is_file() and not any(part.startswith(('__pycache__', '.git')) for part in p.parts):
+            rel_path = p.relative_to(triton_path.parent)
+            included_files.append((str(p), str(rel_path)))
+
+    return included_files
+
+
+triton_datas = collect_triton_all_files()
 
 def collect_module_data(module_path):
     data_files = []
@@ -95,8 +125,7 @@ a = Analysis(
     'third_party',
     ],
     binaries=[],
-    datas=[('utils.py', '.')]
-    +wordsegment_datas
+    datas=wordsegment_datas
     +pyannote_datas
     +xformers_datas
     +g2p_en_datas
@@ -109,6 +138,11 @@ a = Analysis(
     +inflect_datas
     +torchaudio_datas
     +re_datas
+    +triton_datas
+    +torchao_datas
+    +flash_attn_datas
+    +speechbrain_datas
+    +transformers_datas
     +third_party_datas
     +phonemizer_datas
     +config_datas
@@ -129,13 +163,24 @@ a = Analysis(
     +torchaudio_hiddenimports
     +wordsegment_hiddenimports
     +monotonic_align_hiddenimports
+    +speechbrain_hiddenimports
+    +accelerate_hiddenimports
+    +transformers_hiddenimports
+    +torchao_hiddenimports
+    +flash_attn_hiddenimports
     +triton_hiddenimports,
     hookspath=[],
     hooksconfig={},
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
     runtime_hooks=[],
     excludes=[],
-    noarchive=False,
+    noarchive=True,
     optimize=0,
+    module_collection_mode={
+        'transformers': 'py',
+    },
+    parallel=32
 )
 pyz = PYZ(a.pure)
 

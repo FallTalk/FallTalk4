@@ -118,7 +118,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.rvc_enabled = SwitchSettingCard(
             FIF.MEGAPHONE,
             self.tr('RVC'),
-            self.tr('Use RVC Upscaler (Recommended)'),
+            self.tr('Use RVC Upscaler (Recommended for Untrained)'),
             cfg.rvc_enabled
         )
 
@@ -129,8 +129,22 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
         self.gen_settings_layout.addWidget(self.xwm_card, 2)
         self.gen_settings_layout.addWidget(self.delete_leftovers, 2)
-        self.gen_settings_layout.addWidget(self.rvc_enabled, 2)
         self.gen_settings.setLayout(self.gen_settings_layout)
+
+        self.upscaler_enabled = SwitchSettingCard(
+            FIF.MEGAPHONE,
+            self.tr('Super Resolution'),
+            self.tr('Use Super Resolution Upscaler (Recommended)'),
+            cfg.apbwe_enabled
+        )
+
+        self.upscaler_settings = QGroupBox()
+        self.upscaler_settings.setStyleSheet("border: none")
+        self.upscaler_settings_layout = QHBoxLayout()
+        self.upscaler_settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.upscaler_settings_layout.addWidget(self.rvc_enabled, 2)
+        self.upscaler_settings_layout.addWidget(self.upscaler_enabled, 2)
+        self.upscaler_settings.setLayout(self.upscaler_settings_layout)
 
         # Buttons layout
         self.buttons_layout = QHBoxLayout()
@@ -177,6 +191,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.addToFrame(self.dialogue_table)
         self.addToFrame(self.controls_widget)
         self.addToFrame(self.f_and_u)
+        self.addToFrame(self.upscaler_settings)
         self.addToFrame(self.gen_settings)
         self.addToFrame(self.buttons_widget)
 

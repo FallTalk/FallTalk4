@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
@@ -25,6 +26,7 @@ from src.utils.icons import FallTalkIcons
 from src.widgets.custom_message_box import CustomMessageBox
 from src.widgets.table_models import CharacterTableModel
 from src.widgets import FallTalkWidget
+from src.utils.filesystem_utils import get_app_root, check_files_in_directory
 
 
 class CharactersWidget(FallTalkWidget):
@@ -41,19 +43,19 @@ class CharactersWidget(FallTalkWidget):
         self.trained_table.setAlternatingRowColors(True)
         self.trained_table.setWordWrap(False)
         self.trained_table.verticalHeader().setVisible(False)
-        headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
+        headers = ["Load", "Name", "Directory", "Delete", "RVC"]
         model = CharacterTableModel([], headers)
         self.trained_table.setModel(model)
         self.trained_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.trained_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.trained_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
         self.trained_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
-        self.trained_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        # self.trained_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         self.trained_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.trained_table.setSortingEnabled(True)
-        self.trained_table.setColumnWidth(5, 40)
-        self.trained_table.setColumnWidth(4, 125)
+        self.trained_table.setColumnWidth(4, 40)
         self.trained_table.setColumnWidth(3, 125)
+        # self.trained_table.setColumnWidth(3, 125)
         self.trained_table.setColumnWidth(0, 125)
 
         self.untrained_table = TableView()
@@ -108,8 +110,12 @@ class CharactersWidget(FallTalkWidget):
         self.rvc_checkbox = CheckBox("RVC Only")
         self.rvc_checkbox.setMinimumWidth(200)
         self.rvc_checkbox.stateChanged.connect(self.apply_filter)
+        self.downloaded_checkbox = CheckBox("Downloaded Only")
+        self.downloaded_checkbox.setMinimumWidth(200)
+        self.downloaded_checkbox.stateChanged.connect(self.apply_filter)
         self.controlsBox.addWidget(self.filter_line_edit)
         self.controlsBox.addWidget(self.rvc_checkbox)
+        self.controlsBox.addWidget(self.downloaded_checkbox)
 
         # add items to pivot
         self.addSubInterface(self.trained_table, 'trained_table', 'Trained')
@@ -206,7 +212,7 @@ class CharactersWidget(FallTalkWidget):
             for file_name in all_files:
                 match = pattern.match(file_name)
                 if match:
-                    version = int(match.group(1))
+                    version = match.group(1)
                     versions.add(version)
 
             return versions
@@ -216,10 +222,11 @@ class CharactersWidget(FallTalkWidget):
     def clear(self):
         self.filter_line_edit.clear()
         self.rvc_checkbox.setChecked(False)
+        self.downloaded_checkbox.setChecked(False)
         headers = ["Load", "Name", "Directory", "RVC"]
         model = CharacterTableModel([], headers)
         self.untrained_table.setModel(model)
-        headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
+        headers = ["Load", "Name", "Directory", "Delete", "RVC"]
         model = CharacterTableModel([], headers)
         self.trained_table.setModel(model)
 
@@ -230,11 +237,11 @@ class CharactersWidget(FallTalkWidget):
             engine_type = EngineType(cfg.get(cfg.engine))
             model = cm[cfg.get(cfg.engine)]
             version = model.get('engine_version', "1")
-            
+
             if engine_type.is_version_supported(version):
                 d.append([f'load', f'{cm["display_name"]}', f'{cm["name"]}', f'rvc', f'delete', f'dl', cm])
 
-        headers = ["Load", "Name", "Directory", "Update", "Delete", "RVC"]
+        headers = ["Load", "Name", "Directory", "Delete", "RVC"]
         table_model = CharacterTableModel(d, headers)
         self.trained_table.setModel(table_model)
 
@@ -249,19 +256,22 @@ class CharactersWidget(FallTalkWidget):
                 rvc_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 rvc_layout.setContentsMargins(1, 1, 1, 1)
                 rvc_layout.addWidget(icon_widget)
-                index = table_model.index(row, 5)
+                index = table_model.index(row, 4)
                 self.trained_table.setIndexWidget(index, widget)
 
             model = character_model[cfg.get(cfg.engine)]
-            version = model.get('engine_version', 1)
-            model_dir = os.path.join("models", character_model["name"], cfg.get(cfg.engine))
-            if version != "1":
-                model_dir = os.path.join(model_dir, str(version))
-            
-            model_files = os.listdir(model_dir) if os.path.isdir(model_dir) else []
-            pattern_str = fr"^{character_model['name']}.*_v.*\.{model['type']}$"
-            pattern = re.compile(pattern_str)
-            downloaded = any(f for f in model_files if pattern.match(f))
+            engine_type = EngineType(cfg.get(cfg.engine))
+            model_engine_version = model.get('engine_version', 1)
+            is_shared = model.get('is_shared', False)
+            shared_model_name = model.get('shared_model_name')
+            version = model.get('version', 1)
+
+            if is_shared and shared_model_name:
+                model_dir = os.path.join(get_app_root(), "models", "shared", engine_type.get_model_path(shared_model_name, model_engine_version))
+            else:
+                model_dir = os.path.join(get_app_root(), "models", engine_type.get_model_path(character_model['name'], version))
+
+            downloaded = check_files_in_directory(model_dir)
 
             if downloaded:
                 delete_button = PushButton('Delete')
@@ -274,7 +284,7 @@ class CharactersWidget(FallTalkWidget):
                 delete_layout.setContentsMargins(1, 1, 1, 1)
                 delete_button.clicked.connect(
                     lambda _, dn=character_model["display_name"], c=character_model['name'], m=model: parent.delete_model(c, m, dn))
-                index = table_model.index(row, 4)
+                index = table_model.index(row, 3)
                 self.trained_table.setIndexWidget(index, delete_widget)
 
                 load_button = PushButton('Load')
@@ -291,26 +301,26 @@ class CharactersWidget(FallTalkWidget):
                 self.trained_table.setIndexWidget(index, widget)
 
                 # Check if there is a different version locally
-                versions = self.find_versions(model_dir, character_model["name"], model['type'])
-                different_version_found = int(model['version']) not in versions
-                if not different_version_found and character_model['RVC']:
-                    versions = self.find_versions(os.path.join("models", character_model["name"], "RVC"), character_model["name"], character_model['RVC']['type'])
-                    different_version_found = versions is None or int(character_model['RVC']['version']) not in versions
+                # versions = self.find_versions(model_dir, character_model["name"], model['type'])
+                # different_version_found = model['version'] not in versions
+                # if not different_version_found and character_model['RVC']:
+                #     versions = self.find_versions(os.path.join("models", character_model["name"], "RVC"), character_model["name"], character_model['RVC']['type'])
+                #     different_version_found = versions is None or character_model['RVC']['version'] not in versions
 
-                if different_version_found:
-                    update_button = PushButton('Update')
-                    update_button.setMinimumWidth(115)
-                    update_button.setIcon(FIF.UPDATE.icon(color=cfg.get(cfg.themeColor)))
-
-                    widget = QWidget()
-                    layout = QHBoxLayout(widget)
-                    layout.addWidget(update_button)
-                    layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    layout.setContentsMargins(1, 1, 1, 1)
-                    update_button.clicked.connect(
-                        lambda _, rvc=character_model['RVC'], c=character_model['name'], r=row, m=model: parent.update_model(c, m, rvc))
-                    index = table_model.index(row, 3)
-                    self.trained_table.setIndexWidget(index, widget)
+                # if different_version_found:
+                #     update_button = PushButton('Update')
+                #     update_button.setMinimumWidth(115)
+                #     update_button.setIcon(FIF.UPDATE.icon(color=cfg.get(cfg.themeColor)))
+                #
+                #     widget = QWidget()
+                #     layout = QHBoxLayout(widget)
+                #     layout.addWidget(update_button)
+                #     layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                #     layout.setContentsMargins(1, 1, 1, 1)
+                #     update_button.clicked.connect(
+                #         lambda _, rvc=character_model['RVC'], c=character_model['name'], r=row, m=model: parent.update_model(c, m, rvc))
+                #     index = table_model.index(row, 3)
+                #     self.trained_table.setIndexWidget(index, widget)
 
             else:
                 download_button = PushButton('Download')
@@ -336,7 +346,7 @@ class CharactersWidget(FallTalkWidget):
                 engine_type = EngineType(cfg.get(cfg.engine))
                 model = cm[cfg.get(cfg.engine)]
                 version = model.get('engine_version', "1")
-                
+
                 if engine_type.is_version_supported(version):
                     data.append([f'load', cm["display_name"], cm["display_name"] if cm["name"] is None else cm["name"], f'delete', f'rvc', cm])
 
@@ -430,38 +440,65 @@ class CharactersWidget(FallTalkWidget):
         pass
 
     def apply_filter(self):
-        state = self.rvc_checkbox.isChecked()
+        rvc_state = self.rvc_checkbox.isChecked()
+        downloaded_state = self.downloaded_checkbox.isChecked()
         text = self.filter_line_edit.text()
 
         model = self.custom_table.model()
         if model:
             for row in range(model.rowCount()):
                 match = text.lower() in model.full_data(row, 0).lower() or text.lower() in model.full_data(row, 1).lower()
-                if state:
+                hide_row = not match
+
+                if rvc_state:
                     rvc_match = model.full_data(row, 5)['RVC'] is not None
-                    self.custom_table.setRowHidden(row, not match or not rvc_match)
-                else:
-                    self.custom_table.setRowHidden(row, not match)
+                    hide_row = hide_row or not rvc_match
+
+                # Custom models are always downloaded, so no need to filter by downloaded state
+
+                self.custom_table.setRowHidden(row, hide_row)
 
         model = self.untrained_table.model()
         if model:
             for row in range(model.rowCount()):
                 match = text.lower() in model.full_data(row, 0).lower() or text.lower() in model.full_data(row, 1).lower()
-                if state:
+                hide_row = not match
+
+                if rvc_state:
                     rvc_match = model.full_data(row, 4)['RVC'] is not None
-                    self.untrained_table.setRowHidden(row, not match or not rvc_match)
-                else:
-                    self.untrained_table.setRowHidden(row, not match)
+                    hide_row = hide_row or not rvc_match
+
+                # Untrained models always have Load buttons, so if downloaded_state is True, we don't need to hide them
+
+                self.untrained_table.setRowHidden(row, hide_row)
 
         model = self.trained_table.model()
         if model:
             for row in range(model.rowCount()):
                 match = text.lower() in model.full_data(row, 0).lower() or text.lower() in model.full_data(row, 1).lower()
-                if state:
+                hide_row = not match
+
+                if rvc_state:
                     rvc_match = model.full_data(row, 6)['RVC'] is not None
-                    self.trained_table.setRowHidden(row, not match or not rvc_match)
-                else:
-                    self.trained_table.setRowHidden(row, not match)
+                    hide_row = hide_row or not rvc_match
+
+                if downloaded_state:
+                    # Check if the model is downloaded by looking at the widget in the first column
+                    index = model.index(row, 0)
+                    widget = self.trained_table.indexWidget(index)
+                    if widget:
+                        # Find the button in the widget
+                        button = None
+                        for child in widget.children():
+                            if isinstance(child, PushButton):
+                                button = child
+                                break
+
+                        # If the button text is "Download", the model is not downloaded
+                        if button and button.text() == "Download":
+                            hide_row = True
+
+                self.trained_table.setRowHidden(row, hide_row)
 
     def addSubInterface(self, widget: QWidget, objectName, text):
         widget.setObjectName(objectName)

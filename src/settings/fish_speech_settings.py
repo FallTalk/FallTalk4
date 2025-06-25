@@ -97,7 +97,6 @@ class FishSpeechSettings(ScrollArea):
         self.settings_group.addSettingCard(self.max_length_card)
         self.settings_group.addSettingCard(self.use_cache_card)
         self.settings_group.addSettingCard(self.iterative_prompt_card)
-        self.settings_group.addSettingCard(self.seed_card)
         self.settings_group.addSettingCard(self.temperature_card)
 
         # add setting card group to layout

@@ -327,9 +327,25 @@ class BulkGenerationTableWidget(BaseBulkWidget):
         self.rvc_enabled = SwitchSettingCard(
             FIF.MEGAPHONE,
             self.tr('RVC'),
-            self.tr('Use RVC Upscaler (Recommended)'),
+            self.tr('Use RVC Upscaler (Recommended for Untrained)'),
             cfg.rvc_enabled
         )
+
+        self.upscaler_enabled = SwitchSettingCard(
+            FIF.MEGAPHONE,
+            self.tr('Super Resolution'),
+            self.tr('Use Super Resolution Upscaler (Recommended)'),
+            cfg.apbwe_enabled
+        )
+
+        self.upscaler_settings = QGroupBox()
+        self.upscaler_settings.setStyleSheet("border: none")
+        self.upscaler_settings_layout = QHBoxLayout()
+        self.upscaler_settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.upscaler_settings_layout.addWidget(self.rvc_enabled, 2)
+        self.upscaler_settings_layout.addWidget(self.upscaler_enabled, 2)
+        self.upscaler_settings.setLayout(self.upscaler_settings_layout)
+
         self.gen_settings = QGroupBox()
         self.gen_settings.setStyleSheet("border: none")
         self.gen_settings_layout = QHBoxLayout(self.gen_settings)
@@ -337,9 +353,8 @@ class BulkGenerationTableWidget(BaseBulkWidget):
 
         self.gen_settings_layout.addWidget(self.xwm_card, 2)
         self.gen_settings_layout.addWidget(self.delete_leftovers, 2)
-        self.gen_settings_layout.addWidget(self.rvc_enabled, 2)
         self.gen_settings.setLayout(self.gen_settings_layout)
-
+        self.bulk_widget_view.addWidget(self.upscaler_settings)
         self.bulk_widget_view.addWidget(self.gen_settings)
         self.help_drawer.addWidget(BulkCSVHelp(self))
         self.buttons_layout.addWidget(self.help_button)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -8,7 +9,8 @@ if TYPE_CHECKING:
 import logging
 import asyncio
 import re
-from PySide6.QtCore import QMetaObject, Qt, Q_ARG
+from PySide6.QtCore import QMetaObject, Qt, Q_ARG, QMetaType, QObject
+
 import PySide6
 
 from src.config.config import cfg
@@ -18,6 +20,18 @@ from num2words import num2words
 logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)
 
+def do_transcribe_before_gen(parent: 'FallTalkApp', selected_audio):
+    try:
+        resp = parent.transcription_engine.transcribe(selected_audio)
+        logger.debug("transcription complete {}",resp)
+        QMetaObject.invokeMethod(parent, "after_transcribe_gen", Qt.QueuedConnection,
+                                 Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, json.dumps(resp)))
+        return resp
+    except Exception as e:
+        logger.exception("Transcription failed")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent),
+                                 Q_ARG(str, "Unable to Transcribe Audio"), Q_ARG(str,
+                                                                                 "An Error Occured while attempting to transcribe audio. Please check your logs and report the issue if needed"))
 
 def do_transcribe(parent: 'FallTalkApp', selected_audio, widget, api=False):
     try:

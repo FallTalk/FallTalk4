@@ -1,7 +1,7 @@
 import os
 import sys
 
-from enums.engine_type import EngineType
+from src.enums.engine_type import EngineType
 from src.config.config import cfg
 from src.tts_engines.tts_engine import tts_engine
 from src.utils.audio_utils import load_audio
@@ -31,13 +31,14 @@ class OrpheusEngine(tts_engine):
         self.model = None
 
     def load_model(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(os.path.join(get_app_root(), 'models/Orpheus'))
-        self.snac_model = SNAC.from_pretrained('models/Orpheus/snac')
+        self.snac_model = SNAC.from_pretrained( os.path.join(get_app_root(),'models', 'Orpheus', '3b-0.1', 'snac'))
 
         if self.is_base:
-            self.model = AutoModelForCausalLM.from_pretrained(os.path.join(get_app_root(), 'models/Orpheus'), torch_dtype=torch_utils.get_compute_dtype())
+            self.model = AutoModelForCausalLM.from_pretrained(os.path.join(get_app_root(), 'models', 'Orpheus', '3b-0.1'), torch_dtype=torch_utils.get_compute_dtype())
+            self.tokenizer = AutoTokenizer.from_pretrained(os.path.join(get_app_root(), 'models', 'Orpheus', '3b-0.1'))
         else:
             self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(self.model_path)), torch_dtype=torch_utils.get_compute_dtype())
+            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(self.model_path)))
 
         self.model.to(self.device)
 
@@ -94,49 +95,83 @@ class OrpheusEngine(tts_engine):
 
     def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
         # Get audio data and sample rate from inference
-        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming)
+        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker=speaker)
         self.process_audio(audio_data, sample_rate, output_file)
 
-    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
+        reference_mode = voice is not None and transcript is not None
+        processed_prompts = [f"{speaker}: " + text if speaker else text]
 
-        audio_array, sample_rate = load_audio(voice, 24000)
+        if reference_mode:
 
-        myts = self.tokenise_audio(audio_array)
-        start_tokens = torch.tensor([[128259]], dtype=torch.int64)
-        end_tokens = torch.tensor([[128009, 128260, 128261, 128257]], dtype=torch.int64)
-        final_tokens = torch.tensor([[128258, 128262]], dtype=torch.int64)
-        voice_prompt = transcript
-        prompt_tokked = self.tokenizer(voice_prompt, return_tensors="pt")
+            # Reference audio tokens
+            audio_tokens = self.tokenise_audio(load_audio(voice, 24000))
 
-        input_ids = prompt_tokked["input_ids"]
 
-        zeroprompt_input_ids = torch.cat([start_tokens, input_ids, end_tokens, torch.tensor([myts]), final_tokens], dim=1)  # SOH SOT Text EOT EOH
+            # Tokenize the reference transcript
+            prompt_tokked = self.tokenizer(transcript, return_tensors="pt")
+            input_ids = prompt_tokked["input_ids"]
 
-        prompts = [text]
+            # Build reference prefix tokens
+            start_tokens = torch.tensor([[128259]], dtype=torch.int64)  # SOH
+            end_tokens = torch.tensor([[128009, 128260, 128261, 128257]], dtype=torch.int64)  # EOT, EOH, etc.
+            final_tokens = torch.tensor([[128258, 128262]], dtype=torch.int64)  # EOS, etc.
 
-        all_modified_input_ids = []
-        for prompt in prompts:
+            # Combine reference components
+            reference_prefix = torch.cat([
+                start_tokens,
+                input_ids,
+                end_tokens,
+                torch.tensor([audio_tokens]),
+                final_tokens
+            ], dim=1)
+
+        # Tokenize all prompts
+        all_input_ids = []
+        for prompt in processed_prompts:
             input_ids = self.tokenizer(prompt, return_tensors="pt").input_ids
-            second_input_ids = torch.cat([zeroprompt_input_ids, start_tokens, input_ids, end_tokens], dim=1)
-            all_modified_input_ids.append(second_input_ids)
+            if reference_mode:
+                # For reference mode: [reference_prefix] + [prompt]
+                full_input = torch.cat([
+                    reference_prefix,
+                    start_tokens,
+                    input_ids,
+                    end_tokens
+                ], dim=1)
+            else:
+                # For normal mode: [prompt]
+                start_token = torch.tensor([[128259]], dtype=torch.int64)  # SOH
+                end_tokens = torch.tensor([[128009, 128260]], dtype=torch.int64)  # EOT, EOH
+                full_input = torch.cat([start_token, input_ids, end_tokens], dim=1)
 
+            all_input_ids.append(full_input)
+
+        # Pad all sequences to same length
+        max_length = max(input_ids.shape[1] for input_ids in all_input_ids)
         all_padded_tensors = []
         all_attention_masks = []
 
-        max_length = max([modified_input_ids.shape[1] for modified_input_ids in all_modified_input_ids])
+        for input_ids in all_input_ids:
+            padding = max_length - input_ids.shape[1]
+            padded_tensor = torch.cat([
+                torch.full((1, padding), 128263, dtype=torch.int64),  # Padding token
+                input_ids
+            ], dim=1)
 
-        for modified_input_ids in all_modified_input_ids:
-            padding = max_length - modified_input_ids.shape[1]
-            padded_tensor = torch.cat([torch.full((1, padding), 128263, dtype=torch.int64), modified_input_ids], dim=1)
-            attention_mask = torch.cat([torch.zeros((1, padding), dtype=torch.int64), torch.ones((1, modified_input_ids.shape[1]), dtype=torch.int64)], dim=1)
+            attention_mask = torch.cat([
+                torch.zeros((1, padding), dtype=torch.int64),
+                torch.ones((1, input_ids.shape[1]), dtype=torch.int64)
+            ], dim=1)
+
             all_padded_tensors.append(padded_tensor)
             all_attention_masks.append(attention_mask)
 
+        # Combine all batches
         all_padded_tensors = torch.cat(all_padded_tensors, dim=0)
         all_attention_masks = torch.cat(all_attention_masks, dim=0)
 
-        input_ids = all_padded_tensors.to("cuda")
-        attention_mask = all_attention_masks.to("cuda")
+        input_ids = all_padded_tensors.to(self.device)
+        attention_mask = all_attention_masks.to(self.device)
 
         with torch.no_grad():
             generated_ids = self.model.generate(

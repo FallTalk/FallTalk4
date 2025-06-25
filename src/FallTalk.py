@@ -8,9 +8,12 @@ import sys
 import threading
 import uuid
 import webbrowser
+import random
+import tempfile
+import soundfile as sf
+import numpy as np
 
 import PySide6
-import huggingface_hub
 from PySide6.QtCore import Qt, QSize, Slot, QUrl, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
@@ -18,18 +21,18 @@ from packaging import version
 from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, MessageBox
 from qfluentwidgets import NavigationItemPosition
 from typing import Optional
-import src.config.config as config
-from src.config.config import cfg, DISCLAIMER, REPO
+from src.config.config import cfg, DISCLAIMER, REPO, VERSION, RELEASE_URL
 from src.enums.engine_type import EngineType
 from src.utils.audio_utils import combine_wav_files
 from src.utils.bulk_utils import bulk_inference, bulk_rvc_inference, bulk_fuz
 from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp, formatted_time_stamp_uuid
-from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models
+from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models, download_all_models_config
 from src.utils.icons import FallTalkIcons
 from src.utils.inference_utils import (
     do_transcribe, replace_numbers_with_words, eleven_labs_inference, edge_tts_inference,
     rvc_inference, xtts_inference, dia_inference, fish_inference, f5_inference,
-    gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference, spark_inference, csm_inference
+    gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference, spark_inference, csm_inference,
+    do_transcribe_before_gen
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
@@ -37,6 +40,7 @@ from src.utils.model_utils import (
     load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler, load_csm
 )
 
+from src.utils.audio_utils import extra_audio_from_bsa
 from src.widgets.falltalk_fluent_window import FallTalkFluentWindow
 from src.utils.filesystem_utils import get_app_root
 from src.tts_engines import tts_engine
@@ -72,6 +76,7 @@ class FallTalkApp(FallTalkFluentWindow):
         self.models = None
         self.shared_models = None
         self.custom_models = None
+        self.default_references = None
         self.upscale_engine = None
         self.apbwe_engine = None
 
@@ -119,7 +124,7 @@ class FallTalkApp(FallTalkFluentWindow):
             self.onEngineChange(cfg.engine)
 
         if cfg.get(cfg.first_start):
-            self.downloadModels()
+            # self.downloadModels()
             cfg.set(cfg.first_start, False)
 
         if cfg.get(cfg.api_only_mode):
@@ -131,28 +136,14 @@ class FallTalkApp(FallTalkFluentWindow):
             with open(os.path.join(get_app_root(), 'config/characters.json'), 'r', encoding='utf-8') as file:
                 self.characters_data = {character['name']: character for character in json.load(file)}
 
-            # Pre-sort and store reference files for each character
-            self.sorted_references = {}
-            for character_name, character in self.characters_data.items():
-                if character.get('voicefiles'):
-                    # Get all voice files with their dialogue text lengths
-                    voice_files = []
-                    for voice_file in character['voicefiles']:
-                        if voice_file.get('filename') and voice_file.get('dialogue'):
-                            voice_files.append((voice_file['filename'], len(voice_file['dialogue'])))
-
-                    # Sort by dialogue length and store top 15 filenames
-                    voice_files.sort(key=lambda x: x[1], reverse=True)
-                    self.sorted_references[character_name] = [filename for filename, _ in voice_files[:15]]
-
         if self.models is None:
             # Load character-specific models from modelsv2.json
-            with open(os.path.join(get_app_root(), 'config/modelsv2.json'), 'r', encoding='utf-8') as file:
+            with open(os.path.join(get_app_root(), 'config', 'modelsv2.json'), 'r', encoding='utf-8') as file:
                 self.models = {model['name']: model for model in json.load(file)['characters']}
 
         if self.shared_models is None:
             # Load shared models from sharedmodels.json if it exists
-            shared_models_path = os.path.join(get_app_root(), 'config/sharedmodels.json')
+            shared_models_path = os.path.join(get_app_root(), 'config', 'sharedmodels.json')
             if os.path.exists(shared_models_path):
                 with open(shared_models_path, 'r', encoding='utf-8') as file:
                     self.shared_models = json.load(file)
@@ -181,9 +172,17 @@ class FallTalkApp(FallTalkFluentWindow):
                                     'characters':  characters
                                 }
 
+        # Load default references from default_references.json if it exists
+        default_references_path = os.path.join(get_app_root(), 'config', 'default_references.json')
+        if os.path.exists(default_references_path):
+            with open(default_references_path, 'r', encoding='utf-8') as file:
+                self.default_references = json.load(file)
+        else:
+            self.default_references = None
+
     def _load_custom_models(self):
         """Load custom models from file - this can change during runtime"""
-        if os.path.exists('config/custom_models.json'):
+        if os.path.exists(os.path.join('config', 'custom_models.json')):
             with open(os.path.join(get_app_root(), 'config/custom_models.json'), 'r', encoding="utf-8") as file:
                 self.custom_models = {model['name']: model for model in json.load(file)}
         else:
@@ -192,17 +191,17 @@ class FallTalkApp(FallTalkFluentWindow):
     def checkForRelease(self):
         try:
             latest = get_latest_release()
-            my_version = version.parse(config.VERSION)
+            my_version = version.parse(VERSION)
             latest_version = version.parse(latest)
             if latest_version.base_version > my_version.base_version:
                 self.toolbar_1.addSeparator()
                 self.toolbar_1.addAction(self.update_action)
-                self.update_action.triggered.connect(lambda: webbrowser.open(config.RELEASE_URL))
+                self.update_action.triggered.connect(lambda: webbrowser.open(RELEASE_URL))
         except Exception as e:
             logger.exception(f"Failed to fetch latest release: {e}")
 
     def setupWindow(self):
-        self.setWindowTitle(f'FallTalk - {config.VERSION}')
+        self.setWindowTitle(f'FallTalk - {VERSION}')
         self.setWindowIcon(self.icon)
         desktop = QApplication.screens()[0].availableGeometry()
         # Set size
@@ -259,13 +258,12 @@ class FallTalkApp(FallTalkFluentWindow):
 
     def download_models_config(self):
         try:
-            os.makedirs(os.path.join(get_app_root(), "models/"), exist_ok=True)
-            os.makedirs(os.path.join(get_app_root(), "config/"), exist_ok=True)
             old_json = None
             if os.path.exists(os.path.join(get_app_root(),'config/modelsv2.json')):
                 with open(os.path.join(get_app_root(), 'config/modelsv2.json'), 'r', encoding="utf-8") as old_file:
                     old_json = json.load(old_file)
-            huggingface_hub.hf_hub_download(REPO, "config/modelsv2.json", local_dir=get_app_root())
+
+            download_all_models_config()
 
             with open(os.path.join(get_app_root(), 'config/modelsv2.json'), 'r', encoding="utf-8") as new_file:
                 new_json = json.load(new_file)
@@ -278,7 +276,6 @@ class FallTalkApp(FallTalkFluentWindow):
                 w = MessageBox("Updates", diff, self)
                 self.new_models_action.triggered.connect(lambda: w.open())
 
-            huggingface_hub.hf_hub_download(REPO, "config/characters.json", local_dir=get_app_root())
         except Exception as e:
             logger.exception("Unable to load configs")
             if not os.path.exists(os.path.join(get_app_root(), 'config/characters.json')) and not os.path.exists(os.path.join(get_app_root(), 'config/modelsv2.json')):
@@ -491,8 +488,8 @@ class FallTalkApp(FallTalkFluentWindow):
         if engine_type == EngineType.RVC:
             self.stackedWidget.setCurrentWidget(self.generate_widget)
         elif (self.tts_engine.is_base or engine_type.needs_reference_when_trained) and engine_type.needs_transcription:
-            widget.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
-            widget.transcribe_button.setVisible(True)
+            widget.text_input.setPlaceholderText("Please Select the reference audio")
+            # widget.transcribe_button.setVisible(True)
             self.stackedWidget.setCurrentWidget(self.reference_widget)
         elif self.tts_engine.is_base or engine_type.needs_reference_when_trained:
             widget.text_input.setPlaceholderText("Please Select Reference'")
@@ -620,15 +617,50 @@ class FallTalkApp(FallTalkFluentWindow):
             tr = (threading.Thread(target=do_transcribe, args=(self, selected_audio, widget), daemon=True))
             tr.start()
 
+    def transcribe_before_gen(self, references):
+            # Check if we're using F5 in edit mode
+            current_engine = EngineType(cfg.get(cfg.engine))
+            is_f5_edit_mode = current_engine == EngineType.F5 and cfg.get(cfg.f5_mode) == "edit"
+
+            # Check if we have stored transcripts from the references widget
+            combined_transcript = self.reference_widget.get_combined_transcript()
+
+            # If we have a combined transcript and we're not in F5 edit mode, use it directly
+            if combined_transcript and not is_f5_edit_mode:
+                # Create a transcribe state with the combined transcript
+                transcribe_state = {'transcript': combined_transcript}
+                # Skip transcription and go directly to generation
+                self.generate_audio(None, transcribe_state)
+                return
+
+            # Otherwise, proceed with transcription as before
+            if len(references) == 1:
+                selected_audio = references[0]
+            else:
+                selected_audio = combine_wav_files(references)
+
+            self.showLoaderPopup("Transcribing Audio", "Please Wait")
+            tr = (threading.Thread(target=do_transcribe_before_gen, args=(self, selected_audio), daemon=True))
+            tr.start()
+
     @Slot(PySide6.QtCore.QObject, PySide6.QtCore.QObject)
     def after_transcribe(self, parent: 'FallTalkApp', widget):
         widget.clear()
         widget.load_data()
         parent.complete_loader()
 
+    @Slot(PySide6.QtCore.QObject, str)
+    def after_transcribe_gen(self, parent: 'FallTalkApp', transcribe_state):
+        parent.complete_loader()
+        t = json.loads(transcribe_state)
+        parent.generate_audio(None, t)
+
+
     def combine_references(self, references):
         logger.debug(f"{references}")
-        if len(references) == 1:
+        if not references:
+            return None
+        elif len(references) == 1:
             logger.debug(references)
             selected_audio = references[0]
         else:
@@ -759,7 +791,7 @@ class FallTalkApp(FallTalkFluentWindow):
                     tr = (threading.Thread(target=bulk_fuz, args=(self, lip_dir, cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads)), daemon=True))
                     tr.start()
 
-    def generate_audio(self, recording_file=None):
+    def generate_audio(self, recording_file=None, transcribe_state=None):
         references = self.reference_widget.reference_audio
         references_length = self.reference_widget.reference_audio_length
         current_engine = EngineType(cfg.get(cfg.engine))
@@ -812,13 +844,27 @@ class FallTalkApp(FallTalkFluentWindow):
                     tr = (threading.Thread(target=eleven_labs_inference, args=(self, text, output_file, current_widget.eleven_labs_widget.voice_combo.configItem.currentText(), current_widget), daemon=True))
                     tr.start()
         else:
-            transcribe_state = None
             text = replace_numbers_with_words(self.ensure_sentence_punctuation(current_widget.text_input.toPlainText()))
 
             if current_engine.needs_reference_when_trained or self.tts_engine.is_base:
                 if references is None or not references:
-                    self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select Reference Audio")
-                    return
+                    # Get default reference from default_references.json and characters.json
+                    from src.utils.bulk_utils import get_default_reference
+                    character_name = self.tts_engine.model_name
+                    reference_path, transcript, filename = get_default_reference(self, character_name)
+
+                    # If we have a transcript, create the transcribe state
+                    if transcript:
+                        transcribe_state = {'transcript': transcript}
+
+                    # If reference found, use it
+                    if reference_path:
+                        references = [reference_path]
+                        # Estimate reference length (5 seconds is a reasonable default)
+                        references_length = 5
+                    else:
+                        self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select Reference Audio")
+                        return
                 elif references_length > current_engine.max_reference_length or references_length < 3:
                     self.showErrorPopup(current_widget, current_widget.generate_button, f"Please Select between 3 and {current_engine.max_reference_length} seconds of Reference Audio")
                     return
@@ -826,18 +872,16 @@ class FallTalkApp(FallTalkFluentWindow):
                     self.showErrorPopup(current_widget, current_widget.generate_button, "Please Select at least 3 seconds of Reference Audio")
                     return
 
-            if references:
-                if current_engine.needs_transcription and current_widget.transcribe_state is None:
-                    self.showErrorPopup(current_widget, current_widget.generate_button, "Please Transcribe your reference audio")
-                    return
-                else:
-                    transcribe_state = current_widget.transcribe_state
+            # Only transcribe if we don't already have a transcript from default references
+            if references and transcribe_state is None:
+                self.transcribe_before_gen(references)
+                return
 
             self.showLoaderPopup("Generating Audio", "Please Wait")
             if current_engine == EngineType.GPT_SOVITS:
-                threading.Thread(target=gpt_sovits_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+                threading.Thread(target=gpt_sovits_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.DIA:
-                threading.Thread(target=dia_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+                threading.Thread(target=dia_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.F5:
                 start_word = current_widget.start_dropdown_card.getWordInfo()
                 end_word = current_widget.end_dropdown_card.getWordInfo()
@@ -850,19 +894,19 @@ class FallTalkApp(FallTalkFluentWindow):
                 else:
                     threading.Thread(target=f5_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, start_time, end_time, transcribe_state, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.XTTS_V2:
-                threading.Thread(target=xtts_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+                threading.Thread(target=xtts_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.LLASA:
-                threading.Thread(target=llasa_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+                threading.Thread(target=llasa_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.ORPHEUS:
-                threading.Thread(target=orpheus_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+                threading.Thread(target=orpheus_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.FISH_SPEECH:
-                threading.Thread(target=fish_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+                threading.Thread(target=fish_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.CSM:
-                threading.Thread(target=csm_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+                threading.Thread(target=csm_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.SPARK:
-                threading.Thread(target=spark_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+                threading.Thread(target=spark_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.STYLE_TTS2:
-                threading.Thread(target=styletts2_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state, self.tts_engine.model_name), daemon=True).start()
+                threading.Thread(target=styletts2_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
 
     def showErrorPopup(self, parent, target, content):
         Flyout.create(
@@ -937,6 +981,12 @@ class FallTalkApp(FallTalkFluentWindow):
         tr = (threading.Thread(target=download_models, args=(self, character, model, rvc), daemon=True))
         tr.start()
 
+    def download_model_and_load(self, character, model, rvc):
+        self.showLoaderPopup("Downloading Model", f"Downloading {character}")
+        tr = (threading.Thread(target=download_models, args=(self, character, model, rvc), daemon=True))
+        tr.start()
+
+
     def update_model(self, character, model, rvc):
         self.showLoaderPopup("Updating Model", f"Updating {character}")
         folder = os.path.join("models", character, model['engine'])
@@ -950,15 +1000,36 @@ class FallTalkApp(FallTalkFluentWindow):
         tr.start()
 
     def delete_model(self, character, model, display_name):
-        title = f'Delete {display_name}'
-        content = f"""
-        Are you sure you would like to delete all {model['engine']} files for {display_name}? 
-        This action cannot be undone, but you can download the files again at a later date.
-        """
+
+        is_shared = model.get('is_shared', False)
+        shared_model_name = model.get('shared_model_name')
+
+        if is_shared:
+            title = f'Delete Shared Model {shared_model_name}'
+            content = f"""
+            Are you sure you would like to delete all {model['engine']} files for {shared_model_name}? 
+            This action cannot be undone, but you can download the files again at a later date.
+            This is a shared model, deleting it will remove the model for all characters on the model.
+            """
+        else:
+            title = f'Delete {display_name}'
+            content = f"""
+            Are you sure you would like to delete all {model['engine']} files for {display_name}? 
+            This action cannot be undone, but you can download the files again at a later date.
+            """
         w = MessageBox(title, content, self)
         w.yesButton.setText(self.tr('Yes'))
         if w.exec():
-            shutil.rmtree(os.path.join("models", character, model['engine']))
+            engine_type = EngineType(model['engine'])
+            model_engine_version = model.get('engine_version', 1)
+
+            version = model.get('version', 1)
+
+            if is_shared and shared_model_name:
+                shutil.rmtree(os.path.join(get_app_root(), "models", "shared", engine_type.get_model_path(shared_model_name, model_engine_version)))
+            else:
+                shutil.rmtree(os.path.join(get_app_root(), "models", engine_type.get_model_path(character, version)))
+
             self.load_models_config()
 
     def delete_custom_model(self, character, display_name):
@@ -973,8 +1044,8 @@ class FallTalkApp(FallTalkFluentWindow):
             if os.path.exists(os.path.join("models", character)):
                 shutil.rmtree(os.path.join("models", character))
 
-            if os.path.exists('config/custom_models.json'):
-                with open('config/custom_models.json', 'r', encoding="utf-8") as file:
+            if os.path.exists(os.path.join('config', 'custom_models.json')):
+                with open(os.path.join('config', 'custom_models.json'), 'r', encoding="utf-8") as file:
                     custom_models = json.load(file)
             else:
                 custom_models = []
@@ -984,7 +1055,7 @@ class FallTalkApp(FallTalkFluentWindow):
                 if model['display_name'] != display_name:
                     new_custom_models.append(model)
 
-            with open('config/custom_models.json', 'w', encoding="utf-8") as file:
+            with open(os.path.join('config', 'custom_models.json'), 'w', encoding="utf-8") as file:
                 json.dump(new_custom_models, file)
 
             self.load_models_config()

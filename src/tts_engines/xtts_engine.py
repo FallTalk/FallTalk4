@@ -38,6 +38,7 @@ class XTTS_Engine(tts_engine):
         super().__init__()
         self.engin_type = EngineType.DIA
         self.engine_name = self.engin_type.value
+        self.model_type = 'pth'
 
     def clean(self):
         super().clean()

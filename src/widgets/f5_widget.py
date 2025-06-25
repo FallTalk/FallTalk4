@@ -22,7 +22,7 @@ class F5Widget(GenerationWidget):
 
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="F5")
-        self.text_input.setPlaceholderText("Please Select the 'Transcribe Reference Audio' button below")
+        self.text_input.setPlaceholderText("Please Select Reference Audio before Generation")
         self.transcribe_state = None
         self.words_data = None
 
@@ -84,11 +84,12 @@ class F5Widget(GenerationWidget):
         self.transcribe_button.setIcon(FIF.PENCIL_INK)
         self.transcribe_button.clicked.connect(self.transcribe)
         self.transcribe_button.setEnabled(False)
+        self.transcribe_button.setVisible(cfg.get(cfg.f5_mode) == "edit")
         self.buttons_layout.addWidget(self.transcribe_button, stretch=1)
         self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.parent.generate_audio)
-        self.generate_button.setEnabled(False)
+        # self.generate_button.setEnabled(False)
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
 
         self.settings_drawer.addWidget(F5Settings(self))
@@ -107,15 +108,17 @@ class F5Widget(GenerationWidget):
         self.parent.transcribe(self)
 
     def onReferenceSelect(self):
-        self.generate_button.setEnabled(False)
+        self.generate_button.setEnabled(True)
         self.transcribe_button.setEnabled(True)
 
     def mode_changed(self, change):
         self.start_and_end.setVisible(change.value == "edit")
         self.temp_and_rep.setVisible(cfg.get(cfg.f5_mode) == "edit")
+        self.transcribe_button.setVisible(cfg.get(cfg.f5_mode) == "edit")
+
 
     def clear(self):
-        self.generate_button.setEnabled(False)
+        # self.generate_button.setEnabled(False)
         self.transcribe_button.setEnabled(False)
         self.start_dropdown_card.configItem.clear()
         self.end_dropdown_card.configItem.clear()

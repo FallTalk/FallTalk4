@@ -135,7 +135,7 @@ uv pip install -r requirements.txt
 uv pip install packaging==25.0
 uv pip install flash-attn --no-build-isolation
 uv pip install xcodec2 --no-deps
-
+powershell -ExecutionPolicy Bypass -File build_script.ps1
 ```
 Next, you will need to copy and paste the "site-packages" folder into your conda env. This contains files changes needed to build on windows.
 

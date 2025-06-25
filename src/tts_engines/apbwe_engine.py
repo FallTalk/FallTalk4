@@ -16,7 +16,7 @@ import torchaudio.functional as aF
 from torch.nn.utils import spectral_norm
 from torch.nn.utils import weight_norm
 
-from config.config import cfg
+from src.config.config import cfg
 
 LRELU_SLOPE = 0.1
 

@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 
 class EngineType(Enum):
@@ -5,7 +6,7 @@ class EngineType(Enum):
     RVC = ("RVC", False, False, ["1", "2"], "2", 15, 3, False, True)
     ORPHEUS = ("Orpheus", False, True, ["3b-0.1"], "3b-0.1", 15, 3, True, True)
     DIA = ("DIA", True, True, ["0.1"], "0.1", 15, 3, False, False)
-    FISH_SPEECH = ("FishSpeech", True, True, ["s1-mini"], "s1-mini", 30, 10, False, False)
+    FISH_SPEECH = ("FishSpeech", True, True, ["s1-mini"], "s1-mini", 30, 10, False, True)
     LLASA = ("Llasa", False, True, ["1b", "3b"], "1b", 15, 3, True, False)
     XTTS_V2 = ("XTTSv2", True, False, ["1"], "2", 10, 3, False, True)
     GPT_SOVITS = ("GPT_SoVITS", False, True, ["1", "2", "v2ProPlus"], "v2ProPlus", 10, 3, False, True)
@@ -44,9 +45,16 @@ class EngineType(Enum):
         """Check if a given version is supported by this engine type"""
         return version in self.supported_versions
 
-    def get_model_path(self, character_name, version):
+    def get_shared_model_path(self, shared_model, version):
         """Get the correct model path based on version"""
-        base_path = f"{character_name}/{self.value}"
+        base_path = f"shared/{shared_model}/{self.value}"
         if version == "1":
             return base_path
         return f"{base_path}/{version}"
+
+    def get_model_path(self, character_name, version):
+        """Get the correct model path based on version"""
+        base_path = os.path.join(character_name, self.value)
+        if version == "1":
+            return base_path
+        return os.path.join(str(base_path), version)

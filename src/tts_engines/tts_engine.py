@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import soundfile as sf
 
-from enums.engine_type import EngineType
+from src.enums.engine_type import EngineType
 from src.utils import logging_utils
 from src.config.config import cfg
 from src.utils.filesystem_utils import get_app_root
@@ -197,7 +197,7 @@ class tts_engine(ABC):
 
     def process_audio(self, audio_data: np.ndarray, sample_rate: int, output_file: str):
         apbwe_enabled = cfg.get(cfg.apbwe_enabled)
-        if apbwe_enabled and self.apbwe_engine:
+        if apbwe_enabled and self.apbwe_engine and sample_rate == 24000 or sample_rate == 16000:
             audio_data, sample_rate = self.apbwe_engine.upscale(audio_data, sample_rate)
 
         rvc_enabled = cfg.get(cfg.rvc_enabled)

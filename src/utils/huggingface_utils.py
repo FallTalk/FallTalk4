@@ -19,8 +19,7 @@ from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 from functools import partial
 import huggingface_hub
 
-from src.config import config
-from src.config.config import cfg, REPO
+from src.config.config import cfg, REPO, VERSION, RELEASE_URL
 from src.utils.filesystem_utils import get_app_root
 from src.enums.engine_type import EngineType
 
@@ -38,12 +37,11 @@ def download_model_from_hub(parent: 'FallTalkApp', character, model) -> None:
             raise ValueError(f"Engine version {version} is not supported for {model['engine']}")
 
         if model.get('is_shared', False):
-            model_path = engine_type.get_model_path(model['shared_model_name'], version)
+            model_path = os.path.join("shared", engine_type.get_model_path(model['shared_model_name'], version))
         else:
-            # Create version-specific directory
-            model_path = engine_type.get_model_path(character, version)
+            model_path = os.path.join(engine_type.get_model_path(character, version))
 
-        dirpath = os.path.join("models", model_path)
+        dirpath = os.path.join(get_app_root(), "models", model_path)
         if os.path.exists(dirpath) and os.path.isdir(dirpath):
             shutil.rmtree(dirpath)
         os.makedirs(dirpath, exist_ok=True)
@@ -92,7 +90,7 @@ def downloadFish(parent: 'FallTalkApp') -> None:
         os.makedirs(os.path.join(get_app_root(),"models/Fish"), exist_ok=True)
         snapshot_download(
             repo_id=REPO,
-            allow_patterns=["models/Fish/1.5/*"],
+            allow_patterns=["models/Fish/s1-mini/*"],
             local_dir=get_app_root(),
             local_dir_use_symlinks=False,
             
@@ -198,9 +196,6 @@ def downloadDIA(parent: 'FallTalkApp'):
 
 def downloadCSM(parent: 'FallTalkApp'):
     try:
-
-
-
         snapshot_download(
             repo_id=REPO,
             allow_patterns=[f"models/CSM/1b/*"],
@@ -282,15 +277,15 @@ def download_models(parent, character, model, rvc, api=False):
 # Additional functions that might be needed for backward compatibility
 def get_latest_release():
     try:
-        response = requests.get(config.RELEASE_URL)
+        response = requests.get(RELEASE_URL)
         if response.status_code == 200:
             return response.url.split('/')[-1]
         else:
             logger.exception(f"Failed to fetch latest release: {response.status_code}")
-            return config.VERSION
+            return VERSION
     except Exception as e:
         logger.exception(f"Failed to fetch latest release: {e}")
-        return config.VERSION
+        return VERSION
 
 
 def get_model_diff(old_json, new_json):
@@ -330,3 +325,14 @@ def get_model_diff(old_json, new_json):
         return None
 
     return "\n \n".join(result)
+
+
+def download_all_models_config():
+    os.makedirs(os.path.join(get_app_root(), "models"), exist_ok=True)
+    os.makedirs(os.path.join(get_app_root(), "config"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"config/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+    )

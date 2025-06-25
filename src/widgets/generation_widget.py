@@ -56,7 +56,7 @@ class GenerationWidget(FallTalkWidget):
         self.rvc_enabled = SwitchSettingCard(
             FIF.MEGAPHONE,
             self.tr('RVC'),
-            self.tr('Use RVC Upscaler (Recommended)'),
+            self.tr('Use RVC Upscaler (Recommended For Untrained)'),
             cfg.rvc_enabled
         )
 
@@ -67,6 +67,13 @@ class GenerationWidget(FallTalkWidget):
             cfg.keep_only_fuz
         )
 
+        self.upscaler_enabled = SwitchSettingCard(
+            FIF.MEGAPHONE,
+            self.tr('Super Resolution'),
+            self.tr('Use Super Resolution Upscaler (Recommended)'),
+            cfg.apbwe_enabled
+        )
+
         self.gen_settings = QGroupBox()
         self.gen_settings.setStyleSheet("border: none")
         self.gen_settings_layout = QHBoxLayout()
@@ -74,6 +81,7 @@ class GenerationWidget(FallTalkWidget):
 
         self.gen_settings_layout.addWidget(self.autoplay, 2)
         self.gen_settings_layout.addWidget(self.rvc_enabled, 2)
+        self.gen_settings_layout.addWidget(self.upscaler_enabled, 2)
         self.gen_settings.setLayout(self.gen_settings_layout)
 
         self.gen_settings2 = QGroupBox()

@@ -1,6 +1,8 @@
 import hashlib
 import os
 
+import librosa
+import numpy as np
 import torch
 from transformers import AutoProcessor, CsmForConditionalGeneration
 
@@ -15,20 +17,20 @@ def string_to_int(s):
     return int(hashlib.sha256(s.encode()).hexdigest(), 16) % (10 ** 8)
 
 
-class CSM1BEngine(tts_engine):
+class CSMEngine(tts_engine):
 
     def __init__(self):
         super().__init__()
-        print("Setting Up CSM1B Engine")
-        self.engin_type = EngineType.CSM1B
+        print("Setting Up CSM Engine")
+        self.engin_type = EngineType.CSM
         self.engine_name = self.engin_type.value
         self.device = cfg.get(cfg.device)
         self.processor = None
         self.tokenize = None
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False):
+    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
         # Get audio data and sample rate from inference
-        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming)
+        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker)
         self.process_audio(audio_data, sample_rate, output_file)
 
     def load_model(self):
@@ -36,11 +38,11 @@ class CSM1BEngine(tts_engine):
 
         if self.is_base:
             self.processor = AutoProcessor.from_pretrained(
-                str(os.path.abspath(os.path.join(get_app_root(), 'Sesame', 'csm-1b'))))
+                str(os.path.abspath(os.path.join(get_app_root(), 'models', 'CSM', '1b'))), torch_dtype=torch_utils.get_compute_dtype())
             self.model = CsmForConditionalGeneration.from_pretrained(
-                str(os.path.abspath(os.path.join(get_app_root(), 'Sesame', 'csm-1b'))), device_map=self.device, torch_dtype=torch_utils.get_compute_dtype())
+                str(os.path.abspath(os.path.join(get_app_root(), 'models', 'CSM', '1b'))), device_map=self.device, torch_dtype=torch_utils.get_compute_dtype())
         else:
-            self.processor = AutoProcessor.from_pretrained(self.model_path)
+            self.processor = AutoProcessor.from_pretrained(self.model_path, torch_dtype=torch_utils.get_compute_dtype())
             self.model = CsmForConditionalGeneration.from_pretrained(self.model_path, device_map=self.device, torch_dtype=torch_utils.get_compute_dtype())
 
         if self.device == 'cpu':
@@ -53,6 +55,17 @@ class CSM1BEngine(tts_engine):
         del self.processor
         self.processor = None
 
+    def load_audio_t(self, voice, sr):
+        audio, _ = librosa.load(voice, sr=sr)
+        return audio
+
+    def trim_trailing_silence(self, audio, threshold=0.01):
+        # Find where audio drops below threshold
+        trailing_silence = np.where(np.abs(audio[::-1]) > threshold)[0]
+        if len(trailing_silence) > 0:
+            return audio[:-trailing_silence[0]]
+        return audio
+
     @torch.no_grad()
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False,
                   speaker=None):
@@ -62,7 +75,7 @@ class CSM1BEngine(tts_engine):
         if voice is not None and transcript is not None:
             conversation.append({
                 "role": f"{speaker_id}",
-                "content": [{"type": "text", "text": transcript}, {"type": "audio", "path": load_audio(voice, 24000)}],
+                "content": [{"type": "text", "text": transcript}, {"type": "audio", "path": self.load_audio_t(voice, 24000)}],
             })
 
         conversation.append(
@@ -75,8 +88,16 @@ class CSM1BEngine(tts_engine):
             conversation,
             tokenize=True,
             return_dict=True,
-        ).to(self.device)
+        ).to(self.device).to(torch_utils.get_compute_dtype())
 
         # infer the model
         audio_values = self.model.generate(**inputs, output_audio=True)
-        return audio_values[0].to(torch.float32).cpu().numpy(), 24000
+        audio, sr = audio_values[0].cpu().float().numpy(), 24000
+
+        # Calculate how many samples to trim (0.2 seconds)
+        samples_to_trim = int(0.2 * sr)  # 0.2s * 24000 samples/s = 4800 samples
+
+        # Trim the audio (avoid negative indexing if audio is too short)
+        trimmed_audio = audio[:-samples_to_trim] if len(audio) > samples_to_trim else audio
+
+        return trimmed_audio, sr

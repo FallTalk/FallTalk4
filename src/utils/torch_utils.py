@@ -1,6 +1,6 @@
 import torch
 
-from config.config import cfg
+from src.config.config import cfg
 
 def supports_bf16():
     if torch.cuda.is_available():
@@ -15,7 +15,7 @@ def supports_fp16():
         return True
 
 def get_compute_dtype():
-    if cfg.get('device') == 'cpu':
+    if cfg.get(cfg.device) == 'cpu':
         return torch.float32
     elif supports_bf16():
         return torch.bfloat16

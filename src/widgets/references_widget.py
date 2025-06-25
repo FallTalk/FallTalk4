@@ -38,6 +38,7 @@ class ReferencesWidget(FallTalkWidget):
 
         self.reference_audio = []
         self.reference_audio_length = 0.0
+        self.reference_transcripts = []
 
         self.reference_table = TableView()
         self.reference_table.setBorderRadius(8)
@@ -230,6 +231,7 @@ class ReferencesWidget(FallTalkWidget):
         self.custom_reference_table.clearSelection()
         self.reference_audio = []
         self.reference_audio_length = 0
+        self.reference_transcripts = []
         # self.settingLabel.setText(self.tr(self.title))
         model = self.custom_reference_table.model()
         if model:
@@ -261,6 +263,8 @@ class ReferencesWidget(FallTalkWidget):
                     self.reference_audio.append(file_path)
                     self.increase(file_path)
                     model.toggle_selection(row)
+                    # Custom references don't have transcripts in the table
+                    self.reference_transcripts.append(None)
             else:
                 filename = model.data(model.index(row, 0)).rsplit('.', 1)[0]
                 file_path = os.path.join(get_app_root(), f"temp/{filename}.wav")
@@ -268,6 +272,9 @@ class ReferencesWidget(FallTalkWidget):
                     self.reference_audio.append(file_path)
                     self.increase(file_path)
                     model.toggle_selection(row)
+                    # Get the transcript from the dialogue column
+                    transcript = model.data(model.index(row, 1))
+                    self.reference_transcripts.append(transcript)
 
     def increase(self, file_path):
         data, samplerate = sf.read(file_path)
@@ -288,14 +295,20 @@ class ReferencesWidget(FallTalkWidget):
             if (self.stackedWidget.currentWidget() == self.custom_reference_table):
                 file_path = os.path.join(get_app_root(), f"references/{model.data(model.index(row, 0))}")
                 if file_path in self.reference_audio:
+                    index = self.reference_audio.index(file_path)
                     self.reference_audio.remove(file_path)
+                    if index < len(self.reference_transcripts):
+                        self.reference_transcripts.pop(index)
                     model.toggle_selection(row)
                     self.decrease(file_path)
             else:
                 filename = model.data(model.index(row, 0)).rsplit('.', 1)[0]
                 file_path = os.path.join(get_app_root(), f"temp/{filename}.wav")
                 if file_path in self.reference_audio:
+                    index = self.reference_audio.index(file_path)
                     self.reference_audio.remove(file_path)
+                    if index < len(self.reference_transcripts):
+                        self.reference_transcripts.pop(index)
                     model.toggle_selection(row)
                     self.decrease(file_path)
 
@@ -310,3 +323,12 @@ class ReferencesWidget(FallTalkWidget):
         ms = int((time - s) * 1000)
         ms_s = str(ms).zfill(2)[:2]
         return f'{s:02}:{ms_s}'
+
+    def get_combined_transcript(self):
+        """Combine all transcripts from selected references, leaving a space between each transcript."""
+        # Filter out None values (from custom references)
+        valid_transcripts = [t for t in self.reference_transcripts if t]
+        if not valid_transcripts:
+            return None
+        # Join transcripts with a space between each
+        return " ".join(valid_transcripts)

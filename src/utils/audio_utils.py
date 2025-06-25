@@ -20,20 +20,20 @@ logger.setLevel(logging.DEBUG)
 
 def extra_audio_from_bsa(item, filename):
     extract_bsa(item)
-    extract_fuz(os.path.join(get_app_root(), f"temp/{filename}.fuz"))
-    create_xwm(os.path.join(get_app_root(), f"temp/{filename}.xwm"), os.path.join(get_app_root(), f"temp/{filename}.wav"), False)
+    extract_fuz(os.path.join(get_app_root(), f"temp", f"{filename}.fuz"))
+    create_xwm(os.path.join(get_app_root(), f"temp", f"{filename}.xwm"), os.path.join(get_app_root(), f"temp", f"{filename}.wav"), False)
 
-    if os.path.exists(os.path.join(get_app_root(),f"temp/{filename}.xwm")):
-        os.remove(os.path.join(get_app_root(), f"temp/{filename}.xwm"))
-    if os.path.exists(os.path.join(get_app_root(),f"temp/{filename}.fuz")):
-        os.remove(os.path.join(get_app_root(),f"temp/{filename}.fuz"))
-    if os.path.exists(os.path.join(get_app_root(),f"temp/{filename}.lip")):
-        os.remove(os.path.join(get_app_root(),f"temp/{filename}.lip"))
+    if os.path.exists(os.path.join(get_app_root(),f"temp", f"{filename}.xwm")):
+        os.remove(os.path.join(get_app_root(), f"temp", f"{filename}.xwm"))
+    if os.path.exists(os.path.join(get_app_root(),f"temp", f"{filename}.fuz")):
+        os.remove(os.path.join(get_app_root(),f"temp", f"{filename}.fuz"))
+    if os.path.exists(os.path.join(get_app_root(),f"temp", f"{filename}.lip")):
+        os.remove(os.path.join(get_app_root(),f"temp", f"{filename}.lip"))
 
 
 def create_fuz_files(fuz_file, xwm_file, lip_file):
     try:
-        fuz_path = os.path.join(get_app_root(), 'resource/apps/BmlFuzEncode.exe')
+        fuz_path = os.path.join(get_app_root(), 'resource', 'apps', 'BmlFuzEncode.exe')
         command = [fuz_path, fuz_file, xwm_file, lip_file]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
         stdout, stderr = process.communicate()
@@ -94,8 +94,8 @@ def create_lip_files(parent, input_file, lip_file):
 
     try:
         resp = parent.transcription_engine.transcribe(input_file)
-        facefx_path = os.path.join(get_app_root(), "resource/apps/lipgen/FaceFXWrapper.exe")
-        facefx_cdf_path = os.path.join(get_app_root(), "resource/apps/lipgen/FonixData.cdf")
+        facefx_path = os.path.join(get_app_root(), "resource", "apps", "lipgen", "FaceFXWrapper.exe")
+        facefx_cdf_path = os.path.join(get_app_root(), "resource", "apps", "lipgen", "FonixData.cdf")
         txt_file = input_file.replace(".wav", ".txt")
 
         if resp['transcript'] is not None and len(resp['transcript']) > 0:
@@ -127,7 +127,7 @@ def create_lip_files(parent, input_file, lip_file):
 
 
 def create_xwm(input, output, encode=True):
-    xwma_path = os.path.join(get_app_root(), 'resource/apps/xWMAEncode.exe')
+    xwma_path = os.path.join(get_app_root(), 'resource', 'apps', 'xWMAEncode.exe')
     if encode:
         command = [xwma_path, '-b', '32000', input, output]
     else:
@@ -144,7 +144,7 @@ def create_xwm(input, output, encode=True):
 
 
 def extract_fuz(file):
-    fuz_path = os.path.join(get_app_root(), 'resource/apps/BmlFuzDecode.exe')
+    fuz_path = os.path.join(get_app_root(), 'resource', 'apps', 'BmlFuzDecode.exe')
     command = [fuz_path, file]
     try:
         # Use subprocess.Popen with creationflags to hide the command window
@@ -158,10 +158,10 @@ def extract_fuz(file):
 
 def extract_bsa(item):
     fallout4_dir = cfg.get(cfg.fallout_4_directory)
-    bsa_path = os.path.join(get_app_root(), 'resource/apps/BSABrowser/bsab.exe')
+    bsa_path = os.path.join(get_app_root(), 'resource', 'apps', 'BSABrowser', 'bsab.exe')
     bsa = f"{fallout4_dir}\\Data\\{item['arcname']}"
     bsa_filter = f"Sound\\Voice\\{item['plugin']}\\{item['folder']}\\{item['filename']}"
-    command = [bsa_path, "-e:N", "-f", bsa_filter, bsa, os.path.join(get_app_root(), "temp/")]
+    command = [bsa_path, "-e:N", "-f", bsa_filter, bsa, os.path.join(get_app_root(), "temp")]
     try:
         # Use subprocess.Popen with creationflags to hide the command window
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
@@ -186,7 +186,7 @@ def combine_wav_files(input_files, target_rate=24500, silence_duration=0.5):
             combined_data = np.concatenate((combined_data, silence, audio_data))
 
     unique_id = uuid.uuid4()
-    file_name = os.path.join(get_app_root(), f"temp/{unique_id.hex}.wav")
+    file_name = os.path.join(get_app_root(), "temp", f"{unique_id.hex}.wav")
     sf.write(file_name, combined_data, target_rate)
     return file_name
 

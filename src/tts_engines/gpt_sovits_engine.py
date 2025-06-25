@@ -115,6 +115,7 @@ class GPT_SoVITS_Engine(tts_engine):
         self.engine_name = self.engin_type.value
         self.device = cfg.get(cfg.device)
         self.is_half = cfg.get(cfg.low_vram_gpt_sovits)
+        self.model_type = 'pth'
         self.pipeline: Optional['TTS'] = None
         self.config: Optional['TTS_Config'] = None
         self.cut_method = {

@@ -88,7 +88,7 @@ class SparkEngine(tts_engine):
             inputs = [
                 "<|task_tts|>",
                 "<|start_content|>",
-                prompt_text + " ",
+                prompt_text,
                 text,
                 "<|end_content|>",
                 "<|start_global_token|>",
@@ -124,8 +124,7 @@ class SparkEngine(tts_engine):
         transcript: str = None,
         speaker: str = None,
     ):
-        if not transcript and not voice:
-            text = f"{speaker}: " + text if speaker else text
+        text = f"{speaker}: " + text if speaker else text
 
         prompt, global_token_ids = self.process_prompt(
             text, voice, transcript

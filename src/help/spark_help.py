@@ -72,7 +72,6 @@ class SparkHelp(ScrollArea):
     def __initLayout(self):
         # add cards to group
         self.settings_group.addSettingCard(self.info)
-
         self.settings_group.addSettingCard(self.text)
 
         # add setting card group to layout

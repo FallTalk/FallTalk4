@@ -34,14 +34,6 @@ class LLASASettings(ScrollArea):
             parent=self.settings_group
         )
 
-        self.seed_card = RangeSettingCard(
-            cfg.llasa_seed,
-            FIF.SETTING,
-            self.tr('Seed'),
-            self.tr('Random seed for generation (-1 for random)'),
-            parent=self.settings_group
-        )
-
         self.top_p_card = RangeSettingCardScaled(
             cfg.llasa_top_p,
             FIF.UP,
@@ -78,7 +70,6 @@ class LLASASettings(ScrollArea):
         # add cards to group
         # self.settings_group.addSettingCard(self.mode_card)
         self.settings_group.addSettingCard(self.temperature_card)
-        self.settings_group.addSettingCard(self.seed_card)
         self.settings_group.addSettingCard(self.top_p_card)
         self.settings_group.addSettingCard(self.max_length_card)
 

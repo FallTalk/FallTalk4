@@ -11,7 +11,7 @@ import shutil
 import PySide6
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 
-from enums.engine_type import EngineType
+from src.enums.engine_type import EngineType
 
 from src.utils.huggingface_utils import (
     downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA, downloadSpark,
@@ -110,9 +110,6 @@ def generic_engine_loader(parent: 'FallTalkApp', engine_class, download_func, en
                                Q_ARG(str, "An Error Occurred while loading the engine. Please check your logs and report the issue if needed"))
 
 
-def load_xtts(parent: 'FallTalkApp'):
-    from src.tts_engines.xtts_engine import XTTS_Engine
-    generic_engine_loader(parent, XTTS_Engine, downloadXTTS, "XTTS")
 
 
 def load_whisper(parent: 'FallTalkApp', attempt=0):
@@ -135,39 +132,44 @@ def load_whisper(parent: 'FallTalkApp', attempt=0):
                                      Q_ARG(str, "An Error Occured while loading whisper engine. Transcription will not work for untrained models. Please delete C:\\Users\\USERNAME\\.cache\\huggingface\\hub"))
 
 
+def load_xtts(parent: 'FallTalkApp'):
+    from src.tts_engines.xtts_engine import XTTS_Engine
+    generic_engine_loader(parent, XTTS_Engine, downloadXTTS, EngineType.XTTS_V2.value)
+
+
 def load_gpt_sovits(parent: 'FallTalkApp') -> None:
     from src.tts_engines.gpt_sovits_engine import GPT_SoVITS_Engine
-    generic_engine_loader(parent, GPT_SoVITS_Engine, downloadGPTSoVITS, "GPT_SoVITS")
+    generic_engine_loader(parent, GPT_SoVITS_Engine, downloadGPTSoVITS, EngineType.GPT_SOVITS.value)
 
 
 def load_dia(parent: 'FallTalkApp'):
     from src.tts_engines.dia_engine import DIA_Engine
-    generic_engine_loader(parent, DIA_Engine, downloadDIA, "DIA")
+    generic_engine_loader(parent, DIA_Engine, downloadDIA, EngineType.DIA.value)
 
 
 def load_rvc(parent: 'FallTalkApp', api=False):
     from src.tts_engines.rvc_engine import RVC_Engine
-    generic_engine_loader(parent, RVC_Engine, downloadRVC, "RVC", api)
+    generic_engine_loader(parent, RVC_Engine, downloadRVC, EngineType.RVC.value, api)
 
 
 def load_fish(parent: 'FallTalkApp'):
     from src.tts_engines.fish_engine import FishSpeechEngine
-    generic_engine_loader(parent, FishSpeechEngine, downloadFish, "Fish")
+    generic_engine_loader(parent, FishSpeechEngine, downloadFish, EngineType.FISH_SPEECH.value)
 
 
 def load_f5(parent: 'FallTalkApp'):
     from src.tts_engines.f5_engine import F5Engine
-    generic_engine_loader(parent, F5Engine, downloadF5, "F5")
+    generic_engine_loader(parent, F5Engine, downloadF5, EngineType.F5.value)
 
 
 def load_llasa(parent: 'FallTalkApp'):
     from src.tts_engines.llasa_engine import LlasaEngine
-    generic_engine_loader(parent, LlasaEngine, downloadLlasa, "Llasa")
+    generic_engine_loader(parent, LlasaEngine, downloadLlasa, EngineType.LLASA.value)
 
 
 def load_orpheus(parent: 'FallTalkApp'):
     from src.tts_engines.orpheus_engine import OrpheusEngine
-    generic_engine_loader(parent, OrpheusEngine, downloadOrpheus, "Orpheus")
+    generic_engine_loader(parent, OrpheusEngine, downloadOrpheus, EngineType.ORPHEUS.value)
 
 
 def load_style_tts2(parent: 'FallTalkApp'):
@@ -180,8 +182,8 @@ def load_spark(parent: 'FallTalkApp'):
     generic_engine_loader(parent, SparkEngine, downloadSpark, EngineType.SPARK.value)
 
 def load_csm(parent: 'FallTalkApp'):
-    from src.tts_engines.csm_engine import CSM1BEngine
-    generic_engine_loader(parent, CSM1BEngine, downloadCSM, EngineType.CSM.value)
+    from src.tts_engines.csm_engine import CSMEngine
+    generic_engine_loader(parent, CSMEngine, downloadCSM, EngineType.CSM.value)
 
 def load_apbwe(parent: 'FallTalkApp'):
     try:

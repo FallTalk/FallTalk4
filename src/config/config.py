@@ -163,10 +163,10 @@ class Config(QConfig):
     custom_references = ConfigItem(
         "App", "custom_references", os.path.join(get_app_root(), "references"), FolderValidator())
     output_dir = ConfigItem("App", "output_dir", os.path.join(get_app_root(), "output"), FolderValidator())
-    rvc_enabled = ConfigItem("App", "rvc_enabled", True, BoolValidator())
+    rvc_enabled = ConfigItem("App", "rvc_enabled", False, BoolValidator())
     apbwe_enabled = ConfigItem("App", "apbwe_enabled", True, BoolValidator())
 
-    keep_only_fuz = ConfigItem("App", "keep_only_fuz", True, BoolValidator())
+    keep_only_fuz = ConfigItem("App", "keep_only_fuz", False, BoolValidator())
     use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
     huggingface_cache_dir = ConfigItem("App", "huggingface_cache_dir", None, CustomFolderValidator(), restart=True)
     huggingface_key = ConfigItem("APP", "huggingface_key", None, ConfigValidator())
@@ -362,13 +362,20 @@ class Config(QConfig):
         self.set(self.llasa_mode, self.llasa_mode.defaultValue)
 
     def resetOrpheus(self):
-        pass
+        self.set(self.orpehus_temperature, self.orpehus_temperature.defaultValue)
+        self.set(self.orpehus_top_p, self.orpehus_top_p.defaultValue)
+        self.set(self.orpehus_repetition, self.orpehus_repetition.defaultValue)
+        self.set(self.orpehus_top_k, self.orpehus_top_k.defaultValue)
+        self.set(self.orpehus_max_new_tokens, self.orpehus_max_new_tokens.defaultValue)
 
     def resetSpark(self):
-        pass
+        self.set(self.spark_top_p, self.spark_top_p.defaultValue)
+        self.set(self.spark_temperature, self.spark_temperature.defaultValue)
+        self.set(self.spark_top_k, self.spark_top_k.defaultValue)
+        self.set(self.spark_max_new_tokens, self.spark_max_new_tokens.defaultValue)
 
     def resetCSM(self):
-        pass
+        self.set(self.spark_temperature, self.spark_temperature.defaultValue)
 
 YEAR = 2025
 AUTHOR = "Bryant21"
@@ -383,7 +390,7 @@ HUGGING_FACE = "https://huggingface.co/falltalk/falltalk4"
 REPO = "falltalk/falltalk4"
 
 cfg = Config()
-qconfig.load(os.path.join(get_app_root(),'config', 'config.json'), cfg)
+qconfig.load(os.path.join(get_app_root(),'config', 'configv2.json'), cfg)
 
 DISCLAIMER = """
 This code and the accompanying FallTalk AI models are provided subject to the terms and conditions of the End User License Agreement (EULA) of Zenimax Media, Inc., the original rights holder of the Fallout franchise. By using this code or the FallTalk AI models, you agree to comply with the following permitted and prohibited uses, as well as all terms outlined in the Zenimax Media EULA.

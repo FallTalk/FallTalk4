@@ -18,7 +18,7 @@ import PySide6
 import random
 
 from src.config.config import cfg
-from src.utils.audio_utils import create_lip_and_fuz
+from src.utils.audio_utils import create_lip_and_fuz, extra_audio_from_bsa
 from src.utils.file_utils import get_bulk_folder, clean_tmp_folder
 from src.utils.filesystem_utils import get_app_root
 from src.utils.model_utils import get_character_model, get_trained_character
@@ -250,6 +250,8 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
 
 def process_inference_data(parent, data, output_file, character, model, is_trained, has_rvc, reference_voice, text_or_file, api=True, last_character=None):
     """Helper function to process inference data for both bulk and ez voice creator"""
+    import os
+
     try:
         if last_character is None or last_character != character:
             clean_tmp_folder()
@@ -273,6 +275,9 @@ def process_inference_data(parent, data, output_file, character, model, is_train
 
         # Get reference audio
         reference_path = None
+        transcript = None
+        transcribe_state = None
+
         if reference_voice is not None and os.path.exists(reference_voice):
             reference_path = reference_voice
         elif reference_voice is not None and reference_voice != "":
@@ -280,13 +285,16 @@ def process_inference_data(parent, data, output_file, character, model, is_train
         else:
             # If no reference file specified or it doesn't exist, and model is not trained
             engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
-            if not is_trained and engine_type.needs_reference_when_trained:
-                # Get top 5 longest references
-                top_references = get_top_references(parent, character)
-                if top_references:
-                    # Select a random reference from the top 5
-                    reference_path = random.choice(top_references)
-                else:
+            if not is_trained or engine_type.needs_reference_when_trained:
+                # Get default reference from characters.json
+                reference_path, transcript, _ = get_default_reference(parent, character)
+
+                # If we have a transcript, create the transcribe state
+                if transcript:
+                    transcribe_state = {'transcript': transcript}
+
+                # If no reference found, log warning and return
+                if reference_path is None:
                     logger.warning(f"No reference files found for character {character}")
                     return
 
@@ -298,13 +306,15 @@ def process_inference_data(parent, data, output_file, character, model, is_train
             engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
             if engine_type is None:
                 raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")
-                
-            transcript = None
-            transcribe_state = None
-            if engine_type.needs_transcription and reference_path is not None:
-                resp = do_transcribe(parent, os.path.abspath(reference_path), None, api=True)
-                transcribe_state = resp if resp is not None else None
-                transcript = transcribe_state['transcript'] if transcribe_state is not None else None
+
+            # Only transcribe if we don't already have a transcript from default references
+            if not transcript or not transcribe_state:
+                transcript = None
+                transcribe_state = None
+                if engine_type.needs_transcription and reference_path is not None:
+                    resp = do_transcribe(parent, os.path.abspath(reference_path), None, api=True)
+                    transcribe_state = resp if resp is not None else None
+                    transcript = transcribe_state['transcript'] if transcribe_state is not None else None
 
             if engine_type == EngineType.GPT_SOVITS:
                 gpt_sovits_inference(parent, output_file, text_or_file, os.path.abspath(reference_path) if parent.tts_engine.is_base else [os.path.abspath(reference_path)], None, transcript, api)
@@ -334,10 +344,10 @@ def bulk_inference(parent):
     if parent.tts_engine.engine_name != EngineType.RVC.value:
         model = parent.bulk_generate_widget.bulk_csv_widget.bulk_table.model()
         datas = model.getData()
-        
+
         # Sort data by character (index 1) to process all entries for the same character together
         datas.sort(key=lambda x: x[1] if x[1] is not None else "")
-        
+
         count = 0
         total = len(datas)
         time_total = 0
@@ -392,31 +402,122 @@ def bulk_inference(parent):
     QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
 
 
-def get_top_references(parent, character_name, count=5):
-    """Get the top N reference files with the longest dialogue text for a character"""
-    # Get pre-sorted filenames
-    top_filenames = parent.sorted_references.get(character_name, [])[:count]
-    if not top_filenames:
-        return []
+def get_default_reference(parent, character_name):
+    """Get a default reference for a character from default_references.json and characters.json
 
-    # Get reference paths for the selected filenames
-    references = []
-    for filename in top_filenames:
-        reference_path = get_reference(parent, character_name, filename)
-        if reference_path and os.path.exists(reference_path):
-            references.append(reference_path)
+    Args:
+        parent: The parent application instance
+        character_name: The name of the character
 
-    return references
+    Returns:
+        tuple: (reference_path, transcript, filename) or (None, None, None) if no reference found
+    """
+    # First check if we have default references for this character
+    if hasattr(parent, 'default_references') and parent.default_references and character_name in parent.default_references:
+        # Get a random default reference for this character
+        default_refs = parent.default_references[character_name]
+        if default_refs:
+            # Select a random default reference
+            random_ref = random.choice(default_refs)
+
+            # Get the filename and transcript from default_references.json
+            wav_filename = random_ref.get('filename', '')
+            transcript = random_ref.get('transcript', '')
+
+            # Convert WAV filename to FUZ filename to match with characters.json
+            # Example: "00112D18_1.wav" -> "00112d18_1.fuz"
+            fuz_filename = wav_filename.replace('.wav', '.fuz').lower()
+
+            # Now find the matching entry in characters.json to get BSA info
+            if character_name in parent.characters_data:
+                character = parent.characters_data[character_name]
+                if character.get('voicefiles'):
+                    # Find the matching voice file in characters.json
+                    matching_voice_file = None
+                    for voice_file in character['voicefiles']:
+                        if voice_file.get('filename', '').lower() == fuz_filename:
+                            matching_voice_file = voice_file
+                            break
+
+                    if matching_voice_file:
+                        # Create a temporary WAV file for the reference
+                        temp_dir = os.path.join(get_app_root(), "temp")
+                        os.makedirs(temp_dir, exist_ok=True)
+                        temp_file = os.path.join(temp_dir, wav_filename)
+
+                        # Check if the file already exists in the temp directory
+                        if not os.path.exists(temp_file):
+                            # Try to extract from BSA if it's a game file
+                            matching_voice_file['folder'] = character_name
+                            try:
+                                extra_audio_from_bsa(matching_voice_file, fuz_filename.replace('.fuz', ''))
+                            except Exception as e:
+                                logger.warning(f"Could not extract audio from BSA: {e}")
+                                # Continue to try other methods if this fails
+
+                        # If the file exists now, return it
+                        if os.path.exists(temp_file):
+                            return temp_file, transcript, wav_filename
+
+    # Fallback to using characters.json directly if default_references.json didn't work
+    if character_name not in parent.characters_data:
+        logger.warning(f"Character {character_name} not found in characters data")
+        return None, None, None
+
+    character = parent.characters_data[character_name]
+    if not character.get('voicefiles'):
+        logger.warning(f"No voice files found for character {character_name}")
+        return None, None, None
+
+    # Sort voice files by dialogue length (longer is better for reference)
+    voice_files = []
+    for voice_file in character['voicefiles']:
+        if voice_file.get('filename') and voice_file.get('dialogue'):
+            voice_files.append((voice_file, len(voice_file['dialogue'])))
+
+    if not voice_files:
+        logger.warning(f"No valid voice files found for character {character_name}")
+        return None, None, None
+
+    # Sort by dialogue length and get the top one
+    voice_files.sort(key=lambda x: x[1], reverse=True)
+    voice_file, _ = voice_files[0]
+
+    # Get the filename and dialogue
+    filename = voice_file['filename']
+    transcript = voice_file.get('dialogue', '')
+
+    # Create a temporary WAV file for the reference
+    temp_dir = os.path.join(get_app_root(), "temp")
+    os.makedirs(temp_dir, exist_ok=True)
+    wav_filename = filename.replace('.fuz', '.wav')
+    temp_file = os.path.join(temp_dir, wav_filename)
+
+    # Check if the file already exists in the temp directory
+    if not os.path.exists(temp_file):
+        # Try to extract from BSA if it's a game file
+        voice_file['folder'] = character_name
+        try:
+            extra_audio_from_bsa(voice_file, filename.replace('.fuz', ''))
+        except Exception as e:
+            logger.warning(f"Could not extract audio from BSA: {e}")
+            return None, None, None
+
+    # If the file exists now, return it
+    if os.path.exists(temp_file):
+        return temp_file, transcript, wav_filename
+
+    return None, None, None
 
 
 def ez_voice_creator_inference(parent):
     if parent.tts_engine.engine_name != EngineType.RVC.value:
         model = parent.ez_voice_creator_widget.dialogue_table.model()
         datas = model.getData()
-        
+
         # Sort data by voice_type (index 2) to process all entries for the same character together
         datas.sort(key=lambda x: x[2] if x[2] is not None else "")
-        
+
         count = 0
         total = len(datas)
         time_total = 0
@@ -449,11 +550,11 @@ def ez_voice_creator_inference(parent):
                 path_parts = full_path.split(os.sep)
                 if len(path_parts) > 1 and path_parts[0] == 'Data':
                     path_parts = path_parts[1:]  # Remove 'Data' from the path
-                
+
                 # Create the full output path with plugin name
                 output_path = os.path.join(get_app_root(), 'bulk_outputs/', plugin_name, 'Data', *path_parts)
                 output_file = output_path.replace('.fuz', '.wav')
-                
+
                 # Create the directory structure if it doesn't exist
                 output_dir = os.path.dirname(output_file)
                 try:

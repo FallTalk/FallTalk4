@@ -140,20 +140,34 @@ class FallTalkFluentWindow(FluentWindowBase):
 
     def createEngineMenu(self, pos=None):
         menu = CheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
-        menu.addActions([
-            self.f5_action,
-            self.rvc_action,
-            self.fish_action,
-            # self.dia_action,
-            self.llasa_action,
-            self.orpheus_action,
-            self.spark_action,
-            self.csm_action,
-            self.gpt_sovits_action,
-            self.xtts_action,
-            self.styletts2_action,
 
-        ])
+        # Only add actions for enabled engines
+        actions_to_add = []
+
+        if EngineType.F5.enabled:
+            actions_to_add.append(self.f5_action)
+        if EngineType.RVC.enabled:
+            actions_to_add.append(self.rvc_action)
+        if EngineType.FISH_SPEECH.enabled:
+            actions_to_add.append(self.fish_action)
+        if EngineType.DIA.enabled:
+            actions_to_add.append(self.dia_action)
+        if EngineType.LLASA.enabled:
+            actions_to_add.append(self.llasa_action)
+        if EngineType.ORPHEUS.enabled:
+            actions_to_add.append(self.orpheus_action)
+        if EngineType.SPARK.enabled:
+            actions_to_add.append(self.spark_action)
+        if EngineType.CSM.enabled:
+            actions_to_add.append(self.csm_action)
+        if EngineType.GPT_SOVITS.enabled:
+            actions_to_add.append(self.gpt_sovits_action)
+        if EngineType.XTTS_V2.enabled:
+            actions_to_add.append(self.xtts_action)
+        if EngineType.STYLE_TTS2.enabled:
+            actions_to_add.append(self.styletts2_action)
+
+        menu.addActions(actions_to_add)
         if pos is not None:
             menu.exec(pos, ani=True)
         return menu

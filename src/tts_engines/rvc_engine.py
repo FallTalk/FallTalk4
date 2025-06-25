@@ -1,7 +1,7 @@
 import librosa
 import numpy as np
 
-from enums.engine_type import EngineType
+from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 import soundfile as sf
 from src.utils.audio_utils import load_audio

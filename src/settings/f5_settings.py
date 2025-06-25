@@ -26,14 +26,6 @@ class F5Settings(ScrollArea):
         #     parent=self.settings_group
         # )
 
-        # self.seed_card = RangeSettingCard(
-        #     cfg.f5_seed,
-        #     FIF.SETTING,
-        #     self.tr('Seed'),
-        #     self.tr('Random seed for generation (-1 for random)'),
-        #     parent=self.settings_group
-        # )
-
         self.speed_card = RangeSettingCardScaled(
             cfg.f5_speed,
             FIF.SPEED_OFF,
@@ -61,7 +53,6 @@ class F5Settings(ScrollArea):
     def __initLayout(self):
         # add cards to group
         # self.settings_group.addSettingCard(self.mode_card)
-        # self.settings_group.addSettingCard(self.seed_card)
         self.settings_group.addSettingCard(self.speed_card)
 
         # add setting card group to layout

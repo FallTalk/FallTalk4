@@ -44,6 +44,7 @@ class StyleTTS2_Engine(tts_engine):
         self.text_aligner = None
         self.plbert = None
         self.pitch_extractor = None
+        self.model_type = 'pth'
         self.device = cfg.get(cfg.device)
 
     def length_to_mask(self, lengths):
