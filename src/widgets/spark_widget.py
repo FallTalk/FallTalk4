@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
@@ -13,7 +14,7 @@ from audio.audio_player import StandardAudioPlayerBar
 from src.settings.spark_settings import SparkSettings
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
-from src.widgets import GenerationWidget
+from src.widgets.generation_widget import GenerationWidget
 from src.help.spark_help import SparkHelp
 
 
@@ -21,7 +22,7 @@ class SparkWidget(GenerationWidget):
 
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text=EngineType.SPARK.value)
-        self.text_input.setPlaceholderText("Please Select Reference Audio before Generation")
+        self.text_input.setPlaceholderText("If no reference is selected, a default will be used. Selecting a reference audio can help change the emotion of the generated speech. ")
         self.transcribe_state = None
         self.words_data = None
 
@@ -41,7 +42,7 @@ class SparkWidget(GenerationWidget):
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
 
         self.settings_drawer.addWidget(SparkSettings(self))
-        self.help_drawer.addWidget(SparkSettings(self))
+        self.help_drawer.addWidget(SparkHelp(self))
         self.buttons_layout.addWidget(self.settings_button)
         self.buttons_layout.addWidget(self.help_button)
 

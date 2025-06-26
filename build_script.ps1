@@ -30,7 +30,7 @@ Write-Host "Resources copied in $($Stopwatch.Elapsed - $pyinstallerTime)" -Foreg
 Write-Host "`n[3/3] Creating 7z archive..." -ForegroundColor Yellow
 Set-Location -Path "dist"
 $FALLTALK_DIR = "FallTalk"
-# 7z a -mx=9 -mmt=32 FallTalk_v2.0.0.7z $FALLTALK_DIR
+7z a -mx=9 -mmt=32 FallTalk_v2.0.0.7z $FALLTALK_DIR
 Set-Location -Path ".."
 $compressionTime = $Stopwatch.Elapsed.ToString('hh\:mm\:ss')
 

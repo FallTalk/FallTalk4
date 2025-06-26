@@ -1,8 +1,7 @@
-from PySide6.QtCore import Qt, QRect, QPropertyAnimation, QEasingCurve, QPoint, QEvent
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QBrush, QPalette
+from PySide6.QtCore import Qt, QRect, QPropertyAnimation, QEasingCurve, QEvent
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPalette
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QFrame,
-    QGraphicsDropShadowEffect
+    QWidget, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QFrame
 )
 from qfluentwidgets import ToolButton, FluentIcon as FIF, isDarkTheme
 

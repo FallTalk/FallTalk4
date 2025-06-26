@@ -1,14 +1,14 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
-from PySide6.QtCore import QPoint
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QGroupBox, QHBoxLayout
 from qfluentwidgets import TextEdit, FluentIcon as FIF, RangeSettingCard, SwitchSettingCard, ConfigValidator, \
-    ConfigItem, Flyout, FlyoutAnimationType, FlyoutView, ScrollArea, ToolButton
+    ConfigItem, ToolButton
 
 from src.config.config import cfg
 from src.ui.cards import TextSettingCard, RangeSettingCardScaled

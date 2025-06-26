@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-
 if TYPE_CHECKING:
-    from src.widgets import BaseRVCWidget
+    from src.widgets.rvc_widgets import BaseRVCWidget
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget

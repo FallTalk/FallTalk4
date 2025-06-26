@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -21,7 +22,7 @@ from src.utils.filesystem_utils import get_app_root
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.widgets.table_models import TableModel
 from src.help.ez_voice_creator_help import EzVoiceCreatorHelp
-from src.widgets import RightDrawer
+from src.widgets.drawer import RightDrawer
 
 class EzVoiceCreatorWidget(FallTalkWidget):
     def __init__(self, parent: FallTalkApp):

@@ -1,20 +1,20 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.widgets import BaseBulkWidget
+    from src.widgets.bulk_generation_widgets import BaseBulkWidget
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from qfluentwidgets import (
-    FluentIcon as FIF, SettingCardGroup, isDarkTheme
+    SettingCardGroup, isDarkTheme
 )
 from qfluentwidgets import ScrollArea, ExpandLayout
 
 
 
-from src.ui.cards import TextAreaCard, TextSettingCard, TextCard
-from src.utils.icons import FallTalkIcons
+from src.ui.cards import TextCard
 
 
 class BulkRVCHelp(ScrollArea):

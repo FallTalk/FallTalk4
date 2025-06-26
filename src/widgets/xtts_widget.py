@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -8,9 +9,8 @@ from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
 from src.widgets.generation_widget import GenerationWidget
 from src.enums.engine_type import EngineType
-from qfluentwidgets import FluentIcon as FIF, PushButton, Flyout, FlyoutView, FlyoutAnimationType, PrimaryPushButton, ToolButton
+from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton
 from PySide6.QtWidgets import QHBoxLayout
-from PySide6.QtCore import QPoint
 from src.settings.xtts_settings import XTTSSettings
 from src.help.xtts_help import XttsHelp
 

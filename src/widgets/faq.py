@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
@@ -41,7 +40,7 @@ class FAQPage(ScrollArea):
             text=
             """
             Originally, this started out as just a fun little project to get to understand how AI works, so I could further my career. One day while playing Fallout 4, I came across a mod that I had installed with absolutely terrible AI voices in it. This gave me an idea, what if I combined my little project to understand how AI works, and provided the community with a way to make better AI voices.
-            
+
             I mean after all how hard could it be.
             """,
             height=150
@@ -58,10 +57,14 @@ class FAQPage(ScrollArea):
                 <li>RVC: Voice Cloning using your own voice! This allows you to achieve better results in some cases, as you can mimic the original cadence and speech patterns. Works really well with Robots like Mr Handy.</li>
                 <li>GPT SoVITs: Extremely fast and easy to train, making it a great all-rounder. The default engine for version 1.0</li>
                 <li>XTTSv2: Offers decent quality, though it may sometimes lack emotion. It excels at generating large amounts of text, making it ideal for narration or long speeches.</li>
-                <li>StyleTTSv2: Incredibly fast and, as the name suggests, is designed to mimic the tone and style of reference audio. It is often considered the best in the text-to-speech space, but requires a high-end GPU like the RTX 4090 (or two) for fine-tuning a voice.</li>
+                <li>StyleTTS2: Incredibly fast and, as the name suggests, is designed to mimic the tone and style of reference audio. It is often considered the best in the text-to-speech space, but requires a high-end GPU like the RTX 4090 (or two) for fine-tuning a voice.</li>
+                <li>Orpheus: Excels at producing highly musical and expressive speech with natural prosody. Particularly effective for generating speech with emotional depth and nuanced intonation.</li>
+                <li>FishSpeech: A versatile model offering good performance across various speaking styles and content types. Optimized for efficiency while maintaining high-quality output.</li>
+                <li>Spark: Powerful model using advanced neural networks to produce speech with realistic intonation and rhythm. Capable of handling a wide range of speaking styles and content types.</li>
+                <li>CSM: Controllable Speech Model allowing for fine control over speech generation. Provides high-quality voice synthesis with natural intonation and rhythm.</li>
             </ul>  
             """,
-            height=225
+            height=325
         )
 
         self.rvc = TextAreaCard(
@@ -69,29 +72,10 @@ class FAQPage(ScrollArea):
             self.tr('What is RVC?'),
             text="""
             Retrieval-based Voice Conversion (RVC) converts the voice of a source speaker into the voice of a target speaker while preserving the linguistic content. 
-            
+
             The source voice can be anything from audio generated from a text to speech engine (TTS) or your own voice.
-            
+
             It can thought of as an audio upscaler for TTS models, or can be used stand alone with your own voice.
-            """,
-            height=125
-
-        )
-
-        self.reference = TextAreaCard(
-            FIF.MIX_VOLUMES,
-            self.tr('What is reference audio?'),
-            text="""
-            <p>This will be used as the base for making your new audio, is it very important in determining how the final audio sounds.
-            
-            Each Model has different reference requirements:</p>
-            <ul>
-                <li>GPT SoVITs (Fine Tuned): At least 5 seconds of reference audio More references can lead to a better result, assuming they all sound similar.</li>
-                <li>GPT SoVITs (Untrained): 5-10 seconds. More than 10 seconds can lead to hallucinations.</li>
-                <li>F5: 3-12 seconds.</li>
-                <li>XTTSv2: 10-15 seconds. Can give back hallucinations with less than 10 seconds, but does sometimes work</li>
-                <li>StyleTTSv2: 5-10 seconds. </li>
-            </ul>  
             """,
             height=125
 
@@ -102,7 +86,7 @@ class FAQPage(ScrollArea):
             self.tr("GPU or CPU?"),
             text="""
             The GPU will always be faster, but some engines like GPT-SoVITS and RVC see great performance on CPU. Other models like XTTSv2 really struggle with CPU only mode.
-             
+
             Try the different settings to see if the CPU speed is acceptable for you.
             """
         )
@@ -123,7 +107,7 @@ class FAQPage(ScrollArea):
             Training each model takes a large of amount of time and power, and I am only one person. I will definitely add more model if there is demand, but I am limited by my hardware.
             I still like to play games, and when I am doing that I cannot train AI. There are cloud AI trainers, which are much faster but can add up to hundreds or thousands of dollars. 
             Ultimately the best plan is to try and use the power of the community to create more models.
-            
+
             If you would like to help, there are more details below. You can also contribute to the ko-fi if you would like to support the creation of more models.
             """,
             height=155
@@ -136,15 +120,12 @@ class FAQPage(ScrollArea):
             <p>I have a list of features that I would like to add, if given enough time.</p>
             <ul>
                 <li>API Based Streaming: Allow on the fly generation of audio so it can be used ingame dynamically.</li>
-                <li>Bulk Audio Creator: Allow uploading of a CSV with the engine, reference audi names, and text</li>
             </ul>             
-            
+
             <p>There seem to be new voice cloning and text to speech engines every week. Here are a few I have been looking at:</p>
             <ul>
-                <li><a href="https://github.com/fishaudio/fish-speech">Fish Speech</a>: Waiting on v1.3 to be released. Seems to have potential</li>
-                <li><a href="https://github.com/FunAudioLLM/CosyVoice">CosyVoice</a>: Emotion controls look interesting</li>
-                <li><a href="https://github.com/metavoiceio/metavoice-src">MetaVoice</a>: Good leaderboard scores, but not sure how easy to train.</li>
-                <li><a href="https://github.com/myshell-ai/MeloTTS">MeloTTS</a>: Another with good scores, but doesnt take in reference audio so not sure how useful it can be</li>            
+                <li><a href="https://github.com/resemble-ai/chatterbox">Chatterbox TTS</a>: Waiting on v1.3 to be released. Seems to have potential</li>
+           
             </ul> 
             """,
             height=225
@@ -174,7 +155,7 @@ class FAQPage(ScrollArea):
             self.tr('Can I train models?'),
             text="""
             <p>Yes, if you would like to help train models please join our Discord. As a warning, you will need some technical know-how with python, setting up envs, and general troubleshooting.
-            
+
             Each engine's project have their own documentation and training requirements. The minimum amount of VRAM needed for training starts at 8 GB and goes up dramatically
             </p>
             <ul>
@@ -209,11 +190,11 @@ class FAQPage(ScrollArea):
             text=
             """
             That can happen with software as complex as this, but we are ready for this. The good news is we have two options on how to get help.
-            
+
             The first thing you need to do is locate your log file, which should be in "logs" folder where you installed FallTalk.
-             
+
             Then you can Join the FallTalk discord and navigate to bug-reporting channel.
-            
+
             If you are a bit more tech savy, you can open an issue on the GitHub repository with the log error trace, and steps to reproduce.
             """,
             height=150
@@ -232,7 +213,7 @@ class FAQPage(ScrollArea):
             self.tr('Creating Text'),
             text="""                
                 <p>There are a few import things to keep in mind when creating text to get the best results:</p>
-               
+
                 <ul>
                     <li>Length: Many of the models when trying to create a small amount of text. It's a good idea to try and match the length of the reference audios text.</li>
                     <li>Punctuation: Periods are your best friend when it comes to getting good results. Many of the engines internally need periods to know how to generate the voice, and adding them inserts pauses</li>
@@ -247,7 +228,7 @@ class FAQPage(ScrollArea):
             self.tr('Engine Parameters'),
             text="""
             All of the engines have many parameters, which can be adjusted for you. We have tried to set the "best" as defaults, but playing around with them can give better or worse results. 
-            
+
             The reset button on the top of the page will revert to default, so play around until you fine what you like. There is also a reset all option in settings.
             """,
             height=125
@@ -273,7 +254,6 @@ class FAQPage(ScrollArea):
         # add cards to group
         self.settings_group.addSettingCard(self.info)
         self.settings_group.addSettingCard(self.eginesuse)
-        self.settings_group.addSettingCard(self.reference)
         self.settings_group.addSettingCard(self.rvc)
         self.settings_group.addSettingCard(self.bugs)
 

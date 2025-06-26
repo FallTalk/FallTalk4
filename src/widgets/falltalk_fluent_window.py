@@ -14,6 +14,7 @@ from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.utils.icons import FallTalkIcons
 
+
 class CheckableMenu(RoundMenu):
     """ Checkable menu """
 

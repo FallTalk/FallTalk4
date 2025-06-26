@@ -1,16 +1,11 @@
 import os
 
-from PySide6.QtGui import QFont, Qt
-from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QFileDialog, QLabel
-from qfluentwidgets import FluentIcon as FIF, RangeSettingCard, TextEdit, PrimaryPushButton, ConfigItem, SwitchSettingCard, ConfigValidator, PushSettingCard, MessageBoxBase
+from PySide6.QtGui import Qt
+from PySide6.QtWidgets import QFileDialog, QLabel
+from qfluentwidgets import FluentIcon as FIF, ConfigItem, ConfigValidator, PushSettingCard, MessageBoxBase
 
-from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg, FileValidator
-from src.utils.icons import FallTalkIcons
-from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, TextSettingCard, SpinSettingCard, ComboBoxWordsCard
-from src.widgets import GenerationWidget
-
-from src.utils.logging_utils import logger
+from src.ui.cards import TextSettingCard
 
 
 class CustomMessageBox(MessageBoxBase):

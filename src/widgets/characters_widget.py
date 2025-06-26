@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -25,7 +25,7 @@ from src.enums.engine_type import EngineType
 from src.utils.icons import FallTalkIcons
 from src.widgets.custom_message_box import CustomMessageBox
 from src.widgets.table_models import CharacterTableModel
-from src.widgets import FallTalkWidget
+from src.widgets.falltalk_widget import FallTalkWidget
 from src.utils.filesystem_utils import get_app_root, check_files_in_directory
 
 

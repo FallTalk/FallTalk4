@@ -1,19 +1,18 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
 
-from PySide6.QtWidgets import QGroupBox, QHBoxLayout
-from qfluentwidgets import FluentIcon as FIF, RangeSettingCard, PrimaryPushButton, PushButton, Flyout, FlyoutView, FlyoutAnimationType, ToolButton
-
+from PySide6.QtWidgets import QHBoxLayout
+from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton
 
 from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.settings.orpheus_settings import OrpheusSettings
-from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
 from src.widgets.generation_widget import GenerationWidget
 from src.help.orpheus_help import OrpheusHelp
 
@@ -21,7 +20,7 @@ class OrpheusWidget(GenerationWidget):
 
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="Orpheus")
-        self.text_input.setPlaceholderText("Please Select Reference Audio before Generation")
+        self.text_input.setPlaceholderText("If no reference is selected, a default will be used. Selecting a reference audio can help change the emotion of the generated speech. ")
         self.transcribe_state = None
         self.words_data = None
 

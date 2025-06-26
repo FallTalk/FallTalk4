@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -12,13 +12,14 @@ from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QWidget, QGroupBox, QVBoxLayout, QHBoxLayout, QStackedWidget, QSpacerItem, QFileDialog, QLineEdit
-from qfluentwidgets import FluentIcon as FIF, TextEdit, PrimaryPushButton, SegmentedWidget, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem, PushSettingCard, PushButton, Flyout, FlyoutView, FlyoutAnimationType, ToolButton
+from qfluentwidgets import FluentIcon as FIF, TextEdit, PrimaryPushButton, SegmentedWidget, RangeSettingCard, SwitchSettingCard, ConfigValidator, ConfigItem, PushSettingCard, \
+    Flyout, FlyoutView, FlyoutAnimationType, ToolButton
 
 
 from src.config.config import cfg, FileValidator
 from src.audio.audio_player import StandardAudioPlayerBar
 from src.audio.audio_recorder import StandardAudioRecorderBar
-from src.ui.cards import TextSettingCard, RangeSettingCardScaled, RvcComboBoxSettingsCard
+from src.ui.cards import TextSettingCard, RvcComboBoxSettingsCard
 from src.utils.inference_utils import get_edge_tts_voices, get_eleven_labs_voices
 from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget

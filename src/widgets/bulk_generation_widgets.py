@@ -1,8 +1,6 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
-
-from PySide6.QtGui import QFont
-
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -14,13 +12,12 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QGroupBox, QHeaderView, QAbstractItemView, QFileDialog, QSpacerItem
 from qfluentwidgets import (
     FluentIcon as FIF, TableView, SegmentedWidget,
-    SwitchSettingCard, ConfigItem, PushSettingCard, RangeSettingCard, PrimaryPushButton, MessageBox, ToolButton,
-    BodyLabel, TextEdit, StrongBodyLabel
+    SwitchSettingCard, ConfigItem, PushSettingCard, PrimaryPushButton, ToolButton
 )
 from qfluentwidgets.components.widgets.combo_box import ComboItem
 
 from src.config.config import cfg, CustomFolderValidator, FileValidator
-from src.ui.cards import SpinSettingCard, RvcComboBoxSettingsCard, RangeSettingCardScaled
+from src.ui.cards import SpinSettingCard, RvcComboBoxSettingsCard
 from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.widgets.table_models import TableModel

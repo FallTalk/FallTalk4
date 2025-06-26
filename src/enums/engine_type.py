@@ -6,7 +6,7 @@ class EngineType(Enum):
     RVC = ("RVC", False, False, ["1", "2"], "2", 15, 3, False, True)
     ORPHEUS = ("Orpheus", False, True, ["3b-0.1"], "3b-0.1", 15, 3, True, True)
     DIA = ("DIA", True, True, ["0.1"], "0.1", 15, 3, False, False)
-    FISH_SPEECH = ("FishSpeech", True, True, ["s1-mini"], "s1-mini", 30, 10, False, True)
+    FISH_SPEECH = ("FishSpeech", True, True, ["s1-mini"], "s1-mini", 30, 5, False, True)
     LLASA = ("Llasa", False, True, ["1b", "3b"], "1b", 15, 3, True, False)
     XTTS_V2 = ("XTTSv2", True, False, ["1"], "2", 10, 3, False, True)
     GPT_SOVITS = ("GPT_SoVITS", False, True, ["1", "2", "v2ProPlus"], "v2ProPlus", 10, 3, False, True)

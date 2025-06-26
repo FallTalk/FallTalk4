@@ -1,22 +1,18 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
-from qfluentwidgets import (PrimaryPushButton, LineEdit, ComboBox,
-                            BodyLabel, FluentIcon as FIF, ToolButton,
-                            TextEdit)
+from PySide6.QtWidgets import QHBoxLayout
+from qfluentwidgets import (PrimaryPushButton, FluentIcon as FIF)
 
 
 from audio.audio_player import StandardAudioPlayerBar
-from settings.spark_settings import SparkSettings
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
-from src.widgets import GenerationWidget
+from src.widgets.generation_widget import GenerationWidget
 from src.help.csm_help import CSMHelp
 from src.settings.csm_settings import CSMSettings
 
@@ -24,7 +20,7 @@ class CSMWidget(GenerationWidget):
 
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text=EngineType.CSM.value)
-        self.text_input.setPlaceholderText("Please Select Reference Audio before Generation")
+        self.text_input.setPlaceholderText("If no reference is selected, a default will be used. Selecting a reference audio can help change the emotion of the generated speech. ")
         self.transcribe_state = None
         self.words_data = None
 

@@ -19,7 +19,7 @@ class DIAWidget(GenerationWidget):
 
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="DIA")
-        self.text_input.setPlaceholderText("Please Select Reference Audio before Generation")
+        self.text_input.setPlaceholderText("If no reference is selected, a default will be used. Selecting a reference audio can help change the emotion of the generated speech. ")
         self.transcribe_state = None
         self.words_data = None
 

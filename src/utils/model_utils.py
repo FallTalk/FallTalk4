@@ -32,11 +32,16 @@ def load_model(parent: 'FallTalkApp', character=None, rvc=None, display_name=Non
 
         if parent.tts_engine is not None:
             if character is not None:
-                parent.reference_time_label.setText("00:00")
                 parent.character_label.setText(f"{display_name}")
             else:
-                parent.reference_time_label.setText("00:00")
                 parent.character_label.setText(f"Base Model")
+
+            # Reset reference audio
+            if hasattr(parent, 'references_widget'):
+                parent.references_widget.clear()
+            else:
+                parent.reference_label.setText(parent.tr("Default Reference"))
+                parent.reference_time_label.setVisible(False)
 
             # Check if this is a shared model
             is_shared = False

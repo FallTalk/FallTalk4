@@ -1,20 +1,19 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
 
 from PySide6.QtWidgets import QHBoxLayout
-from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton, PushButton, ToolButton
-
+from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton
 
 from audio.audio_player import StandardAudioPlayerBar
 from settings.llasa_settings import LLASASettings
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
-from src.widgets import GenerationWidget
+from src.widgets.generation_widget import GenerationWidget
 from src.help.llasa_help import LlasaHelp
 
 
@@ -22,7 +21,7 @@ class LlasaWidget(GenerationWidget):
 
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text=EngineType.LLASA.value)
-        self.text_input.setPlaceholderText("Please Select Reference Audio before Generation")
+        self.text_input.setPlaceholderText("If no reference is selected, a default will be used. Selecting a reference audio can help change the emotion of the generated speech. ")
         self.transcribe_state = None
         self.words_data = None
 

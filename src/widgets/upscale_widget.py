@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -14,7 +14,7 @@ from src.config.config import cfg, CustomFolderValidator
 from src.ui.cards import RadioSettingCard
 from src.utils.icons import FallTalkIcons
 from src.widgets.falltalk_widget import FallTalkWidget
-from src.widgets import RightDrawer
+from src.widgets.drawer import RightDrawer
 from src.help.upscale_help import UpscaleHelp
 
 class UpscaleWidget(FallTalkWidget):

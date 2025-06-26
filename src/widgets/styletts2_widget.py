@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
 from PySide6.QtWidgets import QHBoxLayout
-from qfluentwidgets import FluentIcon as FIF, PushButton, PrimaryPushButton
+from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton
 
 
 from audio.audio_player import StandardAudioPlayerBar

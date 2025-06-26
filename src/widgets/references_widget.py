@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -13,16 +14,19 @@ from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtWidgets import QHBoxLayout, QStackedWidget, QHeaderView, QAbstractItemView, QWidget
 from qfluentwidgets import (
     FluentIcon as FIF, SearchLineEdit, TableView, PushButton, SegmentedWidget,
-    CheckBox
+    CheckBox, ToolButton
 )
 
 
 from audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
+from src.enums.engine_type import EngineType
 from src.utils.audio_utils import extract_bsa, create_xwm, extract_fuz
 from src.utils.filesystem_utils import get_app_root
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.widgets.table_models import CustomReferencesModel, CustomTableModel
+from src.widgets.drawer import RightDrawer
+from src.help.reference_help import ReferencesHelp
 
 
 class ReferencesWidget(FallTalkWidget):
@@ -39,6 +43,9 @@ class ReferencesWidget(FallTalkWidget):
         self.reference_audio = []
         self.reference_audio_length = 0.0
         self.reference_transcripts = []
+
+        # Initialize reference labels
+        self.update_reference_labels()
 
         self.reference_table = TableView()
         self.reference_table.setBorderRadius(8)
@@ -71,6 +78,16 @@ class ReferencesWidget(FallTalkWidget):
         self.filter_line_edit.textChanged.connect(self.apply_filter)
         self.controlsBox.addWidget(self.filter_line_edit, stretch=5)
 
+        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
+        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
+        self.help_drawer.addWidget(ReferencesHelp(self))
+
+        self.help_button = ToolButton()
+        self.help_button.setIcon(FIF.QUESTION)
+        self.help_button.setEnabled(True)
+        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
+        self.help_button.setFixedWidth(50)
+
         self.select_button = PushButton(text="Select")
         self.select_button.clicked.connect(self.select_row)
         self.select_button.setIcon(FIF.ADD_TO)
@@ -83,6 +100,7 @@ class ReferencesWidget(FallTalkWidget):
         self.controlsBox.addWidget(self.highlight_checkbox)
         self.controlsBox.addWidget(self.select_button, stretch=2)
         self.controlsBox.addWidget(self.remove_button, stretch=2)
+        self.controlsBox.addWidget(self.help_button)
         self.controlsBox.stretch(1)
 
         self.custom_reference_table = TableView()
@@ -246,6 +264,7 @@ class ReferencesWidget(FallTalkWidget):
                 model.redraw(row)
 
         self.highlight_checkbox.setCheckState(Qt.CheckState.Unchecked)
+        self.update_reference_labels()
 
     def select_row(self):
         index = self.stackedWidget.currentWidget().currentIndex()
@@ -280,7 +299,7 @@ class ReferencesWidget(FallTalkWidget):
         data, samplerate = sf.read(file_path)
         length_in_seconds = len(data) / samplerate
         self.reference_audio_length += length_in_seconds
-        self.parent.reference_time_label.setText(self.tr(self._formatTime(self.reference_audio_length)))
+        self.update_reference_labels()
 
     def remove_row(self):
         index = self.stackedWidget.currentWidget().currentIndex()
@@ -316,7 +335,7 @@ class ReferencesWidget(FallTalkWidget):
         data, samplerate = sf.read(file_path)
         length_in_seconds = len(data) / samplerate
         self.reference_audio_length -= length_in_seconds
-        self.parent.reference_time_label.setText(self.tr(self._formatTime(self.reference_audio_length)))
+        self.update_reference_labels()
 
     def _formatTime(self, time: float):
         s = int(time)
@@ -332,3 +351,45 @@ class ReferencesWidget(FallTalkWidget):
             return None
         # Join transcripts with a space between each
         return " ".join(valid_transcripts)
+
+    def toggle_settings_drawer(self):
+        self.settings_drawer.open_drawer()
+
+    def toggle_help_drawer(self):
+        self.help_drawer.open_drawer()
+
+    def update_reference_labels(self):
+        """Update reference label text and time label visibility based on whether references are selected."""
+        if not self.reference_audio:
+            # No references selected
+            self.parent.reference_label.setText(self.tr("Reference:"))
+            self.parent.reference_time_label.setVisible(True)
+            self.parent.reference_time_label.setText(self.tr("Default"))
+            # Reset style sheet when no references are selected
+            self.parent.reference_label.setStyleSheet("")
+        else:
+            # References selected
+            self.parent.reference_label.setText(self.tr("Reference:"))
+            self.parent.reference_time_label.setVisible(True)
+            self.parent.reference_time_label.setText(self.tr(self._formatTime(self.reference_audio_length)))
+
+            # Default color if no engine or if engine doesn't have reference length requirements
+            self.parent.reference_label.setStyleSheet("")
+
+            # Color code the reference label based on the current engine's reference length requirements
+            engine_type = EngineType(cfg.get(cfg.engine))
+            if engine_type:
+                min_length = engine_type.min_reference_length
+                max_length = engine_type.max_reference_length
+
+                # Set color based on reference length
+                if min_length <= self.reference_audio_length <= max_length:
+                    # Green: Within acceptable range
+                    self.parent.reference_label.setStyleSheet("color: green;")
+                elif self.reference_audio_length < min_length:
+                    # Yellow: Too short
+                    self.parent.reference_label.setStyleSheet("color: yellow;")
+                elif self.reference_audio_length > max_length:
+                    # Red: Too long
+                    self.parent.reference_label.setStyleSheet("color: red;")
+                return

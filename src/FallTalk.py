@@ -528,10 +528,10 @@ class FallTalkApp(FallTalkFluentWindow):
         elif parent.pending_ez:
             parent.ez_voice_creator_inference()
         elif parent.pending_character and not parent.pending_base:
-            parent.stackedWidget.setCurrentWidget(parent.characters_widget)
+            parent.stackedWidget.setCurrentWidget(parent.generate_widget)
             parent.load_trained_model(parent.pending_character, parent.pending_model, parent.pending_rvc)
         else:
-            parent.stackedWidget.setCurrentWidget(parent.characters_widget)
+            parent.stackedWidget.setCurrentWidget(parent.generate_widget)
             parent.load_base_model(parent.pending_character, parent.pending_rvc)
 
     def find_first_match_by_name(self, models, name):

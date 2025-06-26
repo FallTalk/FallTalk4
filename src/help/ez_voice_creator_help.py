@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.widgets import FallTalkWidget
+    from src.widgets.falltalk_widget import FallTalkWidget
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
