@@ -94,25 +94,91 @@ def get_character_models(character, characters_data):
 def generic_engine_loader(parent: 'FallTalkApp', engine_class, download_func, engine_name, api=False):
     try:
         download_func(parent)
+    except Exception as e:
+        logger.exception(f"Error downloading the models: {e}")
+        error_message = str(e)
+
+        # Check for Hugging Face connection timeout errors
+        if "huggingface.co" in error_message and ("timeout" in error_message.lower() or "connection" in error_message.lower()):
+            error_title = "Hugging Face Connection Error"
+            error_detail = "Unable to connect to Hugging Face servers. Please check your internet connection and try again. If the problem persists, it might be a temporary issue with Hugging Face servers. We also offer a setting to turn off secure connections, which may help"
+        else:
+            error_title = "Unable to Download Models"
+            error_detail = f"An error occurred while downloading the models: {error_message}"
+
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection,
+                               Q_ARG(PySide6.QtCore.QObject, parent),
+                               Q_ARG(str, error_title),
+                               Q_ARG(str, error_detail))
+        return
+
+    try:
         downloadRVC(parent)
+    except Exception as e:
+        logger.exception(f"Error during downloading RVC: {e}")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection,
+                               Q_ARG(PySide6.QtCore.QObject, parent),
+                               Q_ARG(str, "Unable to Download RVC"),
+                               Q_ARG(str, f"An error occurred while downloading RVC: {str(e)}"))
+        return
+
+    try:
         downloadAPBWE(parent)
+    except Exception as e:
+        logger.exception(f"Error downloading the upscaling engine: {e}")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection,
+                               Q_ARG(PySide6.QtCore.QObject, parent),
+                               Q_ARG(str, "Unable to Download Upscaler"),
+                               Q_ARG(str, f"An error occurred while downloading Upscaler: {str(e)}"))
+        return
+
+    try:
         parent.tts_engine = engine_class()
         print(f"{engine_name} Loaded")
+    except Exception as e:
+        logger.exception(f"Error during engine initialization: {e}")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection,
+                               Q_ARG(PySide6.QtCore.QObject, parent),
+                               Q_ARG(str, "Unable to Initialize Engine"),
+                               Q_ARG(str, f"An error occurred while initializing the {engine_name} engine: {str(e)}"))
+        return
+
+    try:
         load_whisper(parent)
+    except Exception as e:
+        logger.exception(f"Error during transcription download: {e}")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection,
+                               Q_ARG(PySide6.QtCore.QObject, parent),
+                               Q_ARG(str, "Unable to Load Whisper"),
+                               Q_ARG(str, f"An error occurred while loading Whisper: {str(e)}"))
+        return
+
+    try:
         load_apbwe(parent)
         print(f"Done Loading")
-        if not api:
-            QMetaObject.invokeMethod(parent, "after_engine_load", Qt.QueuedConnection, 
+    except Exception as e:
+        logger.exception(f"Error creating upscaler: {e}")
+        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection,
+                               Q_ARG(PySide6.QtCore.QObject, parent),
+                               Q_ARG(str, "Unable to Load APBWE"),
+                               Q_ARG(str, f"An error occurred while loading APBWE: {str(e)}"))
+        return
+
+    if not api:
+        try:
+            QMetaObject.invokeMethod(parent, "after_engine_load", Qt.QueuedConnection,
                                    Q_ARG(PySide6.QtCore.QObject, parent),
                                    Q_ARG(str, engine_name))
-            QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection, 
+            QMetaObject.invokeMethod(parent, "continueLoad", Qt.QueuedConnection,
                                    Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, 
-                               Q_ARG(PySide6.QtCore.QObject, parent), 
-                               Q_ARG(str, "Unable to Load Engine"), 
-                               Q_ARG(str, "An Error Occurred while loading the engine. Please check your logs and report the issue if needed"))
+        except Exception as e:
+            logger.exception(f"Error during UI callback: {e}")
+            QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection,
+                                   Q_ARG(PySide6.QtCore.QObject, parent),
+                                   Q_ARG(str, "Unable to Complete Engine Loading"),
+                                   Q_ARG(str, f"An error occurred during final loading steps: {str(e)}"))
+            return
+
 
 
 
@@ -191,36 +257,22 @@ def load_csm(parent: 'FallTalkApp'):
     generic_engine_loader(parent, CSMEngine, downloadCSM, EngineType.CSM.value)
 
 def load_apbwe(parent: 'FallTalkApp'):
-    try:
-        if parent.apbwe_engine is None:
-            from src.tts_engines.apbwe_engine import APBWE_SR
-            parent.apbwe_engine = APBWE_SR()
-            if parent.tts_engine is not None:
-                parent.tts_engine.apbwe_engine = parent.apbwe_engine
-            print("apbwe Loaded")
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection,
-                               Q_ARG(PySide6.QtCore.QObject, parent),
-                               Q_ARG(str, "Unable to Load apbwe_engine"),
-                               Q_ARG(str, "An Error Occurred while loading the apbwe_engine. Please check your logs and report the issue if needed"))
+    if parent.apbwe_engine is None:
+        from src.tts_engines.apbwe_engine import APBWE_SR
+        parent.apbwe_engine = APBWE_SR()
+        if parent.tts_engine is not None:
+            parent.tts_engine.apbwe_engine = parent.apbwe_engine
+        print("apbwe Loaded")
 
 
 def load_upscaler(parent: 'FallTalkApp', api=False):
-    try:
-        if parent.upscale_engine is None:
-            from src.tts_engines.upscale_engine import UpscaleEngine
-            parent.upscale_engine = UpscaleEngine(parent)
-            print("Upscaler Loaded")
-        if not api:
-            QMetaObject.invokeMethod(parent, "after_upscale", Qt.QueuedConnection, 
-                                   Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, 
-                               Q_ARG(PySide6.QtCore.QObject, parent), 
-                               Q_ARG(str, "Unable to Load Upscaler"), 
-                               Q_ARG(str, "An Error Occurred while loading the upscaler. Please check your logs and report the issue if needed"))
+    if parent.upscale_engine is None:
+        from src.tts_engines.upscale_engine import UpscaleEngine
+        parent.upscale_engine = UpscaleEngine(parent)
+        print("Upscaler Loaded")
+    if not api:
+        QMetaObject.invokeMethod(parent, "after_upscale", Qt.QueuedConnection,
+                               Q_ARG(PySide6.QtCore.QObject, parent))
 
 
 def seed_everything(seed):

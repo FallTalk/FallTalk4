@@ -2,7 +2,7 @@
 from PyInstaller.utils.hooks import collect_submodules
 from PyInstaller.utils.hooks import collect_data_files
 import PyInstaller.config
-PyInstaller.config.CONF['include_source_code'] = True
+PyInstaller.config.CONF['include_source_code'] = False
 
 
 py3langid_hiddenimports = collect_submodules('py3langid')
@@ -49,24 +49,7 @@ demucs_datas = collect_data_files('demucs', include_py_files=True)
 torchao_datas = collect_data_files('torchao', include_py_files=True)
 flash_attn_datas = collect_data_files('flash_attn', include_py_files=True)
 speechbrain_datas = collect_data_files('speechbrain', include_py_files=True)
-
-
-def collect_triton_all_files():
-    import triton
-    from pathlib import Path
-
-    triton_path = Path(triton.__file__).parent.parent
-    included_files = []
-
-    for p in triton_path.rglob('*'):
-        if p.is_file() and not any(part.startswith(('__pycache__', '.git')) for part in p.parts):
-            rel_path = p.relative_to(triton_path.parent)
-            included_files.append((str(p), str(rel_path)))
-
-    return included_files
-
-
-triton_datas = collect_triton_all_files()
+triton_datas = collect_data_files('triton', include_py_files=True)
 
 def collect_module_data(module_path):
     data_files = []

@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -9,15 +9,46 @@ from huggingface_hub import snapshot_download
 
 import logging
 import os
-import glob
 import shutil
-import sys
 from tqdm.auto import tqdm
 import PySide6
 import requests
 from PySide6.QtCore import QMetaObject, Qt, Q_ARG
-from functools import partial
 import huggingface_hub
+
+
+class FallTalkTqdm(tqdm):
+    """Custom tqdm class for FallTalk that updates the UI with download progress."""
+
+    _parent = None
+
+    @classmethod
+    def set_parent(cls, parent):
+        """Set the parent FallTalkApp instance for all instances of this class."""
+        cls._parent = parent
+
+    def update(self, n=1):
+        """Override update method to also update the UI."""
+        super().update(n)
+        if self._parent is not None:
+            # Format the progress message
+            if self.total is not None:
+                msg = f"{self.desc}: {self.n}/{self.total} [{self.percentage:.0f}%]"
+            else:
+                msg = f"{self.desc}: {self.n} items"
+
+            # Update the UI using QMetaObject to safely call from a background thread
+            QMetaObject.invokeMethod(
+                self._parent, 
+                "update_loader", 
+                Qt.QueuedConnection, 
+                Q_ARG(str, msg)
+            )
+
+    @property
+    def percentage(self):
+        """Calculate percentage complete."""
+        return 100 * self.n / self.total if self.total else 0
 
 from src.config.config import cfg, REPO, VERSION, RELEASE_URL
 from src.utils.filesystem_utils import get_app_root
@@ -29,9 +60,12 @@ logger.setLevel(logging.DEBUG)
 
 def download_model_from_hub(parent: 'FallTalkApp', character, model) -> None:
     if model is not None:
+        # Set the parent for the tqdm class
+        FallTalkTqdm.set_parent(parent)
+
         engine_type = EngineType(model['engine'])
         version = model.get('engine_version', 1)
-        
+
         # Validate version compatibility
         if not engine_type.is_version_supported(version):
             raise ValueError(f"Engine version {version} is not supported for {model['engine']}")
@@ -52,192 +86,170 @@ def download_model_from_hub(parent: 'FallTalkApp', character, model) -> None:
             allow_patterns=[f"models/{model_path}/*"],
             local_dir=get_app_root(),
             local_dir_use_symlinks=False,
+            tqdm_class=FallTalkTqdm,
         )
 
 
 def downloadXTTS(parent: 'FallTalkApp') -> None:
-    try:
-        os.makedirs(os.path.join(get_app_root(), "models/XTTSv2"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=["models/XTTSv2/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
+    os.makedirs(os.path.join(get_app_root(), "models/XTTSv2"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=["models/XTTSv2/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadRVC(parent: 'FallTalkApp') -> None:
-    try:
-        os.makedirs(os.path.join(get_app_root(), "models/RVC"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=["models/rvc/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
+    os.makedirs(os.path.join(get_app_root(), "models/RVC"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=["models/rvc/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadFish(parent: 'FallTalkApp') -> None:
-    try:
-        os.makedirs(os.path.join(get_app_root(),"models/Fish"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=["models/Fish/s1-mini/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
+    os.makedirs(os.path.join(get_app_root(),"models/Fish"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=["models/Fish/s1-mini/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadGPTSoVITS(parent: 'FallTalkApp') -> None:
-    try:
-        os.makedirs(os.path.join(get_app_root(),"models/GPT_SoVITS"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=["models/GPT_SoVITS/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
+    os.makedirs(os.path.join(get_app_root(),"models/GPT_SoVITS"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=["models/GPT_SoVITS/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadOrpheus(parent: 'FallTalkApp'):
-    try:
-        os.makedirs(os.path.join(get_app_root(),"models/Orpheus"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=["models/Orpheus/3b-0.1/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
+    os.makedirs(os.path.join(get_app_root(),"models/Orpheus"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=["models/Orpheus/3b-0.1/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadF5(parent: 'FallTalkApp'):
-    try:
-        os.makedirs(os.path.join(get_app_root(),"models/F5"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=["models/F5/F5TTS_v1_Base/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
-        huggingface_hub.hf_hub_download("charactr/vocos-mel-24khz", "config.yaml", local_dir=os.path.abspath(f"models/F5/vocos"))
-        huggingface_hub.hf_hub_download("charactr/vocos-mel-24khz", "pytorch_model.bin", local_dir=os.path.abspath(f"models/F5/vocos"))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
+    os.makedirs(os.path.join(get_app_root(),"models/F5"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=["models/F5/F5TTS_v1_Base/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
+    huggingface_hub.hf_hub_download("charactr/vocos-mel-24khz", "config.yaml", local_dir=os.path.abspath(f"models/F5/vocos"))
+    huggingface_hub.hf_hub_download("charactr/vocos-mel-24khz", "pytorch_model.bin", local_dir=os.path.abspath(f"models/F5/vocos"))
 
 def downloadLlasa(parent: 'FallTalkApp'):
-    try:
-        os.makedirs(os.path.join(get_app_root(),"models/Llasa/3B"), exist_ok=True)
-        os.makedirs(os.path.join(get_app_root(),"models/Llasa/1B"), exist_ok=True)
-        os.makedirs(os.path.join(get_app_root(),"models/Llasa/xcodec2"), exist_ok=True)
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=["models/Llasa/xcodec2/*", f"models/Llasa/{cfg.get(cfg.llasa_mode)}/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
+    os.makedirs(os.path.join(get_app_root(),"models/Llasa/3B"), exist_ok=True)
+    os.makedirs(os.path.join(get_app_root(),"models/Llasa/1B"), exist_ok=True)
+    os.makedirs(os.path.join(get_app_root(),"models/Llasa/xcodec2"), exist_ok=True)
 
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=["models/Llasa/xcodec2/*", f"models/Llasa/{cfg.get(cfg.llasa_mode)}/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadAPBWE(parent: 'FallTalkApp'):
-    try:
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
-        os.makedirs(os.path.join(get_app_root(),"models/APBWE"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=["models/APBWE/16kto48k/*", "models/APBWE/24kto48k/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
-
+    os.makedirs(os.path.join(get_app_root(),"models/APBWE"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=["models/APBWE/16kto48k/*", "models/APBWE/24kto48k/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadDIA(parent: 'FallTalkApp'):
-    try:
-        os.makedirs(os.path.join(get_app_root(),"models/DIA"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=[f"models/DIA/0.1/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
+
+    os.makedirs(os.path.join(get_app_root(),"models/DIA"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"models/DIA/0.1/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadCSM(parent: 'FallTalkApp'):
-    try:
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=[f"models/CSM/1b/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"models/CSM/1b/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadSpark(parent: 'FallTalkApp'):
-    try:
-        os.makedirs(os.path.join(get_app_root(),"models/Spark"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=[f"models/Spark/0.5B/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
-
+    os.makedirs(os.path.join(get_app_root(),"models/Spark"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"models/Spark/0.5B/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 
 def downloadStyleTTS2(parent: 'FallTalkApp'):
-    try:
-        os.makedirs(os.path.join(get_app_root(),"models/StyleTTS2"), exist_ok=True)
-        snapshot_download(
-            repo_id=REPO,
-            allow_patterns=[f"models/StyleTTS2/*"],
-            local_dir=get_app_root(),
-            local_dir_use_symlinks=False,
-            
-        )
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
 
+    os.makedirs(os.path.join(get_app_root(),"models/StyleTTS2"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"models/StyleTTS2/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadBaseModels(parent: 'FallTalkApp'):
     try:
@@ -261,10 +273,10 @@ def download_models(parent, character, model, rvc, api=False):
         # Validate engine version before downloading
         engine_type = EngineType(model['engine'])
         version = model.get('engine_version', 1)
-        
+
         if not engine_type.is_version_supported(version):
             raise ValueError(f"Engine version {version} is not supported for {model['engine']}")
-        
+
         download_model_from_hub(parent, character, model)
         download_rvc_models(parent, character, rvc)
 
@@ -328,6 +340,7 @@ def get_model_diff(old_json, new_json):
 
 
 def download_all_models_config():
+    # Note: This function doesn't have a parent parameter, so we can't update the UI
     os.makedirs(os.path.join(get_app_root(), "models"), exist_ok=True)
     os.makedirs(os.path.join(get_app_root(), "config"), exist_ok=True)
     snapshot_download(

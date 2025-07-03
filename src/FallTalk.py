@@ -417,9 +417,11 @@ class FallTalkApp(FallTalkFluentWindow):
         self.stateTooltip.setContent(content)
 
     def complete_loader(self):
-        self.stateTooltip.setContent("Completed")
-        self.stateTooltip.setState(True)
-        self.stateTooltip = None
+        if self.stateTooltip:
+            self.stateTooltip.setContent("Completed")
+            self.stateTooltip.setState(True)
+            self.stateTooltip = None
+
         self.setEnabled(True)
 
     def onDeviceChange(self):
@@ -493,11 +495,11 @@ class FallTalkApp(FallTalkFluentWindow):
             self.stackedWidget.setCurrentWidget(self.reference_widget)
         elif self.tts_engine.is_base or engine_type.needs_reference_when_trained:
             widget.text_input.setPlaceholderText("Please Select Reference'")
-            widget.transcribe_button.setVisible(False)
+            # widget.transcribe_button.setVisible(False)
             self.stackedWidget.setCurrentWidget(self.reference_widget)
         else:
             widget.text_input.setPlaceholderText("Please Enter Text")
-            widget.transcribe_button.setVisible(False)
+            # widget.transcribe_button.setVisible(False)
             widget.generate_button.setEnabled(True)
             self.stackedWidget.setCurrentWidget(self.generate_widget)
 
@@ -530,9 +532,12 @@ class FallTalkApp(FallTalkFluentWindow):
         elif parent.pending_character and not parent.pending_base:
             parent.stackedWidget.setCurrentWidget(parent.generate_widget)
             parent.load_trained_model(parent.pending_character, parent.pending_model, parent.pending_rvc)
-        else:
+        elif parent.pending_base:
             parent.stackedWidget.setCurrentWidget(parent.generate_widget)
             parent.load_base_model(parent.pending_character, parent.pending_rvc)
+        else:
+            parent.stackedWidget.setCurrentWidget(parent.characters_widget)
+
 
     def find_first_match_by_name(self, models, name):
         for character in models['characters']:
