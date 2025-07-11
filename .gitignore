@@ -4,10 +4,10 @@ logs/
 /models/
 output/
 bulk_outputs/
-
+hf/
+/hf/
 references/
 temp/
-config/
 __pycache__/
 **/__pycache__/
 
@@ -60,6 +60,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.huggingface/
 cover/
 
 # Translations
@@ -176,3 +177,5 @@ cython_debug/
 
 gweight.txt
 sweight.txt
+.aider*
+*.json

@@ -1,0 +1,24 @@
+[submodule "GPT_SoVITS"]
+	path = third_party/GPT_SoVITS
+	url = https://github.com/RVC-Boss/GPT-SoVITS
+[submodule "StyleTTS2"]
+	path = third_party/StyleTTS2
+	url = https://github.com/yl4579/StyleTTS2
+[submodule "f5"]
+	path = third_party/f5
+	url = https://github.com/SWivid/F5-TTS
+[submodule "dia"]
+	path = third_party/dia
+	url = https://github.com/nari-labs/dia
+[submodule "fish"]
+	path = third_party/fish
+	url = https://github.com/fishaudio/fish-speech
+[submodule "orpheus"]
+	path = third_party/orpheus
+	url = https://github.com/canopyai/Orpheus-TTS
+[submodule "third_party/spark"]
+	path = third_party/spark
+	url = https://github.com/SparkAudio/Spark-TTS
+[submodule "third_party/chatterbox"]
+	path = third_party/chatterbox
+	url = https://github.com/resemble-ai/chatterbox

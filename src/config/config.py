@@ -1,0 +1,433 @@
+# coding:utf-8
+import os
+import sys
+from enum import Enum
+from pathlib import Path
+
+import torch
+from PySide6.QtCore import QLocale, QObject, Signal
+from qfluentwidgets import (QConfig, ConfigItem, OptionsConfigItem, BoolValidator,
+                            ColorConfigItem, OptionsValidator, RangeConfigItem, RangeValidator,
+                            EnumSerializer, FolderValidator, ConfigSerializer, ConfigValidator, qconfig)
+
+from src.utils.filesystem_utils import get_app_root
+from src.enums.engine_type import EngineType
+
+class Language(Enum):
+    """ Language enumeration """
+
+    CHINESE_SIMPLIFIED = QLocale(QLocale.Language.Chinese, QLocale.Country.China)
+    CHINESE_TRADITIONAL = QLocale(QLocale.Language.Chinese, QLocale.Country.HongKong)
+    ENGLISH = QLocale(QLocale.Language.English)
+    SPANISH = QLocale(QLocale.Language.Spanish)
+    AUTO = QLocale()
+
+
+class LanguageSerializer(ConfigSerializer):
+    """ Language serializer """
+
+    def serialize(self, language):
+        return language.value.name() if language != Language.AUTO else "Auto"
+
+    def deserialize(self, value: str):
+        return Language(QLocale(value)) if value != "Auto" else Language.AUTO
+
+
+
+
+def find_fallout4_exe():
+    drives = [d + ':\\' for d in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ']
+    common_paths = [
+        '\\Program Files (x86)\\Steam\\steamapps\\common\\Fallout 4\\',
+        '\\Program Files\\Steam\\steamapps\\common\\Fallout 4\\',
+        '\\Program Files (x86)\\Fallout 4\\',
+        '\\Program Files\\Fallout 4\\',
+        '\\Steam\\steamapps\\common\\Fallout 4\\',
+        '\\Steam Games\\steamapps\\common\\Fallout 4\\'
+
+    ]
+
+    found_paths = []
+
+    for drive in drives:
+        if not os.path.exists(drive):
+            continue
+
+        for common_path in common_paths:
+            full_path = os.path.join(drive, common_path.lstrip('\\'))
+            exe_path = os.path.join(full_path, 'Fallout4.exe')
+            if os.path.isfile(exe_path):
+                found_paths.append(full_path)
+
+    if found_paths:
+        return found_paths[0]
+    else:
+        return "fallout4.exe not found"
+
+
+class CustomFolderValidator(ConfigValidator):
+    """ Folder validator """
+
+    def validate(self, value):
+        return value is not None and os.path.exists(value)
+
+    def correct(self, value):
+        if value is not None and value != "Please Select a Valid Folder":
+            path = Path(value)
+            path.mkdir(exist_ok=True, parents=True)
+            return str(path.absolute()).replace("\\", "/")
+        return "Please Select a Valid Folder"
+
+
+class FileValidator(ConfigValidator):
+
+    def __init__(self, allowed_file_types=None):
+        if allowed_file_types is None:
+            allowed_file_types = ['csv', 'txt']
+        self.allowed_file_types = allowed_file_types
+
+    """ File validator """
+
+    def validate(self, value):
+        if os.path.exists(value) and os.path.isfile(value):
+            _, file_extension = os.path.splitext(value)
+            return file_extension in self.allowed_file_types
+
+        return False
+
+
+class PitchExtractionAlgorithm(Enum):
+    """ Online song quality enumeration class """
+    crepe = "crepe"
+    crepe_tiny = "crepe-tiny"
+    dio = "dio"
+    fcpe = "fcpe"
+    harvest = "harvest"
+    hybrid = "hybird[rmcpe+fcpe]"
+    rmvpe = "rmvpe"
+
+
+class OnEngineChange(QObject):
+    engine_signal = Signal(str)
+
+
+class Fallout4FolderValidator(ConfigValidator):
+
+    def validate(self, value):
+        return os.path.exists(value) and os.path.isfile(os.path.join(value, "Fallout4.exe"))
+
+
+class DeviceValidator(OptionsValidator):
+    """ Options validator """
+
+    def __init__(self):
+        if torch.cuda.is_available():
+            num_gpus = torch.cuda.device_count()
+            if num_gpus > 1:
+                super().__init__(["cpu", "cuda", "cuda:1"])
+            else:
+                super().__init__(["cpu", "cuda"])
+        else:
+            super().__init__(["cpu"])
+
+
+class Config(QConfig):
+    ALERT = "FallTalk is Loading.."
+    # RVC
+    rvc_pitch = RangeConfigItem("RVC", "rvc_pitch", 0, RangeValidator(-24, 24))
+    rvc_hop_length = RangeConfigItem("RVC", "rvc_hop_length", 1, RangeValidator(1, 512))
+    rvc_training_data_size = RangeConfigItem("RVC", "rvc_training_data_size", 10000, RangeValidator(0, 50000))
+    rvc_index_influence = RangeConfigItem("RVC", "rvc_index_influence", 75, RangeValidator(0, 100))
+    rvc_volume_envelope = RangeConfigItem("RVC", "rvc_volume_envelope_Rslider", 100, RangeValidator(1, 100))
+    rvc_protect = RangeConfigItem("RVC", "rvc_protect", 50, RangeValidator(0, 50))
+    rvc_filter_radius = RangeConfigItem("RVC", "rvc_filter_radius", 3, RangeValidator(0, 7))
+    rvc_autotune = ConfigItem("RVC", "rvc_autotune_checkbox", False, BoolValidator())
+    rvc_split_audio = ConfigItem("RVC", "rvc_split_audio", False, BoolValidator())
+    rvc_pitch_extraction = OptionsConfigItem("RVC", "rvc_pitch_extraction", default=PitchExtractionAlgorithm.rmvpe,
+                                             validator=OptionsValidator(PitchExtractionAlgorithm),
+                                             serializer=EnumSerializer(PitchExtractionAlgorithm))
+    rvc_mode = OptionsConfigItem("RVC", "rvc_mode", "Microphone", OptionsValidator(["Microphone", "File", "EdgeTTS", "Eleven-Labs"]))
+    rvc_eleven_labs_key = ConfigItem("RVC", "rvc_eleven_labs_key", None, ConfigValidator())
+
+    rvc_embedder_model = OptionsConfigItem("RVC", "rvc_embedding_model", "contentvec", OptionsValidator(["contentvec", "hubert"]))
+
+    # General Model
+    engine = OptionsConfigItem("TTS", "engine", EngineType.SPARK.value, OptionsValidator([e.value for e in EngineType if e.enabled]))
+    load_engine_art_start = ConfigItem("TTS", "load_at_start", False, BoolValidator())
+    auto_update_models = ConfigItem("TTS", "auto_update_models", False, BoolValidator())
+    device = OptionsConfigItem("TTS", "device", "cuda" if torch.cuda.is_available() else "cpu", DeviceValidator())
+    seed = RangeConfigItem("TTS", "seed", 123456, RangeValidator(-1, 2 ** 30 - 1))
+    fallout_4_directory = ConfigItem(
+        "App", "fallout_4_directory", find_fallout4_exe(), Fallout4FolderValidator())
+    fallout_4_directory_check = ConfigItem("App", "fallout_4_directory_check", True, BoolValidator())
+    custom_references = ConfigItem(
+        "App", "custom_references", os.path.join(get_app_root(), "references"), FolderValidator())
+    output_dir = ConfigItem("App", "output_dir", os.path.join(get_app_root(), "output"), FolderValidator())
+    rvc_enabled = ConfigItem("App", "rvc_enabled", False, BoolValidator())
+    apbwe_enabled = ConfigItem("App", "apbwe_enabled", True, BoolValidator())
+
+    keep_only_fuz = ConfigItem("App", "keep_only_fuz", False, BoolValidator())
+    use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
+    huggingface_cache_dir = ConfigItem("App", "huggingface_cache_dir", None, CustomFolderValidator(), restart=True)
+    huggingface_key = ConfigItem("APP", "huggingface_key", None, ConfigValidator())
+    disableSSLVerify= ConfigItem("App", "disable_ssl_verify", False, BoolValidator(), restart=True)
+
+
+
+    xwm_enabled = ConfigItem("App", "xwm_enabled", False, BoolValidator())
+    download_configs = ConfigItem(
+        "App", "download_configs", True, BoolValidator())
+    check_for_updates = ConfigItem(
+        "App", "check_for_updates", True, BoolValidator())
+    auto_play = ConfigItem("App", "auto_play", True, BoolValidator())
+    first_start = ConfigItem('App', 'first_start', True, BoolValidator())
+    api_only_mode = ConfigItem('App', 'api_only_mode', False, BoolValidator(), restart=True)
+    accepted_disclaimer = ConfigItem('App', 'accepts_disclaimer', False, BoolValidator())
+    accepts_custom_disclaimer = ConfigItem('App', 'accepts_custom_disclaimer', False, BoolValidator())
+
+    #Bulk
+    replace_existing = ConfigItem("bulk", "replace_existing", True, BoolValidator())
+    include_subdir = ConfigItem("bulk", "include_subdir", True, BoolValidator())
+    threads = RangeConfigItem("bulk", "threads", 1, RangeValidator(1, 2))
+
+    #Audio
+    # fx_duration = RangeConfigItem("fx", "duration", 10, RangeValidator(5, 120))
+    # audio_mode = OptionsConfigItem("music", "mode", "stereo", OptionsValidator(["mono", "stereo", "songstarter"]))
+    # music_duration = RangeConfigItem("music", "duration", 30, RangeValidator(5, 300))
+    # parse_mode = OptionsConfigItem("music", "parse_mode", "single", OptionsValidator(["split", "single"]))
+    # extend_stride = RangeConfigItem("music", "extend_stride", 18, RangeValidator(1, 30))
+    # music_temperature = RangeConfigItem("music", "music_temperature", 100, RangeValidator(1, 100))
+
+    # XTTS
+    speed = RangeConfigItem("XTTS", "speed", 100, RangeValidator(1, 200))
+    model_temperature = RangeConfigItem("XTTS", "model_temperature", 75, RangeValidator(1, 100))
+    model_repetition = RangeConfigItem("XTTS", "model_repetition", 10, RangeValidator(1, 15))
+    low_vram = ConfigItem("XTTS", "low_vram", False, BoolValidator())
+    deepspeed_enabled = ConfigItem("XTTS", "deepspeed_enabled", False, BoolValidator())
+
+    # VoiceCraft
+    # mode = OptionsConfigItem("VoiceCraft", "mode", "edit", OptionsValidator(["edit", "tts", "long_tts"]))
+    # stop_repetition = RangeConfigItem("VoiceCraft", "stop_repetition", 3, RangeValidator(-1, 4))
+    # sample_batch_size = RangeConfigItem("VoiceCraft", "sample_batch_size", 2, RangeValidator(1, 10))
+    # seed = RangeConfigItem("VoiceCraft", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
+    # kvcache = RangeConfigItem("VoiceCraft", "kvcache", 1, RangeValidator(0, 1))
+    # left_margin = RangeConfigItem("VoiceCraft", "left_margin", 80, RangeValidator(0, 100))
+    # right_margin = RangeConfigItem("VoiceCraft", "right_margin", 80, RangeValidator(0, 100))
+    # top_p = RangeConfigItem("VoiceCraft", "top_p", 90, RangeValidator(0.0, 100))
+    # top_k = RangeConfigItem("VoiceCraft", "top_k", 0, RangeValidator(0, 100))
+    # codec_audio_sr = RangeConfigItem("VoiceCraft", "codec_audio_sr", 16000, RangeValidator(1, 48000))
+    # codec_sr = RangeConfigItem("VoiceCraft", "codec_sr", 50, RangeValidator(1, 100))
+    # silence_tokens = OptionsConfigItem("VoiceCraft", "silence_tokens", '[1388, 1898, 131]', OptionsValidator(['[1388, 1898, 131]']))
+    # split_text = OptionsConfigItem("VoiceCraft", "split_text", "Newline", OptionsValidator(["Newline", "Sentence"]))
+    # smart_transcript = ConfigItem("VoiceCraft", "smart_transcript", True, BoolValidator())
+    # voicecraft_temperature = RangeConfigItem("VoiceCraft", "model_temperature", 100, RangeValidator(1, 100))
+    # edit_mode = OptionsConfigItem("VoiceCraft", "edit_mode", "replace all", OptionsValidator(["replace half", "replace all"]))
+
+    #F5
+    f5_mode = OptionsConfigItem("F5", "mode", "tts", OptionsValidator(["edit", "tts"]))
+    f5_speed = RangeConfigItem("F5", "speed_factor", 10, RangeValidator(-100, 100))
+
+    #LASA
+    llasa_temperature = RangeConfigItem("Llasa", "model_temperature", 80, RangeValidator(1, 100))
+    llasa_top_p = RangeConfigItem("Llasa", "top_p", 100, RangeValidator(0.0, 100))
+    llasa_max_length = RangeConfigItem("Llasa", "max_length", 2048, RangeValidator(1, 2048))
+    llasa_mode = OptionsConfigItem("Llasa", "mode", "1B", OptionsValidator(["3B", "1B", "8B"]))
+
+    #Orpehus
+    orpehus_temperature = RangeConfigItem("Orpehus", "model_temperature", 60, RangeValidator(1, 100))
+    orpehus_top_p = RangeConfigItem("Orpehus", "top_p", 90, RangeValidator(0.0, 100))
+    orpehus_repetition = RangeConfigItem("Orpehus", "model_repetition", 13, RangeValidator(11, 20))
+    orpehus_top_k = RangeConfigItem("Orpehus", "top_k", 90, RangeValidator(0.0, 100))
+    orpehus_max_new_tokens = RangeConfigItem("Orpehus", "max_new_tokens", 990, RangeValidator(0.0, 2048))
+
+    #FishSpeech
+    fish_use_torch_compile = ConfigItem("FishSpeech", "use_torch_compile", True, BoolValidator())
+    fish_repetition = RangeConfigItem("FishSpeech", "model_repetition", 15, RangeValidator(1, 20))
+    fish_top_p = RangeConfigItem("FishSpeech", "top_p", 70, RangeValidator(0.0, 100))
+    fish_max_length = RangeConfigItem("FishSpeech", "max_length", 2048, RangeValidator(0, 2048))
+    fish_use_cache = ConfigItem("FishSpeech", "use_memory_cache", True, BoolValidator())
+    fish_iterative_prompt = ConfigItem("FishSpeech", "iterative_prompt", True, BoolValidator())
+    fish_temperature = RangeConfigItem("FishSpeech", "model_temperature", 80, RangeValidator(1, 100))
+
+    #DIA
+    dia_use_torch_compile = ConfigItem("DIA", "use_torch_compile", True, BoolValidator())
+    dia_top_p = RangeConfigItem("DIA", "top_p", 95, RangeValidator(0.0, 100))
+    dia_temperature = RangeConfigItem("DIA", "model_temperature", 130, RangeValidator(1, 200))
+    dia_top_k = RangeConfigItem("DIA", "top_k", 45, RangeValidator(0, 100))
+
+    # GPT_SoVITS
+    slice_mode = OptionsConfigItem("GPT_SoVITS", "slice_mode", "No Slice", OptionsValidator(["No Slice", "Slice by English punct", "Slice by every punct", "Slice once every 4 sentences", "Slice once every 2 sentences"]))
+    low_vram_gpt_sovits = ConfigItem("GPT_SoVITS", "low_vram", False, BoolValidator())
+    top_p_gpt_sovits = RangeConfigItem("GPT_SoVITS", "top_p", 100, RangeValidator(0.0, 100))
+    top_k_gpt_sovits = RangeConfigItem("GPT_SoVITS", "top_k", 15, RangeValidator(0, 100))
+    temperature_gpt_sovits = RangeConfigItem("GPT_SoVITS", "model_temperature", 75, RangeValidator(1, 100))
+    speed_gpt_sovits = RangeConfigItem("GPT_SoVITS", "speed", 100, RangeValidator(1, 200))
+
+    # StyleTTS2
+    style_beta = RangeConfigItem("StyleTTS2", "beta", 20, RangeValidator(0, 100))
+    style_alpha = RangeConfigItem("StyleTTS2", "alpha", 20, RangeValidator(0, 100))
+    style_embedding_scale = RangeConfigItem("StyleTTS2", "embedding_scale", 1, RangeValidator(1, 3))
+    style_diffusion_steps = RangeConfigItem("StyleTTS2", "diffusion_steps", 100, RangeValidator(1, 500))
+
+    # Spark
+    spark_top_p = RangeConfigItem("Spark", "top_p", 95, RangeValidator(0.0, 100))
+    spark_temperature = RangeConfigItem("Spark", "model_temperature", 80, RangeValidator(1, 200))
+    spark_top_k = RangeConfigItem("Spark", "top_k", 50, RangeValidator(0, 100))
+    spark_max_new_tokens = RangeConfigItem("Spark", "max_new_tokens", 2048, RangeValidator(800, 2048))
+
+    # theme
+    themeColor = ColorConfigItem("QFluentWidgets", "ThemeColor", '#FFB642', restart=True)
+    dpiScale = OptionsConfigItem(
+        "MainWindow", "DpiScale", 1, OptionsValidator([0.75, 0.95, 1, 1.1, 1.25, 1.5, 1.75, 2, "Auto"]), restart=True)
+    # main window
+    enableAcrylicBackground = ConfigItem(
+        "MainWindow", "EnableAcrylicBackground", False, BoolValidator())
+    minimizeToTray = ConfigItem(
+        "MainWindow", "MinimizeToTray", False, BoolValidator())
+    playBarColor = ColorConfigItem("MainWindow", "PlayBarColor", "#225C7F")
+    language = OptionsConfigItem(
+        "MainWindow", "Language", Language.AUTO, OptionsValidator(Language), LanguageSerializer(), restart=True)
+
+    def resetToDefault(self):
+        self.resetXtts()
+        self.resetGPT()
+        self.resetStyleTTS()
+        self.resetRvc()
+        self.resetF5()
+        self.resetFishSpeech()
+        self.resetDIA()
+        self.resetOrpheus()
+        self.resetMainSettings()
+
+    def resetMainSettings(self):
+        self.set(self.download_configs, self.download_configs.defaultValue)
+        self.set(self.check_for_updates, self.check_for_updates.defaultValue)
+        self.set(self.api_only_mode, self.api_only_mode.defaultValue)
+
+    def resetXtts(self):
+        self.set(self.speed, self.speed.defaultValue)
+        self.set(self.model_temperature, self.model_temperature.defaultValue)
+        self.set(self.model_repetition, self.model_repetition.defaultValue)
+        self.set(self.deepspeed_enabled, self.deepspeed_enabled.defaultValue)
+        self.set(self.low_vram, self.low_vram.defaultValue)
+
+
+    def resetRvc(self):
+        self.set(self.rvc_pitch, self.rvc_pitch.defaultValue)
+        self.set(self.rvc_hop_length, self.rvc_hop_length.defaultValue)
+        self.set(self.rvc_training_data_size, self.rvc_training_data_size.defaultValue)
+        self.set(self.rvc_index_influence, self.rvc_index_influence.defaultValue)
+        self.set(self.rvc_volume_envelope, self.rvc_volume_envelope.defaultValue)
+        self.set(self.rvc_protect, self.rvc_protect.defaultValue)
+        self.set(self.rvc_filter_radius, self.rvc_filter_radius.defaultValue)
+        self.set(self.rvc_autotune, self.rvc_autotune.defaultValue)
+        self.set(self.rvc_split_audio, self.rvc_split_audio.defaultValue)
+        self.set(self.rvc_pitch_extraction, self.rvc_pitch_extraction.defaultValue)
+        self.set(self.rvc_embedder_model, self.rvc_embedder_model.defaultValue)
+
+    def resetGPT(self):
+        self.set(self.slice_mode, self.slice_mode.defaultValue)
+        self.set(self.low_vram_gpt_sovits, self.low_vram_gpt_sovits.defaultValue)
+        self.set(self.top_p_gpt_sovits, self.top_p_gpt_sovits.defaultValue)
+        self.set(self.top_k_gpt_sovits, self.top_k_gpt_sovits.defaultValue)
+        self.set(self.temperature_gpt_sovits, self.temperature_gpt_sovits.defaultValue)
+        self.set(self.speed_gpt_sovits, self.speed_gpt_sovits.defaultValue)
+
+    def resetStyleTTS(self):
+        self.set(self.style_beta, self.style_beta.defaultValue)
+        self.set(self.style_alpha, self.style_alpha.defaultValue)
+        self.set(self.style_embedding_scale, self.style_embedding_scale.defaultValue)
+        self.set(self.style_diffusion_steps, self.style_diffusion_steps.defaultValue)
+
+    def resetF5(self):
+        self.set(self.f5_mode, self.f5_mode.defaultValue)
+        self.set(self.f5_speed, self.f5_speed.defaultValue)
+
+    def resetFishSpeech(self):
+        self.set(self.fish_use_torch_compile, self.fish_use_torch_compile.defaultValue)
+        self.set(self.fish_repetition, self.fish_repetition.defaultValue)
+        self.set(self.fish_top_p, self.fish_top_p.defaultValue)
+        self.set(self.fish_max_length, self.fish_max_length.defaultValue)
+        self.set(self.fish_use_cache, self.fish_use_cache.defaultValue)
+        self.set(self.fish_iterative_prompt, self.fish_iterative_prompt.defaultValue)
+        self.set(self.fish_temperature, self.fish_temperature.defaultValue)
+
+    def resetDIA(self):
+        self.set(self.dia_use_torch_compile, self.dia_use_torch_compile.defaultValue)
+
+    def resetLlasa(self):
+        self.set(self.llasa_temperature, self.llasa_temperature.defaultValue)
+        self.set(self.llasa_top_p, self.llasa_top_p.defaultValue)
+        self.set(self.llasa_max_length, self.llasa_max_length.defaultValue)
+        self.set(self.llasa_mode, self.llasa_mode.defaultValue)
+
+    def resetOrpheus(self):
+        self.set(self.orpehus_temperature, self.orpehus_temperature.defaultValue)
+        self.set(self.orpehus_top_p, self.orpehus_top_p.defaultValue)
+        self.set(self.orpehus_repetition, self.orpehus_repetition.defaultValue)
+        self.set(self.orpehus_top_k, self.orpehus_top_k.defaultValue)
+        self.set(self.orpehus_max_new_tokens, self.orpehus_max_new_tokens.defaultValue)
+
+    def resetSpark(self):
+        self.set(self.spark_top_p, self.spark_top_p.defaultValue)
+        self.set(self.spark_temperature, self.spark_temperature.defaultValue)
+        self.set(self.spark_top_k, self.spark_top_k.defaultValue)
+        self.set(self.spark_max_new_tokens, self.spark_max_new_tokens.defaultValue)
+
+    def resetCSM(self):
+        self.set(self.spark_temperature, self.spark_temperature.defaultValue)
+
+YEAR = 2025
+AUTHOR = "Bryant21"
+VERSION = '2.0.0-beta1'
+NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
+HELP_URL = "https://github.com/falltalk/falltalk4"
+FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"
+RELEASE_URL = "https://github.com/falltalk/falltalk4/releases/latest"
+KOFI_URL = "https://ko-fi.com/bryant21"
+DISCORD_URL = "https://discord.gg/FgKrxdnQdG"
+HUGGING_FACE = "https://huggingface.co/falltalk/falltalk4"
+REPO = "falltalk/falltalk4"
+
+cfg = Config()
+qconfig.load(os.path.join(get_app_root(),'config', 'configv2.json'), cfg)
+
+DISCLAIMER = """
+This code and the accompanying FallTalk AI models are provided subject to the terms and conditions of the End User License Agreement (EULA) of Zenimax Media, Inc., the original rights holder of the Fallout franchise. By using this code or the FallTalk AI models, you agree to comply with the following permitted and prohibited uses, as well as all terms outlined in the Zenimax Media EULA.
+
+By accessing and using the FallTalk, you hereby agree to the following terms and conditions:
+
+Public Disclosure of AI Synthesis: You are obligated to clearly inform any and all end-users that the speech content they are interacting with has been synthesized using the FallTalk AI models. This disclosure should be made in a manner that is prominent and easily understandable.
+
+Permitted Use: You agree to use the FallTalk AI models exclusively for the following purposes:
+
+    • Personal Use: Utilizing the FallTalk AI models for personal, non-commercial projects and activities that do not involve the distribution or sharing of synthesized speech content with others.
+    • Research: Conducting academic or scientific research in the field of artificial intelligence, speech synthesis, or related disciplines.
+    • Non-Commercial Mod Creation: Developing and distributing modifications (mods) for the game Fallout 4 that are available to the public free of charge.
+
+Prohibited Use: You are expressly prohibited from using the FallTalk AI models for any commercial purposes, including but not limited to:
+
+    • Selling or licensing the synthesized speech content.
+    • Incorporating the synthesized speech into any commercial product or service.
+    • Creating or distributing any pornographic or adult material.
+
+Compliance with Laws and Regulations: You agree to comply with all applicable laws, regulations, and ethical standards in your use of the FallTalk models. This includes, but is not limited to, laws concerning intellectual property, privacy, and consumer protection. We assume no responsibility for any illegal use of the codebase.
+
+Limitation of Liability: In no event shall the developers, contributors, or distributors of this modding tool be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this tool or the model(s), even if advised of the possibility of such damage.
+
+Acknowledgment of Rights Holder: Zenimax Media, Inc. is the original rights holder of the Fallout franchise and all related intellectual property. This code and the FallTalk AI models are provided for the specific purposes outlined above, and any use outside of these parameters may violate Zenimax Media's intellectual property rights.
+
+By clicking "Agree", you signify your acceptance of these terms and your commitment to abide by them. If you do not agree to these terms, you may not use this app.
+"""
+
+CUSTOM_DISCLAIMER = """
+By proceeding with the import of custom models for use in Fallout 4 modding, you hereby acknowledge and agree to the following terms:
+
+    •  No Infringement: You warrant that the use of the model(s) does not infringe upon the rights of any third party, including but not limited to privacy rights, publicity rights, and intellectual property rights.
+
+    •  Indemnification: You agree to indemnify and hold harmless the developers, contributors, and distributors of this modding tool from any claims, damages, losses, or expenses (including attorney's fees) arising out of or in connection with your use of the model, including any claims that the model infringes upon the rights of any third party.
+
+    •  Limitation of Liability: In no event shall the developers, contributors, or distributors of this modding tool be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this tool or the model(s), even if advised of the possibility of such damage.
+
+By clicking "Agree", you signify your acceptance of these terms and your commitment to abide by them. If you do not agree to these terms, you must not proceed with the import of the model(s).
+"""

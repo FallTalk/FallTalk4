@@ -1,0 +1,91 @@
+{
+    "App": {
+        "accepts_disclaimer": true,
+        "accepts_custom_disclaimer": true,
+        "api_only_mode": false,
+        "auto_play": true,
+        "check_for_updates": true,
+        "custom_references": "C:/AI/FallTalk/references",
+        "disable_ssl_verify": false,
+        "download_configs": true,
+        "fallout_4_directory": "N:\\Steam Games\\steamapps\\common\\Fallout 4\\",
+        "fallout_4_directory_check": false,
+        "first_start": false,
+        "huggingface_cache_dir": "Please Select a Valid Folder",
+        "keep_only_fuz": false,
+        "output_dir": "C:/AI/FallTalk/output",
+        "rvc_enabled": false,
+        "use_existing_lip": true,
+        "xwm_enabled": false
+    },
+    "TTS": {
+        "auto_update_models": false,
+        "device": "cuda",
+        "engine": "GPT_SoVITS",
+        "load_at_start": false,
+        "seed": 123456
+    },
+    "XTTS": {
+        "deepspeed_enabled": false,
+        "low_vram": false,
+        "model_repetition": 10,
+        "model_temperature": 75,
+        "speed": 100
+    },
+    "MainWindow": {
+        "DpiScale": 1,
+        "EnableAcrylicBackground": false,
+        "Language": "Auto",
+        "MinimizeToTray": false,
+        "PlayBarColor": "#ff225c7f"
+    },
+    "F5": {
+        "mode": "tts",
+        "seed": -1,
+        "speed_factor": 10
+    },
+    "APP": {
+        "huggingface_key": null
+    },
+    "bulk": {
+        "include_subdir": true,
+        "replace_existing": true,
+        "threads": 1
+    },
+    "music": {
+        "mode": "3B"
+    },
+    "GPT_SoVITS": {
+        "low_vram": false,
+        "slice_mode": "Slice once every 4 sentences",
+        "speed": 100,
+        "model_temperature": 75,
+        "top_k": 15,
+        "top_p": 100
+    },
+    "RVC": {
+        "rvc_autotune_checkbox": false,
+        "rvc_eleven_labs_key": null,
+        "rvc_embedding_model": "contentvec",
+        "rvc_filter_radius": 3,
+        "rvc_hop_length": 1,
+        "rvc_index_influence": 75,
+        "rvc_mode": "Microphone",
+        "rvc_pitch": 0,
+        "rvc_pitch_extraction": "rmvpe",
+        "rvc_protect": 50,
+        "rvc_split_audio": false,
+        "rvc_training_data_size": 10000,
+        "rvc_volume_envelope_Rslider": 100
+    },
+    "StyleTTS2": {
+        "alpha": 20,
+        "beta": 20,
+        "diffusion_steps": 100,
+        "embedding_scale": 1
+    },
+    "QFluentWidgets": {
+        "ThemeColor": "#ffffb642",
+        "ThemeMode": "Dark"
+    }
+}
