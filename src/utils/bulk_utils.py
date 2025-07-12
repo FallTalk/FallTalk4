@@ -24,7 +24,8 @@ from src.utils.filesystem_utils import get_app_root
 from src.utils.model_utils import get_character_model, get_trained_character
 from src.utils.huggingface_utils import download_models, download_rvc_models
 from src.utils.inference_utils import (
-    do_transcribe, rvc_inference, xtts_inference, gpt_sovits_inference, styletts2_inference, dia_inference, f5_inference, fish_inference, orpheus_inference, llasa_inference
+    do_transcribe, rvc_inference, xtts_inference, gpt_sovits_inference, styletts2_inference, dia_inference,
+    f5_inference, fish_inference, orpheus_inference, llasa_inference, csm_inference, spark_inference
 )
 from src.enums.engine_type import EngineType
 
@@ -254,6 +255,7 @@ def process_inference_data(parent, data, output_file, character, model, is_train
 
     try:
         if last_character is None or last_character != character:
+            engine_model = model[parent.tts_engine.engine_name]
             clean_tmp_folder()
             if is_trained and not os.path.exists(os.path.join('models', character, parent.tts_engine.engine_name)):
                 download_models(parent, character, model[parent.tts_engine.engine_name], model['RVC'] if has_rvc else None, True)
@@ -263,11 +265,11 @@ def process_inference_data(parent, data, output_file, character, model, is_train
             if parent.tts_engine.is_shared:
                 if character not in parent.tts_engine.characters:
                     if is_trained and character != parent.tts_engine.model_name:
-                        parent.tts_engine.setup(character, has_rvc, False, model['version'], model.get('is_shared', False), model.get('shared_model_name', None),  model.get('characters', None))
+                        parent.tts_engine.setup(character, has_rvc, False, engine_model.get('engine_version', "1"), engine_model.get('is_shared', False), engine_model.get('shared_model_name', None),  engine_model.get('characters', None))
                     elif not is_trained and character != parent.tts_engine.model_name:
                         parent.tts_engine.setup(character, has_rvc, True)
             elif is_trained and character != parent.tts_engine.model_name:
-                parent.tts_engine.setup(character, has_rvc, False, model['version'], model.get('is_shared', False), model.get('shared_model_name', None),  model.get('characters', None))
+                parent.tts_engine.setup(character, has_rvc, False, engine_model.get('engine_version', "1"), engine_model.get('is_shared', False), engine_model.get('shared_model_name', None),  engine_model.get('characters', None))
             elif not is_trained and character != parent.tts_engine.model_name:
                 parent.tts_engine.setup(character, has_rvc, True)
 
@@ -323,15 +325,19 @@ def process_inference_data(parent, data, output_file, character, model, is_train
             elif engine_type == EngineType.STYLE_TTS2:
                 styletts2_inference(parent, output_file, text_or_file, reference_path, None, api)
             elif engine_type == EngineType.DIA:
-                dia_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
+                dia_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
             elif engine_type == EngineType.F5:
                 f5_inference(parent, output_file, text_or_file, reference_path, None, None, None, transcribe_state=transcribe_state, api=api)
             elif engine_type == EngineType.FISH_SPEECH:
                 fish_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
             elif engine_type == EngineType.ORPHEUS:
-                orpheus_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
+                orpheus_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
             elif engine_type == EngineType.LLASA:
-                llasa_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
+                llasa_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
+            elif engine_type == EngineType.CSM:
+                csm_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
+            elif engine_type == EngineType.SPARK:
+                spark_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
 
         if cfg.get(cfg.xwm_enabled):
             create_lip_and_fuz(parent, output_file, 44100, True)
