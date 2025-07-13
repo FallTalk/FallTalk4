@@ -94,10 +94,14 @@ class CSMEngine(tts_engine):
         audio_values = self.model.generate(**inputs, output_audio=True)
         audio, sr = audio_values[0].cpu().float().numpy(), 24000
 
-        # Calculate how many samples to trim (0.2 seconds)
-        samples_to_trim = int(0.2 * sr)  # 0.2s * 24000 samples/s = 4800 samples
+        # Remove that annoying pop at the end
+        samples_to_silence = int(0.1 * sr)  # 0.2s * 24000 samples/s = 4800 samples
 
-        # Trim the audio (avoid negative indexing if audio is too short)
-        trimmed_audio = audio[:-samples_to_trim] if len(audio) > samples_to_trim else audio
+        processed_audio = audio.copy()
+
+        if len(audio) > samples_to_silence:
+            processed_audio[-samples_to_silence:] = 0.0
+
+        trimmed_audio = processed_audio
 
         return trimmed_audio, sr
