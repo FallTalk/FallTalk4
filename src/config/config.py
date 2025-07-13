@@ -241,7 +241,7 @@ class Config(QConfig):
     orpehus_max_new_tokens = RangeConfigItem("Orpehus", "max_new_tokens", 990, RangeValidator(0.0, 2048))
 
     #FishSpeech
-    fish_use_torch_compile = ConfigItem("FishSpeech", "use_torch_compile", True, BoolValidator())
+    fish_use_torch_compile = ConfigItem("FishSpeech", "use_torch_compile", False, BoolValidator())
     fish_repetition = RangeConfigItem("FishSpeech", "model_repetition", 15, RangeValidator(1, 20))
     fish_top_p = RangeConfigItem("FishSpeech", "top_p", 70, RangeValidator(0.0, 100))
     fish_max_length = RangeConfigItem("FishSpeech", "max_length", 2048, RangeValidator(0, 2048))
@@ -250,7 +250,7 @@ class Config(QConfig):
     fish_temperature = RangeConfigItem("FishSpeech", "model_temperature", 80, RangeValidator(1, 100))
 
     #DIA
-    dia_use_torch_compile = ConfigItem("DIA", "use_torch_compile", True, BoolValidator())
+    dia_use_torch_compile = ConfigItem("DIA", "use_torch_compile", False, BoolValidator())
     dia_top_p = RangeConfigItem("DIA", "top_p", 95, RangeValidator(0.0, 100))
     dia_temperature = RangeConfigItem("DIA", "model_temperature", 130, RangeValidator(1, 200))
     dia_top_k = RangeConfigItem("DIA", "top_k", 45, RangeValidator(0, 100))
@@ -298,11 +298,21 @@ class Config(QConfig):
         self.resetDIA()
         self.resetOrpheus()
         self.resetMainSettings()
+        self.resetSpark()
+        self.resetCSM()
+        self.resetLlasa()
+        self.resetDIA()
 
     def resetMainSettings(self):
         self.set(self.download_configs, self.download_configs.defaultValue)
         self.set(self.check_for_updates, self.check_for_updates.defaultValue)
         self.set(self.api_only_mode, self.api_only_mode.defaultValue)
+        self.set(self.disableSSLVerify, self.disableSSLVerify.defaultValue)
+        self.set(self.load_engine_art_start, self.load_engine_art_start.defaultValue)
+        self.set(self.apbwe_enabled, self.apbwe_enabled.defaultValue)
+        self.set(self.keep_only_fuz, self.keep_only_fuz.defaultValue)
+        self.set(self.rvc_enabled, self.rvc_enabled.defaultValue)
+        self.set(self.seed, self.seed.defaultValue)
 
     def resetXtts(self):
         self.set(self.speed, self.speed.defaultValue)
@@ -354,6 +364,9 @@ class Config(QConfig):
 
     def resetDIA(self):
         self.set(self.dia_use_torch_compile, self.dia_use_torch_compile.defaultValue)
+        self.set(self.dia_temperature, self.dia_temperature.defaultValue)
+        self.set(self.dia_top_k, self.dia_top_k.defaultValue)
+        self.set(self.dia_top_p, self.dia_top_p.defaultValue)
 
     def resetLlasa(self):
         self.set(self.llasa_temperature, self.llasa_temperature.defaultValue)
@@ -379,7 +392,7 @@ class Config(QConfig):
 
 YEAR = 2025
 AUTHOR = "Bryant21"
-VERSION = '2.0.0-beta3'
+VERSION = '2.0.0-beta4'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"

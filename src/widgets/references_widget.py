@@ -210,7 +210,7 @@ class ReferencesWidget(FallTalkWidget):
                 item[key] = value
 
             QTimer.singleShot(0, lambda: (
-                player.setSource(QUrl.fromLocalFile(f"references/{item['filename']}")),
+                player.setSource(QUrl.fromLocalFile(os.path.join("references", f"{item['filename']}"))),
             ))
 
     def on_reference_select(self, index):
@@ -227,21 +227,21 @@ class ReferencesWidget(FallTalkWidget):
                 item[key] = value
 
             filename = item['filename'].rsplit('.', 1)[0]
-            if os.path.exists(os.path.join(get_app_root(), f"temp/{filename}.wav")):
+            if os.path.exists(os.path.join(get_app_root(), f"temp", f"{filename}.wav")):
                 QTimer.singleShot(0, lambda: (
-                    player.setSource(QUrl.fromLocalFile(os.path.join(get_app_root(), f"temp/{filename}.wav")))
+                    player.setSource(QUrl.fromLocalFile(os.path.join(get_app_root(), f"temp", f"{filename}.wav")))
                 ))
             else:
                 QTimer.singleShot(0, lambda: (
                     extract_bsa(item),
-                    extract_fuz(os.path.join(get_app_root(), f"temp/{filename}.fuz")),
-                    create_xwm(os.path.join(get_app_root(), f"temp/{filename}.xwm"), os.path.join(get_app_root(), f"temp/{filename}.wav"), False),
+                    extract_fuz(os.path.join(get_app_root(), f"temp", f"{filename}.fuz")),
+                    create_xwm(os.path.join(get_app_root(), f"temp", f"{filename}.xwm"), os.path.join(get_app_root(), f"temp", f"{filename}.wav"), False),
 
-                    os.path.exists(os.path.join(get_app_root(), f"temp/{filename}.xwm")) and os.remove(os.path.join(get_app_root(),f"temp/{filename}.xwm")),
-                    os.path.exists(os.path.join(get_app_root(),f"temp/{filename}.fuz")) and os.remove(os.path.join(get_app_root(),f"temp/{filename}.fuz")),
-                    os.path.exists(os.path.join(get_app_root(),f"temp/{filename}.lip")) and os.remove(os.path.join(get_app_root(),f"temp/{filename}.lip")),
+                    os.path.exists(os.path.join(get_app_root(), f"temp", f"{filename}.xwm")) and os.remove(os.path.join(get_app_root(),f"temp", f"{filename}.xwm")),
+                    os.path.exists(os.path.join(get_app_root(),f"temp", f"{filename}.fuz")) and os.remove(os.path.join(get_app_root(),f"temp", f"{filename}.fuz")),
+                    os.path.exists(os.path.join(get_app_root(),f"temp", f"{filename}.lip")) and os.remove(os.path.join(get_app_root(),f"temp", f"{filename}.lip")),
 
-                    player.setSource(QUrl.fromLocalFile(os.path.join(get_app_root(), f"temp/{filename}.wav")))
+                    player.setSource(QUrl.fromLocalFile(os.path.join(get_app_root(), f"temp", f"{filename}.wav")))
                 ))
 
     def clear(self):
@@ -277,7 +277,7 @@ class ReferencesWidget(FallTalkWidget):
             row = index.row()
             model = self.stackedWidget.currentWidget().model()
             if (self.stackedWidget.currentWidget() == self.custom_reference_table):
-                file_path = os.path.join(get_app_root(), f"references/{model.data(model.index(row, 0))}")
+                file_path = os.path.join(get_app_root(), "references", f"{model.data(model.index(row, 0))}")
                 if file_path not in self.reference_audio:
                     self.reference_audio.append(file_path)
                     self.increase(file_path)
@@ -286,7 +286,7 @@ class ReferencesWidget(FallTalkWidget):
                     self.reference_transcripts.append(None)
             else:
                 filename = model.data(model.index(row, 0)).rsplit('.', 1)[0]
-                file_path = os.path.join(get_app_root(), f"temp/{filename}.wav")
+                file_path = os.path.join(get_app_root(), f"temp", f"{filename}.wav")
                 if file_path not in self.reference_audio:
                     self.reference_audio.append(file_path)
                     self.increase(file_path)
@@ -312,7 +312,7 @@ class ReferencesWidget(FallTalkWidget):
             row = index.row()
             model = self.stackedWidget.currentWidget().model()
             if (self.stackedWidget.currentWidget() == self.custom_reference_table):
-                file_path = os.path.join(get_app_root(), f"references/{model.data(model.index(row, 0))}")
+                file_path = os.path.join(get_app_root(), f"references", "{model.data(model.index(row, 0))}")
                 if file_path in self.reference_audio:
                     index = self.reference_audio.index(file_path)
                     self.reference_audio.remove(file_path)
@@ -322,7 +322,7 @@ class ReferencesWidget(FallTalkWidget):
                     self.decrease(file_path)
             else:
                 filename = model.data(model.index(row, 0)).rsplit('.', 1)[0]
-                file_path = os.path.join(get_app_root(), f"temp/{filename}.wav")
+                file_path = os.path.join(get_app_root(), f"temp", "{filename}.wav")
                 if file_path in self.reference_audio:
                     index = self.reference_audio.index(file_path)
                     self.reference_audio.remove(file_path)
