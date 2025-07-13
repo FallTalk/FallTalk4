@@ -13,7 +13,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QGroupBox, QHeaderView, QAbstractItemView, QFileDialog
 from qfluentwidgets import (
     FluentIcon as FIF, TableView, PushButton, PrimaryPushButton,
-    ConfigItem, PushSettingCard, MessageBox, SwitchSettingCard, SearchLineEdit, ToolButton
+    ConfigItem, PushSettingCard, MessageBox, SwitchSettingCard, SearchLineEdit, ToolButton,
+    CheckBox
 )
 
 
@@ -43,41 +44,47 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.headers = ["FILE_NAME", "RESPONSE TEXT", "VOICE TYPE", "FULLPATH", "REFERENCE FILE", "PLUGIN"]
         model = TableModel([], self.headers)
         self.dialogue_table.setModel(model)
-        
+
         # Hide unnecessary columns
         self.dialogue_table.setColumnHidden(0, False)  # FILE_NAME
         self.dialogue_table.setColumnHidden(3, True)  # FULLPATH
         self.dialogue_table.setColumnHidden(4, False)  # REFERENCE FILE
         self.dialogue_table.setColumnHidden(5, False)  # PLUGIN
-        
+
         # Set column resize modes
         self.dialogue_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)  # RESPONSE TEXT
         self.dialogue_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)  # VOICE TYPE
-        
+
         # Update header text
         self.dialogue_table.model().setHeaderData(1, Qt.Orientation.Horizontal, "Text")
 
         # Filter search and edit mode controls
         self.controls_layout = QHBoxLayout()
         self.controls_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.filter_line_edit = SearchLineEdit()
-        self.filter_line_edit.setPlaceholderText("Filter...")
+        self.filter_line_edit.setPlaceholderText("Only Generate Voices Matching Filter...")
         self.filter_line_edit.textChanged.connect(self.apply_filter)
-        
+
+        self.player_dialogue_checkbox = CheckBox("Player Dialogue Only")
+        self.player_dialogue_checkbox.setChecked(True)
+        self.player_dialogue_checkbox.setMinimumWidth(200)
+        self.player_dialogue_checkbox.stateChanged.connect(self.apply_filter)
+
         self.edit_mode_button = PushButton(text="Edit Mode")
         self.edit_mode_button.setIcon(FIF.EDIT)
         self.edit_mode_button.setCheckable(True)
         self.edit_mode_button.clicked.connect(self.toggle_edit_mode)
-        
+
         self.controls_layout.addWidget(self.filter_line_edit, 1)
+        self.controls_layout.addWidget(self.player_dialogue_checkbox)
         self.controls_layout.addWidget(self.edit_mode_button)
-        
+
         self.controls_widget = QWidget()
         self.controls_widget.setLayout(self.controls_layout)
 
         # File picker and guide
-        self.csv_file = ConfigItem("ez_voice", "csv_file", "Please Select a CSV File", FileValidator())
+        self.csv_file = ConfigItem("ez_voice", "csv_file", "Please Select a CSV File, Or Use xEdit below", FileValidator())
         self.csv_file_card = PushSettingCard(
             self.tr('Select CSV File'),
             FIF.DOCUMENT,
@@ -86,19 +93,12 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         )
         self.csv_file_card.clicked.connect(self.__onCSVFileClicked)
 
-        self.started_card = PushSettingCard(
-            self.tr('Getting Started'),
-            FIF.QUESTION,
-            self.tr("Guide"),
-            self.tr("Required Fields and Schema"),
-        )
 
         self.f_and_u = QGroupBox()
         self.f_and_u.setStyleSheet("border: none")
         self.f_and_u_layout = QHBoxLayout()
         self.f_and_u_layout.setContentsMargins(0, 0, 0, 0)
         self.f_and_u_layout.addWidget(self.csv_file_card, 1)
-        self.f_and_u_layout.addWidget(self.started_card, 1)
         self.f_and_u.setLayout(self.f_and_u_layout)
 
         # Generation settings
@@ -150,17 +150,17 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         # Buttons layout
         self.buttons_layout = QHBoxLayout()
         self.buttons_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Run xEdit button
         self.run_xedit_button = PushButton(text="xEdit")
         self.run_xedit_button.setIcon(FIF.COMMAND_PROMPT)
         self.run_xedit_button.clicked.connect(self.run_xedit)
-        
+
         # Generate button
         self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.generate_audio)
-        
+
         self.buttons_layout.addWidget(self.run_xedit_button)
         self.buttons_layout.addWidget(self.generate_button)
 
@@ -213,10 +213,10 @@ class EzVoiceCreatorWidget(FallTalkWidget):
 
         # Clear the table before loading new data
         self.clear()
-        
+
         self.csv_file.value = file[0]
         self.csv_file_card.setContent(file[0])
-        
+
         # Load the CSV data immediately after selection
         self.load_csv()
 
@@ -237,7 +237,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
                         if character['name'].lower() == voice_type.lower():
                             matching_character = character
                             break
-                    
+
                     if matching_character:
                         # Use TOPIC TEXT if RESPONSE TEXT is null or empty
                         response_text = row['RESPONSE TEXT']
@@ -256,14 +256,16 @@ class EzVoiceCreatorWidget(FallTalkWidget):
 
             model = TableModel(data, self.headers)
             self.dialogue_table.setModel(model)
-            
+
             # Reapply column visibility and header text after model change
             self.dialogue_table.setColumnHidden(0, False)
             self.dialogue_table.setColumnHidden(3, True)
             self.dialogue_table.setColumnHidden(4, False)
             self.dialogue_table.setColumnHidden(5, False)
             self.dialogue_table.model().setHeaderData(1, Qt.Orientation.Horizontal, "Text")
-            
+
+            self.apply_filter()
+
         except Exception as e:
             MessageBox("Error", f"Failed to load CSV: {str(e)}", self).exec()
 
@@ -298,14 +300,28 @@ class EzVoiceCreatorWidget(FallTalkWidget):
     def clear(self):
         model = TableModel([], self.headers)
         self.dialogue_table.setModel(model)
+        self.player_dialogue_checkbox.setChecked(False)
 
     def apply_filter(self):
         text = self.filter_line_edit.text()
+        player_dialogue_only = self.player_dialogue_checkbox.isChecked()
         model = self.dialogue_table.model()
-        if model and text:
+
+        if model:
             for row in range(model.rowCount()):
-                match = any(text.lower() in model.full_data(row, col).lower() for col in range(model.columnCount()))
-                self.dialogue_table.setRowHidden(row, not match)
+                # Check text filter match
+                text_match = True
+                if text:
+                    text_match = any(text.lower() in model.full_data(row, col).lower() for col in range(model.columnCount()))
+
+                # Check player dialogue filter match
+                player_match = True
+                if player_dialogue_only:
+                    voice_type = model.full_data(row, 2).lower()  # VOICE TYPE is at index 2
+                    player_match = voice_type == "playervoicemale01" or voice_type == "playervoicefemale01"
+
+                # Hide row if it doesn't match all active filters
+                self.dialogue_table.setRowHidden(row, not (text_match and player_match))
 
     def toggle_settings_drawer(self):
         self.settings_drawer.open_drawer()

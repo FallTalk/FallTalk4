@@ -277,7 +277,7 @@ end;
 
 //============================================================================
 // get a list of voice types for INFO record
-procedure InfoVoiceTypes(Info: IInterface; lstVoice: TStringList);
+procedure InfoVoiceTypes(Info: IInterface; lstVoice: TStringList; Recursive: Boolean);
 var
   Elem, Dialogue, PrevInfo: IInterface;
   Conditions: IInterface;
@@ -296,9 +296,15 @@ begin
   if Assigned(Elem) then begin
     AddDebug('Found ANAM field in ' + Name(Info));
     Elem := LinksTo(Elem);
-    GetRecordVoiceTypes(Elem, lstVoice);
-    InfoSPEAKER := Name(Elem);
-    Exit;
+
+	if not Recursive and GetLoadOrderFormID(Elem) <> $00000007 then begin
+		lstVoice.Add('PlayerVoiceFemale01');
+        lstVoice.Add('PlayerVoiceMale01');
+		AddDebug('Speaker 00000007 (Protag) found for ' + Name(Info));
+		Exit;
+    end else begin
+      AddDebug('Skipping speaker 00000007 in non-recursive call');
+    end;
   end;
 
   // check Conditions
@@ -306,8 +312,10 @@ begin
     GetConditionsVoiceTypes(ElementByName(Info, 'Conditions'), lstVoice);
 
   // check Scene aliases if above has no result
-  if lstVoice.Count <> 0 then
+  if lstVoice.Count <> 0 then begin
+    AddDebug('Found Voices for ' + Name(Info));
     Exit;
+  end;
 
   bAliasFound := False;
   Dialogue := LinksTo(ElementByName(Info, 'Topic'));
@@ -335,8 +343,10 @@ begin
     end;
   end;
 
-  if lstVoice.Count <> 0 then
+  if lstVoice.Count <> 0 then begin
+    AddDebug('Found Voices for ' + Name(Info));
     Exit;
+  end;
 
   // check Previous INFO recursively
   Elem := ElementByName(Info, 'PNAM - Previous INFO');
@@ -344,7 +354,7 @@ begin
     PrevInfo := LinksTo(Elem);
     if Assigned(PrevInfo) then begin
       AddDebug('Searching for previous INFO');
-      InfoVoiceTypes(PrevInfo, lstVoice);
+      InfoVoiceTypes(PrevInfo, lstVoice, True);
       if lstVoice.Count > 0 then begin
         AddDebug('Found voices in previous INFO: ' + Name(PrevInfo));
         Exit;
@@ -355,8 +365,10 @@ begin
   end else
     AddDebug('No PNAM field found in ' + Name(Info));
 
-  if lstVoice.Count <> 0 then
+  if lstVoice.Count <> 0 then begin
+    AddDebug('Found Voices for ' + Name(Info));
     Exit;
+  end;
 
     // Check for Start Scene Phase
   StartScenePhase := GetElementEditValues(Info, 'NAM0 - Start Scene Phase');
@@ -385,8 +397,10 @@ begin
     end;
   end;
 
-  if lstVoice.Count <> 0 then
+  if lstVoice.Count <> 0 then begin
+    AddDebug('Found Voices for ' + Name(Info));
     Exit;
+  end;
 
   // Final fallback: Search for greeting topics
   AddDebug('No voices found, searching for greeting topics');
@@ -394,42 +408,41 @@ begin
   if Assigned(Dialogue) then begin
     // First check if we're already in a greeting topic
     if GetElementEditValues(Dialogue, 'SNAM') = 'GREE' then begin
-      AddDebug('Current INFO is already in a greeting topic, skipping greeting search');
-      Exit;
-    end;
-
-    // Get the quest from the dialogue
-    Elem := LinksTo(ElementByName(Dialogue, 'QNAM - Quest'));
-    if Assigned(Elem) then begin
-      AddDebug('Searching quest: ' + Name(Elem));
-      // Get all DIALs referencing this quest
-      for i := 0 to Pred(ReferencedByCount(Elem)) do begin
-        if Signature(ReferencedByIndex(Elem, i)) = 'DIAL' then begin
-          Dialogue := ReferencedByIndex(Elem, i);
-          // Check if this is a greeting topic
-          if GetElementEditValues(Dialogue, 'SNAM') = 'GREE' then begin
-            AddDebug('Found greeting topic: ' + Name(Dialogue));
-            // Get all INFOs from this dialogue
-            Elem := ChildGroup(Dialogue);
-            for j := 0 to Pred(ElementCount(Elem)) do begin
-              Info := ElementByIndex(Elem, j);
-              AddDebug('Checking greeting INFO: ' + Name(Info));
-              InfoVoiceTypes(Info, lstVoice);
-              if lstVoice.Count > 0 then begin
-                AddDebug('Found voices in greeting INFO');
-                Exit;
-              end;
-            end;
-          end;
-        end;
-      end;
-    end;
+      AddDebug('Current INFO ' + Name(Info) + ' is already in a greeting topic, skipping greeting search');
+    end else begin
+		// Get the quest from the dialogue
+		Elem := LinksTo(ElementByName(Dialogue, 'QNAM - Quest'));
+		if Assigned(Elem) then begin
+		  AddDebug('Searching quest: ' + Name(Elem));
+		  // Get all DIALs referencing this quest
+		  for i := 0 to Pred(ReferencedByCount(Elem)) do begin
+			if Signature(ReferencedByIndex(Elem, i)) = 'DIAL' then begin
+			  Dialogue := ReferencedByIndex(Elem, i);
+			  // Check if this is a greeting topic
+			  if GetElementEditValues(Dialogue, 'SNAM') = 'GREE' then begin
+				AddDebug('Found greeting topic: ' + Name(Dialogue));
+				// Get all INFOs from this dialogue
+				Elem := ChildGroup(Dialogue);
+				for j := 0 to Pred(ElementCount(Elem)) do begin
+				  Info := ElementByIndex(Elem, j);
+				  AddDebug('Checking greeting INFO: ' + Name(Info));
+				  InfoVoiceTypes(Info, lstVoice, False);
+				  if lstVoice.Count > 0 then begin
+					AddDebug('Found voices in greeting INFO for ' + Name(Info));
+					Exit;
+				  end;
+				end;
+			  end;
+			end;
+		  end;
+		end;
+	end;
   end;
 
   // if still can't determine voices, then use all of them
   if lstVoice.Count = 0 then begin
-    AddMessage('Warning: No voice types found for ' + Name(Info));
-    //GetRecordVoiceTypes(RecordByFormID(FileByIndex(0), $0003B4A5, False), lstVoice); // DefaultNPCVoiceTypes [FLST:0003B4A5]
+    AddDebug('Warning: Applying NPC defaults as No voice types found for ' + Name(Info));
+    GetRecordVoiceTypes(RecordByFormID(FileByIndex(0), $0002D563, False), lstVoice); // DefaultNPCVoiceTypes [FLST:0002D563]
   end;
 
 end;
@@ -554,7 +567,8 @@ begin
         lstVoice.Add('PlayerVoiceMale01');
       end
       else begin
-        InfoVoiceTypes(Info, lstVoice);
+	    AddDebug('--Getting Voices for INFO: ' + Name(Info));
+        InfoVoiceTypes(Info, lstVoice, True);
       end;
 
       // Export each response × each voice

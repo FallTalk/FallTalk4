@@ -519,7 +519,14 @@ def get_default_reference(parent, character_name):
 def ez_voice_creator_inference(parent):
     if parent.tts_engine.engine_name != EngineType.RVC.value:
         model = parent.ez_voice_creator_widget.dialogue_table.model()
-        datas = model.getData()
+        table = parent.ez_voice_creator_widget.dialogue_table
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Only get data from visible (not filtered out) rows
+        datas = []
+        for row in range(model.rowCount()):
+            if not table.isRowHidden(row):
+                datas.append(model.getData()[row])
 
         # Sort data by voice_type (index 2) to process all entries for the same character together
         datas.sort(key=lambda x: x[2] if x[2] is not None else "")
@@ -539,6 +546,7 @@ def ez_voice_creator_inference(parent):
                 full_path = data[3]  # FULLPATH
                 reference_voice = data[4]  # REFERENCE FILE
                 plugin_name = data[5]  # PLUGIN
+                plugin_name = f"{plugin_name}_{timestamp}"
 
                 # Get character data
                 character = parent.characters_data.get(voice_type)
@@ -557,7 +565,6 @@ def ez_voice_creator_inference(parent):
                 if len(path_parts) > 1 and path_parts[0] == 'Data':
                     path_parts = path_parts[1:]  # Remove 'Data' from the path
 
-                # Create the full output path with plugin name
                 output_path = os.path.join(get_app_root(), 'bulk_outputs/', plugin_name, 'Data', *path_parts)
                 output_file = output_path.replace('.fuz', '.wav')
 
