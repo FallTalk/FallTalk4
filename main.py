@@ -59,6 +59,11 @@ if __name__ == '__main__':
         os.environ['WANDB_DISABLED'] = 'True'
         os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
         os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+        os.environ['TORCHDYNAMO_VERBOSE'] = '1'
+        os.environ["TORCHINDUCTOR_DISABLE"] = "1"
+        os.environ["TORCH_COMPILE_BACKEND"] = "eager"  # fallback to eager mode
+        os.environ["PYTORCH_ENABLE_DYNAMO"] = "0"
+        os.environ["TRITON_DISABLE_AUTOTUNE"] = "1"
 
         import getpass
         os.environ['USER'] = getpass.getuser()

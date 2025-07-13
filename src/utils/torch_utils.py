@@ -23,3 +23,13 @@ def get_compute_dtype():
         return torch.float16
     else:
         return torch.float32
+
+def disable_dynamo():
+    try:
+        torch._dynamo.config.suppress_errors = True
+        torch._inductor.config.triton.enabled = False
+        torch._inductor.config.cpp.enabled = False
+        torch._dynamo.disable()
+    except:
+        print("Dynamo Disable Failure")
+        pass

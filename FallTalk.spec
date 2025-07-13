@@ -27,7 +27,13 @@ torchao_hiddenimports = collect_submodules('torchao')
 flash_attn_hiddenimports = collect_submodules('flash_attn')
 speechbrain_hiddenimports  = collect_submodules('speechbrain')
 accelerate_hiddenimports  = collect_submodules('accelerate')
-
+x_transformers_hiddenimports = collect_submodules('accelerate')
+tiktoken_hiddenimports = collect_submodules('tiktoken')
+tiktoken_ext_hiddenimports = collect_submodules('tiktoken_ext')
+torchdiffeq_hiddenimports = collect_submodules('torchdiffeq')
+loralib_hiddenimports = collect_submodules('loralib')
+natsort_hiddenimports = collect_submodules('natsort')
+rich_hiddenimports = collect_submodules('rich')
 
 transformers_datas = collect_data_files('transformers', include_py_files=True)
 scipy_datas = collect_data_files('scipy')
@@ -50,6 +56,17 @@ torchao_datas = collect_data_files('torchao', include_py_files=True)
 flash_attn_datas = collect_data_files('flash_attn', include_py_files=True)
 speechbrain_datas = collect_data_files('speechbrain', include_py_files=True)
 triton_datas = collect_data_files('triton', include_py_files=True)
+x_transformers_data =  collect_data_files('x_transformers', include_py_files=True)
+pypinyin_datas = collect_data_files('pypinyin', include_py_files=True)
+tiktoken_datas = collect_data_files('tiktoken', include_py_files=True)
+tiktoken_ext_datas = collect_data_files('tiktoken_ext', include_py_files=True)
+snac_datas = collect_data_files('snac', include_py_files=True)
+torchdiffeq_datas = collect_data_files('torchdiffeq', include_py_files=True)
+loralib_datas = collect_data_files('loralib', include_py_files=True)
+natsort_datas = collect_data_files('natsort', include_py_files=True)
+rich_datas = collect_data_files('rich', include_py_files=True)
+audiotools_data = collect_data_files('audiotools', include_py_files=True)
+dac_datas = collect_data_files('dac', include_py_files=True)
 
 def collect_module_data(module_path):
     data_files = []
@@ -130,6 +147,17 @@ a = Analysis(
     +phonemizer_datas
     +config_datas
     +demucs_datas
+    +loralib_datas
+    +x_transformers_data
+    +pypinyin_datas
+    +tiktoken_datas
+    +tiktoken_ext_datas
+    +snac_datas
+    +dac_datas
+    +torchdiffeq_datas
+    +audiotools_data
+    +natsort_datas
+    +rich_datas
     +tts_engines_datas_modules,
     hiddenimports=scipy_hiddenimports
     +fairseq_hiddenimports
@@ -151,6 +179,13 @@ a = Analysis(
     +transformers_hiddenimports
     +torchao_hiddenimports
     +flash_attn_hiddenimports
+    +x_transformers_hiddenimports
+    +tiktoken_hiddenimports
+    +tiktoken_ext_hiddenimports
+    +torchdiffeq_hiddenimports
+    +loralib_hiddenimports
+    +natsort_hiddenimports
+    +rich_hiddenimports
     +triton_hiddenimports,
     hookspath=[],
     hooksconfig={},
