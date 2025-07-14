@@ -1,3 +1,4 @@
+import gc
 import math
 import os
 import sys
@@ -18,9 +19,9 @@ from src.utils.filesystem_utils import get_app_root, get_app_code_root
 from src.utils import logging_utils
 from src.utils.audio_utils import load_audio
 
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5/src')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5/src/f5_tts')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5/src/f5_tts/model')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5', 'src')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5','src','f5_tts')))
+sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5','src','f5_tts','model')))
 
 from third_party.f5.src.f5_tts.model import DiT, CFM
 from third_party.f5.src.f5_tts.infer import utils_infer
@@ -39,15 +40,19 @@ class F5Engine(tts_engine):
         self.cfm_model = None
         self.mode = cfg.get(cfg.f5_mode)
         self.model_cfg = None
+        self.ckpt_path = None
 
     def unload_model(self):
         self.model.to('cpu')
-        del self.vocoder
+        if self.vocoder:
+            del self.vocoder
         super().basic_unload_model()
         self.vocoder = None
-        del self.model_cfg
+        if self.model_cfg:
+            del self.model_cfg
         self.model_cfg = None
-        del self.cfm_model
+        if self.cfm_model:
+            del self.cfm_model
         self.cfm_model = None
 
         if torch.cuda.is_available():
@@ -60,9 +65,6 @@ class F5Engine(tts_engine):
         del self.model_cfg
         self.model_cfg = None
 
-
-
-
     def load_model(self):
         logging_utils.logger.debug(f"Loading {self.model_path}")
 
@@ -73,18 +75,18 @@ class F5Engine(tts_engine):
             self.vocoder = utils_infer.load_vocoder(is_local=True, local_path=os.path.join(get_app_root(), 'models', 'F5', 'vocos'), device=self.device)
 
         if self.is_base:
-            ckpt_path = str(os.path.abspath(os.path.join(get_app_root(), 'models', 'F5', 'F5TTS_v1_Base', 'model_1250000.safetensors')))
+            self.ckpt_path = str(os.path.abspath(os.path.join(get_app_root(), 'models', 'F5', 'F5TTS_v1_Base', 'model_1250000.safetensors')))
         else:
-            ckpt_path = str(os.path.abspath(self.model_path))
+            self.ckpt_path = str(os.path.abspath(self.model_path))
 
         if cfg.get(cfg.f5_mode) == 'tts':
             self.model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
-            self.model = utils_infer.load_model(DiT, self.model_cfg, ckpt_path, device=self.device)
+            self.model = utils_infer.load_model(DiT, self.model_cfg, self.ckpt_path, device=self.device)
             self.mode = cfg.get(cfg.f5_mode)
         else:
             self.mode = cfg.get(cfg.f5_mode)
             ode_method = "euler"
-            self.model_cfg = OmegaConf.load(str(os.path.join(get_app_root(), 'f5', 'src', 'f5_tts', 'configs', 'F5TTS_v1_Base.yaml')))
+            self.model_cfg = OmegaConf.load(str(os.path.join(get_app_code_root(), 'third_party', 'f5', 'src', 'f5_tts', 'configs', 'F5TTS_v1_Base.yaml')))
             model_cls = get_class(f"f5_tts.model.{self.model_cfg.model.backbone}")
             model_arc = self.model_cfg.model.arch
 
@@ -117,12 +119,13 @@ class F5Engine(tts_engine):
                 vocab_char_map=vocab_char_map,
             ).to(self.device)
 
-            self.model = utils_infer.load_checkpoint(self.cfm_model, ckpt_path, device=self.device, use_ema=True)
+
+            self.model = utils_infer.load_checkpoint(self.cfm_model, self.ckpt_path, device=self.device, use_ema=True)
 
 
     def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, start_time=None, end_time=None):
 
-        if self.mode != cfg.get(cfg.f5_mode):
+        if self.mode != cfg.get(cfg.f5_mode) or self.model is None:
             self.load_model()
 
         # Load the audio
@@ -218,6 +221,9 @@ class F5Engine(tts_engine):
         elif rms < target_rms:
             audio = audio * (target_rms / rms)
 
+        if start_time > 0.05:
+            start_time = start_time - 0.05
+
         # Audio editing logic
         parts_to_edit = [[start_time, end_time]]
 
@@ -268,27 +274,40 @@ class F5Engine(tts_engine):
         ref_audio_len = 0
         duration = audio.shape[-1] // hop_length
 
-        # Inference
-        with torch.inference_mode():
-            generated, trajectory = self.model.sample(
-                cond=audio,
-                text=final_text_list,
-                duration=duration,
-                steps=nfe_step,
-                cfg_strength=cfg_strength,
-                sway_sampling_coef=sway_sampling_coef,
-                edit_mask=edit_mask,
-            )
+        try:
+            # Inference
+            with torch.inference_mode():
+                generated, trajectory = self.model.sample(
+                    cond=audio,
+                    text=final_text_list,
+                    duration=duration,
+                    steps=nfe_step,
+                    cfg_strength=cfg_strength,
+                    sway_sampling_coef=sway_sampling_coef,
+                    edit_mask=edit_mask,
+                )
 
-            # Final result
-            generated = generated.to(torch.float32)
-            generated = generated[:, ref_audio_len:, :]
-            gen_mel_spec = generated.permute(0, 2, 1)
-            generated_wave = self.vocoder.decode(gen_mel_spec).cpu()
+                # Final result
+                generated = generated.to(torch.float32)
+                generated = generated[:, ref_audio_len:, :]
+                gen_mel_spec = generated.permute(0, 2, 1)
+                generated_wave = self.vocoder.decode(gen_mel_spec).cpu()
 
-            if rms < target_rms:
-                generated_wave = generated_wave * rms / target_rms
+                if rms < target_rms:
+                    generated_wave = generated_wave * rms / target_rms
 
-            # torchaudio.save(output_file, generated_wave, target_sample_rate)
+                waveform = generated_wave.detach().cpu()
 
-            return generated_wave.cpu().numpy(), target_sample_rate
+                if waveform.dim() == 2 and waveform.shape[0] == 1:
+                    waveform = waveform.squeeze(0)
+                elif waveform.dim() == 2 and waveform.shape[1] == 1:
+                    waveform = waveform.squeeze(1)
+
+                waveform_np = waveform.numpy().astype('float32')
+                waveform_np = waveform_np.clip(-1.0, 1.0)
+
+                return waveform_np, target_sample_rate
+        finally:
+            del audio, audio_, edit_mask, generated, trajectory, waveform, generated_wave
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()

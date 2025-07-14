@@ -47,16 +47,19 @@ def do_transcribe(parent: 'FallTalkApp', selected_audio, widget, api=False):
 
 
 def replace_numbers_with_words(sentence):
-    sentence = re.sub(r'(\d+)', r' \1 ', sentence)  # add spaces around numbers
+    if sentence:
+        sentence = re.sub(r'(\d+)', r' \1 ', sentence)  # add spaces around numbers
 
-    def replace_with_words(match):
-        num = match.group(0)
-        try:
-            return num2words(num)  # Convert numbers to words
-        except:
-            return num  # In case num2words fails (unlikely with digits but just to be safe)
+        def replace_with_words(match):
+            num = match.group(0)
+            try:
+                return num2words(num)  # Convert numbers to words
+            except:
+                return num  # In case num2words fails (unlikely with digits but just to be safe)
 
-    return re.sub(r'\b\d+\b', replace_with_words, sentence)  # Regular expression that matches numbers
+        return re.sub(r'\b\d+\b', replace_with_words, sentence)  # Regular expression that matches numbers
+    else:
+        return None
 
 
 def get_eleven_labs_voices():
