@@ -87,7 +87,7 @@ class F5Widget(GenerationWidget):
         self.buttons_layout.addWidget(self.transcribe_button, stretch=1)
         self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
-        self.generate_button.clicked.connect(self.parent.generate_audio)
+        self.generate_button.clicked.connect(lambda: self.parent.generate_audio(transcribe_state=self.transcribe_state))
         # self.generate_button.setEnabled(False)
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
 

@@ -186,7 +186,7 @@ class Config(QConfig):
     accepts_custom_disclaimer = ConfigItem('App', 'accepts_custom_disclaimer', False, BoolValidator())
 
     #Bulk
-    replace_existing = ConfigItem("bulk", "replace_existing", True, BoolValidator())
+    replace_existing = ConfigItem("bulk", "replace_existing", False, BoolValidator())
     include_subdir = ConfigItem("bulk", "include_subdir", True, BoolValidator())
     threads = RangeConfigItem("bulk", "threads", 1, RangeValidator(1, 2))
 
@@ -313,6 +313,7 @@ class Config(QConfig):
         self.set(self.keep_only_fuz, self.keep_only_fuz.defaultValue)
         self.set(self.rvc_enabled, self.rvc_enabled.defaultValue)
         self.set(self.seed, self.seed.defaultValue)
+        self.set(self.replace_existing, self.replace_existing.defaultValue)
 
     def resetXtts(self):
         self.set(self.speed, self.speed.defaultValue)
@@ -392,7 +393,7 @@ class Config(QConfig):
 
 YEAR = 2025
 AUTHOR = "Bryant21"
-VERSION = '2.0.0-beta4'
+VERSION = '2.0.0-beta5'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"

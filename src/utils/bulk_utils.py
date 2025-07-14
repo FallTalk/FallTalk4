@@ -166,9 +166,18 @@ def bulk_fuz(parent, directory, include_subdir, threads=1, use_existing_lip=True
 
 def bulk_rvc_inference(parent, directory, model, include_subdir, replace, threads=1, use_existing_lip=True):
     start_time = time.time()
-    wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
-    fuz_files = glob.glob(os.path.join(directory, '**', '*.fuz'), recursive=include_subdir)
-    xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
+
+    if include_subdir:
+        pattern_base = os.path.join(directory, '**')
+        recursive = True
+    else:
+        pattern_base = directory
+        recursive = False
+
+    wav_files = glob.glob(os.path.join(pattern_base, '*.wav'), recursive=recursive)
+    fuz_files = glob.glob(os.path.join(pattern_base, '*.fuz'), recursive=recursive)
+    xwm_files = glob.glob(os.path.join(pattern_base, '*.xwm'), recursive=recursive)
+
     count = 0
     time_total = 0
     output_folder = None
@@ -189,7 +198,7 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
         output_folder = get_bulk_folder(model['display_name'])
         os.makedirs(output_folder, exist_ok=True)
 
-    if is_trained:
+    if is_trained and has_rvc:
         # if parent.tts_engine.engine_name != 'RVC':
         #     engine_changed = True
         #     load_rvc(parent, True)
@@ -215,7 +224,7 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
         for i in range(threads):
             from src.tts_engines.rvc_engine import RVC_Engine
             tts_engine = RVC_Engine()
-            tts_engine.setup(model['name'], has_rvc, not is_trained)
+            tts_engine.setup(model['name'], has_rvc, not is_trained, "1")
             tts_engine.preload_rvc_params()
             tts_engines.append(tts_engine)
 
@@ -255,7 +264,6 @@ def process_inference_data(parent, data, output_file, character, model, is_train
 
     try:
         if last_character is None or last_character != character:
-            engine_model = model[parent.tts_engine.engine_name]
             clean_tmp_folder()
             if is_trained and not os.path.exists(os.path.join('models', character, parent.tts_engine.engine_name)):
                 download_models(parent, character, model[parent.tts_engine.engine_name], model['RVC'] if has_rvc else None, True)
@@ -265,10 +273,12 @@ def process_inference_data(parent, data, output_file, character, model, is_train
             if parent.tts_engine.is_shared:
                 if character not in parent.tts_engine.characters:
                     if is_trained and character != parent.tts_engine.model_name:
+                        engine_model = model[parent.tts_engine.engine_name]
                         parent.tts_engine.setup(character, has_rvc, False, engine_model.get('engine_version', "1"), engine_model.get('is_shared', False), engine_model.get('shared_model_name', None),  engine_model.get('characters', None))
                     elif not is_trained and character != parent.tts_engine.model_name:
                         parent.tts_engine.setup(character, has_rvc, True)
             elif is_trained and character != parent.tts_engine.model_name:
+                engine_model = model[parent.tts_engine.engine_name]
                 parent.tts_engine.setup(character, has_rvc, False, engine_model.get('engine_version', "1"), engine_model.get('is_shared', False), engine_model.get('shared_model_name', None),  engine_model.get('characters', None))
             elif not is_trained and character != parent.tts_engine.model_name:
                 parent.tts_engine.setup(character, has_rvc, True)

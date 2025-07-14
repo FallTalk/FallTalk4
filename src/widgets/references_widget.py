@@ -312,7 +312,7 @@ class ReferencesWidget(FallTalkWidget):
             row = index.row()
             model = self.stackedWidget.currentWidget().model()
             if (self.stackedWidget.currentWidget() == self.custom_reference_table):
-                file_path = os.path.join(get_app_root(), f"references", "{model.data(model.index(row, 0))}")
+                file_path = os.path.join(get_app_root(), f"references", f"{model.data(model.index(row, 0))}")
                 if file_path in self.reference_audio:
                     index = self.reference_audio.index(file_path)
                     self.reference_audio.remove(file_path)
@@ -322,7 +322,7 @@ class ReferencesWidget(FallTalkWidget):
                     self.decrease(file_path)
             else:
                 filename = model.data(model.index(row, 0)).rsplit('.', 1)[0]
-                file_path = os.path.join(get_app_root(), f"temp", "{filename}.wav")
+                file_path = os.path.join(get_app_root(), f"temp", f"{filename}.wav")
                 if file_path in self.reference_audio:
                     index = self.reference_audio.index(file_path)
                     self.reference_audio.remove(file_path)

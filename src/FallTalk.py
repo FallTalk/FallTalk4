@@ -849,7 +849,12 @@ class FallTalkApp(FallTalkFluentWindow):
                     tr = (threading.Thread(target=eleven_labs_inference, args=(self, text, output_file, current_widget.eleven_labs_widget.voice_combo.configItem.currentText(), current_widget), daemon=True))
                     tr.start()
         else:
-            text = replace_numbers_with_words(self.ensure_sentence_punctuation(current_widget.text_input.toPlainText()))
+
+            if not current_widget.text_input.toPlainText():
+                self.showErrorPopup(current_widget, current_widget.generate_button, "Please Enter Some Text")
+                return
+            else:
+                text = replace_numbers_with_words(self.ensure_sentence_punctuation(current_widget.text_input.toPlainText()))
 
             if current_engine.needs_reference_when_trained or self.tts_engine.is_base:
                 if references is None or not references:
