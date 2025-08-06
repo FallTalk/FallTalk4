@@ -9,7 +9,7 @@ class EngineType(Enum):
     FISH_SPEECH = ("FishSpeech", True, True, ["s1-mini"], "s1-mini", 30, 5, False, True)
     LLASA = ("Llasa", False, True, ["1b", "3b"], "1b", 15, 3, True, False)
     XTTS_V2 = ("XTTSv2", True, False, ["1"], "2", 10, 3, False, True)
-    GPT_SOVITS = ("GPT_SoVITS", False, True, ["1", "2", "v2ProPlus"], "v2ProPlus", 10, 3, False, True)
+    GPT_SOVITS = ("GPT_SoVITS", True, True, ["1", "2", "v2ProPlus"], "v2ProPlus", 10, 3, False, True)
     STYLE_TTS2 = ("StyleTTS2", True, False, ["1"], "1", 15, 3, False, True)
     SPARK = ("Spark", False, False, ["0.5"], "0.5", 15, 3, True, True)
     MegaTTS3 = ("MegaTTS3", True, True, ["3"], "3", 15, 3, True, False)

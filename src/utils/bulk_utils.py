@@ -335,12 +335,7 @@ def process_inference_data(parent, data, output_file, character, model, is_train
                     transcript = transcribe_state['transcript'] if transcribe_state is not None else None
 
             if engine_type == EngineType.GPT_SOVITS:
-                # Handle null references
-                if reference_path is None:
-                    selected_audio = None
-                else:
-                    selected_audio = os.path.abspath(reference_path) if parent.tts_engine.is_base else [os.path.abspath(reference_path)]
-                gpt_sovits_inference(parent, output_file, text_or_file, selected_audio, None, transcript, api)
+                gpt_sovits_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
             elif engine_type == EngineType.XTTS_V2:
                 xtts_inference(parent, output_file, text_or_file, reference_path, None, api)
             elif engine_type == EngineType.STYLE_TTS2:
