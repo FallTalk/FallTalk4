@@ -25,7 +25,8 @@ from src.utils.model_utils import get_character_model, get_trained_character
 from src.utils.huggingface_utils import download_models, download_rvc_models
 from src.utils.inference_utils import (
     do_transcribe, rvc_inference, xtts_inference, gpt_sovits_inference, styletts2_inference, dia_inference,
-    f5_inference, fish_inference, orpheus_inference, llasa_inference, csm_inference, spark_inference
+    f5_inference, fish_inference, orpheus_inference, llasa_inference, csm_inference, spark_inference,
+    preprocess_text
 )
 from src.enums.engine_type import EngineType
 
@@ -258,6 +259,8 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
         QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
 
 
+
+
 def process_inference_data(parent, data, output_file, character, model, is_trained, has_rvc, reference_voice, text_or_file, api=True, last_character=None):
     """Helper function to process inference data for both bulk and ez voice creator"""
     import os
@@ -315,6 +318,9 @@ def process_inference_data(parent, data, output_file, character, model, is_train
             sf.write(output_file, data, samplerate)
             rvc_inference(parent, output_file, None, api)
         elif not is_wav:
+            # Apply text preprocessing (ensure punctuation and replace numbers with words)
+            text_or_file = preprocess_text(text_or_file)
+
             engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
             if engine_type is None:
                 raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")

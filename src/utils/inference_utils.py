@@ -46,7 +46,40 @@ def do_transcribe(parent: 'FallTalkApp', selected_audio, widget, api=False):
             QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Transcribe Audio"), Q_ARG(str, "An Error Occured while attempting to transcribe audio. Please check your logs and report the issue if needed"))
 
 
+def ensure_sentence_punctuation(text):
+    """
+    Ensures that the text ends with standard punctuation (., !, ?).
+    If it ends with non-standard punctuation, removes it and adds a period.
+    If it doesn't end with any punctuation, adds a period.
+    """
+    if not text:
+        return None
+
+    # Define the standard punctuation marks
+    standard_punctuation = ".!?"
+    # All punctuation characters
+    import string
+    all_punctuation = string.punctuation
+
+    text = text.strip()
+
+    if text:
+        # Check if the last character is a punctuation mark
+        if text[-1] in all_punctuation:
+            # If it's not a standard punctuation mark, replace it with a period
+            if text[-1] not in standard_punctuation:
+                text = text[:-1] + "."
+        else:
+            # If it's not a punctuation mark at all, add a period
+            text += "."
+
+    return text
+
+
 def replace_numbers_with_words(sentence):
+    """
+    Replaces numbers in text with their word equivalents.
+    """
     if sentence:
         sentence = re.sub(r'(\d+)', r' \1 ', sentence)  # add spaces around numbers
 
@@ -60,6 +93,19 @@ def replace_numbers_with_words(sentence):
         return re.sub(r'\b\d+\b', replace_with_words, sentence)  # Regular expression that matches numbers
     else:
         return None
+
+
+def preprocess_text(text):
+    """
+    Applies both text preprocessing functions:
+    1. Ensures text ends with punctuation
+    2. Replaces numbers with words
+
+    Returns the processed text.
+    """
+    text = ensure_sentence_punctuation(text)
+    text = replace_numbers_with_words(text)
+    return text
 
 
 def get_eleven_labs_voices():
@@ -131,7 +177,7 @@ def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=N
             'language': "en",
             'output_file': output_file
         }
-        
+
         # Add optional parameters if they exist
         if transcribe_state is not None:
             kwargs['transcript'] = transcribe_state
@@ -144,7 +190,7 @@ def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=N
 
         # Generate audio with the engine
         parent.tts_engine.generate_audio(**kwargs)
-        
+
         if not api:
             QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, 
                                    Q_ARG(PySide6.QtCore.QObject, panel), 

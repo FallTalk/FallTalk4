@@ -29,10 +29,10 @@ from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time
 from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models, download_all_models_config
 from src.utils.icons import FallTalkIcons
 from src.utils.inference_utils import (
-    do_transcribe, replace_numbers_with_words, eleven_labs_inference, edge_tts_inference,
+    do_transcribe, eleven_labs_inference, edge_tts_inference,
     rvc_inference, xtts_inference, dia_inference, fish_inference, f5_inference,
     gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference, spark_inference, csm_inference,
-    do_transcribe_before_gen
+    do_transcribe_before_gen, preprocess_text
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
@@ -705,20 +705,6 @@ class FallTalkApp(FallTalkFluentWindow):
     def get_output_file(self, widget):
         return self.get_output_file_name(widget.output_name.value)
 
-    def ensure_sentence_punctuation(self, sentence):
-        if not sentence:
-            return None
-        # Define the standard punctuation marks
-        standard_punctuation = ".!?"
-
-        sentence = sentence.strip()
-
-        # Check if the last character of the sentence is a standard punctuation mark
-        if sentence[-1] not in standard_punctuation:
-            # If not, add a period at the end
-            sentence += "."
-
-        return sentence
 
     @Slot(PySide6.QtCore.QObject)
     def after_upscale(self, parent: 'FallTalkApp'):
@@ -827,7 +813,7 @@ class FallTalkApp(FallTalkFluentWindow):
                     tr = (threading.Thread(target=rvc_inference, args=(self, output_file, current_widget), daemon=True))
                     tr.start()
             elif current_widget.stackedWidget.currentWidget() == current_widget.edge_tts_widget:
-                text = replace_numbers_with_words(self.ensure_sentence_punctuation(current_widget.edge_tts_widget.text_input.toPlainText()))
+                text = preprocess_text(current_widget.edge_tts_widget.text_input.toPlainText())
                 if not text or text == '':
                     self.showErrorPopup(current_widget, current_widget.edge_tts_widget.generate_button, "Please Enter Some Text to Generate...")
                 elif self.tts_engine.model_name is None:
@@ -838,7 +824,7 @@ class FallTalkApp(FallTalkFluentWindow):
                     tr = (threading.Thread(target=edge_tts_inference, args=(self, text, output_file, current_widget.edge_tts_widget.voice_combo.configItem.currentText(), current_widget), daemon=True))
                     tr.start()
             elif current_widget.stackedWidget.currentWidget() == current_widget.eleven_labs_widget:
-                text = replace_numbers_with_words(self.ensure_sentence_punctuation(current_widget.eleven_labs_widget.text_input.toPlainText()))
+                text = preprocess_text(current_widget.eleven_labs_widget.text_input.toPlainText())
                 if not text or text == '':
                     self.showErrorPopup(current_widget, current_widget.eleven_labs_widget.generate_button, "Please Enter Some Text to Generate...")
                 elif self.tts_engine.model_name is None:
@@ -854,7 +840,7 @@ class FallTalkApp(FallTalkFluentWindow):
                 self.showErrorPopup(current_widget, current_widget.generate_button, "Please Enter Some Text")
                 return
             else:
-                text = replace_numbers_with_words(self.ensure_sentence_punctuation(current_widget.text_input.toPlainText()))
+                text = preprocess_text(current_widget.text_input.toPlainText())
 
             if current_engine.needs_reference_when_trained or self.tts_engine.is_base:
                 if references is None or not references:
