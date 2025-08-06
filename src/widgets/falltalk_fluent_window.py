@@ -221,7 +221,7 @@ class FallTalkFluentWindow(FluentWindowBase):
         elif cfg.get(cfg.engine) == "Llasa":
             cfg.resetLlasa()
         elif cfg.get(cfg.engine) == "Orpheus":
-            cfg.resetOpheus()
+            cfg.resetOrpheus()
         elif cfg.get(cfg.engine) == "Spark":
             cfg.resetSpark()
         elif cfg.get(cfg.engine) == "CSM":
