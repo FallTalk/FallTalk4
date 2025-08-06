@@ -41,7 +41,7 @@ class ReferencesWidget(FallTalkWidget):
         self.stackedWidget = QStackedWidget(self)
 
         self.reference_audio = []
-        self.reference_audio_length = 0.0
+        self.reference_audio_length = 0.0  # Initialize as float to prevent integer division issues
         self.reference_transcripts = []
 
         # Initialize reference labels
@@ -248,7 +248,7 @@ class ReferencesWidget(FallTalkWidget):
         self.reference_table.clearSelection()
         self.custom_reference_table.clearSelection()
         self.reference_audio = []
-        self.reference_audio_length = 0
+        self.reference_audio_length = 0.0  # Ensure this is set to 0.0 (float) to match initialization
         self.reference_transcripts = []
         # self.settingLabel.setText(self.tr(self.title))
         model = self.custom_reference_table.model()
@@ -297,8 +297,10 @@ class ReferencesWidget(FallTalkWidget):
 
     def increase(self, file_path):
         data, samplerate = sf.read(file_path)
-        length_in_seconds = len(data) / samplerate
+        length_in_seconds = max(0.0, len(data) / samplerate)  # Ensure length is non-negative
         self.reference_audio_length += length_in_seconds
+        # Double-check that reference_audio_length remains non-negative
+        self.reference_audio_length = max(0.0, self.reference_audio_length)
         self.update_reference_labels()
 
     def remove_row(self):
@@ -319,7 +321,9 @@ class ReferencesWidget(FallTalkWidget):
                     if index < len(self.reference_transcripts):
                         self.reference_transcripts.pop(index)
                     model.toggle_selection(row)
-                    self.decrease(file_path)
+                    # Verify the row is actually removed before decreasing
+                    if file_path not in self.reference_audio:
+                        self.decrease(file_path)
             else:
                 filename = model.data(model.index(row, 0)).rsplit('.', 1)[0]
                 file_path = os.path.join(get_app_root(), f"temp", f"{filename}.wav")
@@ -329,15 +333,19 @@ class ReferencesWidget(FallTalkWidget):
                     if index < len(self.reference_transcripts):
                         self.reference_transcripts.pop(index)
                     model.toggle_selection(row)
-                    self.decrease(file_path)
+                    # Verify the row is actually removed before decreasing
+                    if file_path not in self.reference_audio:
+                        self.decrease(file_path)
 
     def decrease(self, file_path):
         data, samplerate = sf.read(file_path)
         length_in_seconds = len(data) / samplerate
-        self.reference_audio_length -= length_in_seconds
+        self.reference_audio_length = max(0.0, self.reference_audio_length - length_in_seconds)
         self.update_reference_labels()
 
     def _formatTime(self, time: float):
+        # Ensure time is never negative
+        time = max(0.0, time)
         s = int(time)
         ms = int((time - s) * 1000)
         ms_s = str(ms).zfill(2)[:2]
@@ -360,6 +368,10 @@ class ReferencesWidget(FallTalkWidget):
 
     def update_reference_labels(self):
         """Update reference label text and time label visibility based on whether references are selected."""
+        # Ensure reference_audio_length is never negative
+        if self.reference_audio_length < 0:
+            self.reference_audio_length = 0.0
+
         if not self.reference_audio:
             # No references selected
             self.parent.reference_label.setText(self.tr("Reference:"))
@@ -371,7 +383,7 @@ class ReferencesWidget(FallTalkWidget):
             # References selected
             self.parent.reference_label.setText(self.tr("Reference:"))
             self.parent.reference_time_label.setVisible(True)
-            self.parent.reference_time_label.setText(self.tr(self._formatTime(self.reference_audio_length)))
+            self.parent.reference_time_label.setText(self.tr(self._formatTime(max(0.0, self.reference_audio_length))))
 
             # Default color if no engine or if engine doesn't have reference length requirements
             self.parent.reference_label.setStyleSheet("")
