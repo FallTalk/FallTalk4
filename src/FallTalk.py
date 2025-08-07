@@ -494,15 +494,17 @@ class FallTalkApp(FallTalkFluentWindow):
         if engine_type == EngineType.RVC:
             self.stackedWidget.setCurrentWidget(self.generate_widget)
         elif (self.tts_engine.is_base or engine_type.needs_reference_when_trained) and engine_type.needs_transcription:
-            widget.text_input.setPlaceholderText("Please Select the reference audio")
+            widget.text_input.setPlaceholderText(
+                "If no reference is selected, a default will be used. Selecting a reference audio can help change the emotion of the generated speech. ")
             # widget.transcribe_button.setVisible(True)
             self.stackedWidget.setCurrentWidget(self.reference_widget)
         elif self.tts_engine.is_base or engine_type.needs_reference_when_trained:
-            widget.text_input.setPlaceholderText("Please Select Reference'")
+            widget.text_input.setPlaceholderText(
+                "If no reference is selected, a default will be used. Selecting a reference audio can help change the emotion of the generated speech. ")
             # widget.transcribe_button.setVisible(False)
             self.stackedWidget.setCurrentWidget(self.reference_widget)
         else:
-            widget.text_input.setPlaceholderText("Please Enter Text")
+            widget.text_input.setPlaceholderText("Please Enter Text. This model does not need a reference, however selecting one can increase quality.")
             # widget.transcribe_button.setVisible(False)
             widget.generate_button.setEnabled(True)
             self.stackedWidget.setCurrentWidget(self.generate_widget)

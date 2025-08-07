@@ -74,6 +74,13 @@ class GenerationWidget(FallTalkWidget):
             cfg.apbwe_enabled
         )
 
+        self.pad_short_phrases = SwitchSettingCard(
+            FallTalkIcons.PADDING.icon(stroke=True),
+            self.tr('Pad Short Phrases'),
+            self.tr('Duplicate short phrases to improve quality, increases generation time'),
+            cfg.pad_short_phrases
+        )
+
         self.gen_settings = QGroupBox()
         self.gen_settings.setStyleSheet("border: none")
         self.gen_settings_layout = QHBoxLayout()
@@ -82,6 +89,7 @@ class GenerationWidget(FallTalkWidget):
         self.gen_settings_layout.addWidget(self.autoplay, 2)
         self.gen_settings_layout.addWidget(self.rvc_enabled, 2)
         self.gen_settings_layout.addWidget(self.upscaler_enabled, 2)
+        self.gen_settings_layout.addWidget(self.pad_short_phrases, 2)
         self.gen_settings.setLayout(self.gen_settings_layout)
 
         self.gen_settings2 = QGroupBox()

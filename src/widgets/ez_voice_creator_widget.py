@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from utils.icons import FallTalkIcons
+
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
@@ -139,12 +141,21 @@ class EzVoiceCreatorWidget(FallTalkWidget):
             cfg.apbwe_enabled
         )
 
+
+        self.pad_short_phrases = SwitchSettingCard(
+            FallTalkIcons.PADDING.icon(stroke=True),
+            self.tr('Pad Short Phrases'),
+            self.tr('Duplicate short phrases to improve quality, increases generation time'),
+            cfg.pad_short_phrases
+        )
+
         self.upscaler_settings = QGroupBox()
         self.upscaler_settings.setStyleSheet("border: none")
         self.upscaler_settings_layout = QHBoxLayout()
         self.upscaler_settings_layout.setContentsMargins(0, 0, 0, 0)
         self.upscaler_settings_layout.addWidget(self.rvc_enabled, 2)
         self.upscaler_settings_layout.addWidget(self.upscaler_enabled, 2)
+        self.upscaler_settings_layout.addWidget(self.pad_short_phrases, 2)
         self.upscaler_settings.setLayout(self.upscaler_settings_layout)
 
         # Buttons layout
@@ -192,8 +203,8 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.addToFrame(self.dialogue_table)
         self.addToFrame(self.controls_widget)
         self.addToFrame(self.f_and_u)
-        self.addToFrame(self.upscaler_settings)
         self.addToFrame(self.gen_settings)
+        self.addToFrame(self.upscaler_settings)
         self.addToFrame(self.buttons_widget)
 
     def toggle_edit_mode(self, checked):

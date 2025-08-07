@@ -1,5 +1,7 @@
 import glob
 import os
+import re
+from difflib import SequenceMatcher
 from abc import ABC, abstractmethod
 from typing import Optional, TYPE_CHECKING
 
@@ -16,6 +18,22 @@ from src.enums.engine_type import EngineType
 from src.utils import logging_utils
 from src.config.config import cfg
 from src.utils.filesystem_utils import get_app_root
+
+
+def normalize_text(text):
+    """
+    Normalize text by converting to lowercase and removing punctuation.
+
+    Args:
+        text (str): The text to normalize
+
+    Returns:
+        str: Normalized text
+    """
+    if text is None:
+        return None
+    # Convert to lowercase and remove punctuation
+    return re.sub(r'[^\w\s]', '', text.lower())
 
 
 class tts_engine(ABC):
@@ -214,8 +232,72 @@ class tts_engine(ABC):
             start_time (float, optional): Start time for audio editing (F5 engine)
             end_time (float, optional): End time for audio editing (F5 engine)
         """
+
+        original_text = text
+
+        # If text is short and pad_short_phrases is enabled, duplicate it
+        if text and cfg.get(cfg.pad_short_phrases) and len(text) < 30:
+            while len(text) < 30:
+                text = text + " " + original_text
+
         # Get audio data and sample rate from inference
         audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
+
+        # If we padded the text, we need to extract just the first instance using whisperx
+        if original_text != text and cfg.get(cfg.pad_short_phrases) and self.whisper_engine and output_file:
+            # Transcribe the audio directly
+            transcription = self.whisper_engine.transcribe(audio_data)
+
+            if transcription and 'words_info' in transcription:
+                words_info = transcription['words_info']
+                # Normalize each word from whisperx
+                normalized_words = []
+                for word_info in words_info:
+                    normalized_word = normalize_text(word_info['word'])
+                    if normalized_word:  # skip punctuation-only words
+                        normalized_words.append({
+                            'word': normalized_word,
+                            'start': word_info['start'],
+                            'end': word_info['end']
+                        })
+
+                normalized_original = normalize_text(original_text)
+
+                # Create list of just normalized words
+                word_strings = [w['word'] for w in normalized_words]
+
+                best_match = None
+                best_ratio = 0.0
+
+                # Try all possible windows (up to len(words))
+                for window_size in range(1, min(15, len(word_strings)) + 1):  # 15-word max window
+                    for i in range(len(word_strings) - window_size + 1):
+                        window_words = word_strings[i:i + window_size]
+                        window_text = " ".join(window_words)
+
+                        ratio = SequenceMatcher(None, window_text, normalized_original).ratio()
+
+                        if ratio > best_ratio:
+                            best_ratio = ratio
+                            best_match = normalized_words[i:i + window_size]
+
+                # Cut audio if a good match is found
+                if best_match and best_ratio > 0.8:
+                    start_time = best_match[0]['start']
+                    end_time = best_match[-1]['end']
+
+                    # Optional padding (e.g., for smoother cuts)
+                    pad = 0.05
+                    start_time_padded = max(0.0, start_time - pad)
+                    end_time_padded = end_time + pad
+
+                    start_sample = int(start_time_padded * sample_rate)
+                    end_sample = int(end_time_padded * sample_rate)
+
+                    if end_sample > start_sample:
+                        audio_data = audio_data[:, start_sample:end_sample]
+
+        # Save or process final audio
         self.process_audio(audio_data, sample_rate, output_file)
 
     def preload_rvc_params(self):

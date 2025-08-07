@@ -48,6 +48,7 @@ class FallTalkIcons(FluentIconBase, Enum):
     HIGGS = "higgs"
     CHATTERBOX = "chatterbox"
     DMO2 = "dmo2"
+    PADDING = "padding"
 
     # Stroke-only icons
     ALPHA = "alpha"

@@ -165,6 +165,7 @@ class Config(QConfig):
     output_dir = ConfigItem("App", "output_dir", os.path.join(get_app_root(), "output"), FolderValidator())
     rvc_enabled = ConfigItem("App", "rvc_enabled", False, BoolValidator())
     apbwe_enabled = ConfigItem("App", "apbwe_enabled", True, BoolValidator())
+    pad_short_phrases = ConfigItem("App", "pad_short_phrases", True, BoolValidator())
 
     keep_only_fuz = ConfigItem("App", "keep_only_fuz", False, BoolValidator())
     use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
