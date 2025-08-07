@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from utils.huggingface_utils import downloadChatterbox
+
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
@@ -15,7 +17,8 @@ from src.enums.engine_type import EngineType
 
 from src.utils.huggingface_utils import (
     downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA, downloadSpark,
-    downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models, downloadAPBWE, downloadCSM
+    downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models, downloadAPBWE, downloadCSM,
+    downloadHiggs, downloadChatterbox
 )
 
 logger = logging.getLogger('falltalk')
@@ -255,6 +258,14 @@ def load_spark(parent: 'FallTalkApp'):
 def load_csm(parent: 'FallTalkApp'):
     from src.tts_engines.csm_engine import CSMEngine
     generic_engine_loader(parent, CSMEngine, downloadCSM, EngineType.CSM.value)
+
+def load_higgs(parent: 'FallTalkApp'):
+    from src.tts_engines.higgs_tts_engine import HiggsTtsEngine
+    generic_engine_loader(parent, HiggsTtsEngine, downloadHiggs, EngineType.HIGGS.value)
+
+def load_chatterbox(parent: 'FallTalkApp'):
+    from src.tts_engines.chatterbox_engine import ChatterboxEngine
+    generic_engine_loader(parent, ChatterboxEngine, downloadChatterbox, EngineType.CHATTERBOX.value)
 
 def load_apbwe(parent: 'FallTalkApp'):
     if parent.apbwe_engine is None:

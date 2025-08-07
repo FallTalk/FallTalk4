@@ -73,6 +73,8 @@ class FallTalkFluentWindow(FluentWindowBase):
         self.orpheus_action = Action(FallTalkIcons.TRIANGLE.icon(), self.tr('Orpheus\t\t8 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.ORPHEUS.value)
         self.spark_action = Action(FallTalkIcons.SPARK.icon(), self.tr('Spark\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.SPARK.value)
         self.csm_action = Action(FallTalkIcons.CSM.icon(), self.tr('CSM\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.CSM.value)
+        self.higgs_action = Action(FallTalkIcons.HIGGS.icon(), self.tr('Higgs\t\t24 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.HIGGS.value)
+        self.chatterbox_action = Action(FallTalkIcons.CHATTERBOX.icon(stroke=True), self.tr('Chatterbox\t\t6.5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.CHATTERBOX.value)
 
         self.cpu_action = Action(FallTalkIcons.CPU.icon(), self.tr('CPU'), checkable=True, checked=cfg.get(cfg.device) == 'cpu')
         self.gpu_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU'), checkable=True, checked=cfg.get(cfg.device) == 'cuda')
@@ -161,6 +163,10 @@ class FallTalkFluentWindow(FluentWindowBase):
             actions_to_add.append(self.spark_action)
         if EngineType.CSM.enabled:
             actions_to_add.append(self.csm_action)
+        if EngineType.HIGGS.enabled:
+            actions_to_add.append(self.higgs_action)
+        if EngineType.CHATTERBOX.enabled:
+            actions_to_add.append(self.chatterbox_action)
         if EngineType.GPT_SOVITS.enabled:
             actions_to_add.append(self.gpt_sovits_action)
         if EngineType.XTTS_V2.enabled:
@@ -226,6 +232,11 @@ class FallTalkFluentWindow(FluentWindowBase):
             cfg.resetSpark()
         elif cfg.get(cfg.engine) == "CSM":
             cfg.resetCSM()
+        elif cfg.get(cfg.engine) == "Higgs":
+            cfg.resetHiggs()
+        elif cfg.get(cfg.engine) == "Chatterbox":
+            cfg.resetChatterbox()
+
 
         cfg.resetRvc()
 

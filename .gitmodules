@@ -22,3 +22,6 @@
 [submodule "third_party/chatterbox"]
 	path = third_party/chatterbox
 	url = https://github.com/resemble-ai/chatterbox
+[submodule "third_party/higgs"]
+	path = third_party/higgs
+	url = https://github.com/boson-ai/higgs-audio

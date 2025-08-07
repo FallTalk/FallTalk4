@@ -1,19 +1,20 @@
 import os
 import sys
 from typing import Optional
-
+import librosa
 import torch
 
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
-from src.utils import torch_utils
 from src.utils.filesystem_utils import get_app_root, get_app_code_root
 
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'dia/dia')))
 
-from third_party.dia.dia.model import Dia, DEFAULT_SAMPLE_RATE
+from third_party.dia.dia.model import DEFAULT_SAMPLE_RATE
+from transformers import AutoProcessor, DiaForConditionalGeneration, DiaProcessor
+
 
 class DIA_Engine(tts_engine):
 
@@ -23,7 +24,7 @@ class DIA_Engine(tts_engine):
         self.engin_type = EngineType.DIA
         self.engine_name = self.engin_type.value
         self.device = cfg.get(cfg.device)
-        self.dia: Optional['Dia'] = None
+        self.processor: Optional['DiaProcessor'] = None
 
     def clean(self):
         self.unload_model()
@@ -39,12 +40,11 @@ class DIA_Engine(tts_engine):
     def load_model(self):
         logging_utils.logger.debug(f"Loading {self.model_path}")
         if self.is_base:
-            self.dia = Dia.from_pretrained(os.path.abspath(os.path.join(get_app_root(), 'models', 'DIA', '0.1')), compute_dtype=torch_utils.get_compute_dtype(), device=self.device)
+            self.model = DiaForConditionalGeneration.from_pretrained(os.path.abspath(os.path.join(get_app_root(), 'models', 'DIA', '3b-0.1'))).to(self.device)
+            self.processor = AutoProcessor.from_pretrained(os.path.abspath(os.path.join(get_app_root(), 'models', 'DIA', '3b-0.1')))
         else:
-            self.dia = Dia.from_pretrained(os.path.abspath(self.model_path), compute_dtype=str(torch_utils.get_compute_dtype()), device=self.device)
-
-        self.model = self.dia.model
-        self.dia.model = self.dia.model.half()
+            self.model = DiaForConditionalGeneration.from_pretrained(self.model_path).to(self.device)
+            self.processor = AutoProcessor.from_pretrained(self.model_path)
 
     def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False):
         # Get audio data and sample rate from inference
@@ -54,13 +54,12 @@ class DIA_Engine(tts_engine):
     @torch.no_grad()
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
         transcript = "[S1] "+transcript
-        text = ". [S1] "+text + " [S2]"
+        input_text = [transcript +" [S2] "+text]
 
-        return self.dia.generate(
-            transcript + text, audio_prompt=os.path.abspath(os.path.join(get_app_root(), str(voice))),
-            use_torch_compile=False,
-            verbose=True,
-            temperature=cfg.get(cfg.dia_temperature) / 100.0,
-            top_p=cfg.get(cfg.dia_top_p) / 100.0,
-            cfg_filter_top_k = cfg.get(cfg.dia_top_k),
-        ), DEFAULT_SAMPLE_RATE
+        audio, _ = librosa.load(voice, sr=DEFAULT_SAMPLE_RATE)
+
+        inputs = self.processor(text=input_text, audio=audio, padding=True, return_tensors="pt").to(self.device)
+        prompt_len = self.processor.get_audio_prompt_len(inputs["decoder_attention_mask"])
+        outputs = self.model.generate(**inputs, max_new_tokens=256)
+        audio_outputs = self.processor.batch_decode(outputs, audio_prompt_len=prompt_len)
+        return audio_outputs[0].cpu().float().numpy(), DEFAULT_SAMPLE_RATE

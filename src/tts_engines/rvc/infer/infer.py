@@ -330,6 +330,8 @@ class RVCPipeline:
             return (self.tgt_sr, audio_opt)
 
         except Exception as error:
+            import traceback
+            traceback.print_exc()
             print(f"Error during voice conversion: {error}")
             if audio_data is not None:
                 return sample_rate, audio_data

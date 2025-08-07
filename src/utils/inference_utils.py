@@ -255,5 +255,11 @@ def styletts2_inference(parent: 'FallTalkApp', output_file, text, selected_audio
 def spark_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)
 
+def higgs_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
+    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)
+
 def csm_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
+    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)
+
+def chatterbox_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)

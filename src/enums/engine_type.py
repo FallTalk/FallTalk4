@@ -5,7 +5,7 @@ class EngineType(Enum):
     F5 = ("F5", True, True, ["v1"], "v1", 15, 3, False, True)
     RVC = ("RVC", False, False, ["1", "2"], "2", 15, 3, False, True)
     ORPHEUS = ("Orpheus", False, True, ["3b-0.1"], "3b-0.1", 15, 3, True, True)
-    DIA = ("DIA", True, True, ["0.1"], "0.1", 15, 3, False, False)
+    DIA = ("DIA", True, True, ["3b-0.1"], "3b-0.1", 15, 3, False, True)
     FISH_SPEECH = ("FishSpeech", True, True, ["s1-mini"], "s1-mini", 30, 5, False, True)
     LLASA = ("Llasa", False, True, ["1b", "3b"], "1b", 15, 3, True, False)
     XTTS_V2 = ("XTTSv2", True, False, ["1"], "2", 10, 3, False, True)
@@ -14,8 +14,9 @@ class EngineType(Enum):
     SPARK = ("Spark", False, False, ["0.5"], "0.5", 15, 3, True, True)
     MegaTTS3 = ("MegaTTS3", True, True, ["3"], "3", 15, 3, True, False)
     CSM = ("CSM", False, True, ["1b"], "1b", 15, 3, True, True)
-    CHATTERBOX = ("Chatterbox", False, True, ["v1"], "v1", 15, 3, True, False)
+    CHATTERBOX = ("Chatterbox", False, True, ["0.5B"], "0.5B", 15, 3, True, True)
     INDEX = ("Index", False, True, ["v1.5", "v2"], "v1.5", 15, 3, True, False)
+    HIGGS = ("Higgs", True, True, ["v2"], "v2", 15, 3, True, False)
 
     def __new__(cls, value, needs_reference_when_trained, needs_transcription, supported_versions, version, max_reference_length, min_reference_length, loads_from_dir, enabled):
         obj = object.__new__(cls)

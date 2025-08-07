@@ -20,6 +20,8 @@ from src.widgets.falltalk_fluent_window import FallTalkFluentWindow, CustomComma
 from src.widgets.falltalk_widget import FallTalkWidget
 from src.widgets.faq_widget import FaqWidget
 from src.widgets.fish_widget import FishWidget
+from src.widgets.higgs_widget import HiggsWidget
+from src.widgets.chatterbox_widget import ChatterboxWidget
 from src.widgets.generation_widget import GenerationWidget
 from src.widgets.gpt_sovits_widget import GPT_SoVITSWidget
 from src.widgets.llasa_widget import LlasaWidget
@@ -74,5 +76,6 @@ __all__ = [
     'BulkGenerationTableWidget',
     'BulkGenerationWidget',
     'EzVoiceCreatorWidget',
+    'ChatterboxWidget',
     'CSMWidget',
 ]

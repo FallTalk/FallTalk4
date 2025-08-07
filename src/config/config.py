@@ -275,6 +275,23 @@ class Config(QConfig):
     spark_top_k = RangeConfigItem("Spark", "top_k", 50, RangeValidator(0, 100))
     spark_max_new_tokens = RangeConfigItem("Spark", "max_new_tokens", 2048, RangeValidator(800, 2048))
 
+    # Chatterbox settings
+    chatterbox_top_p = RangeConfigItem("Chatterbox", "top_p", 100, RangeValidator(0.0, 100))
+    chatterbox_temperature = RangeConfigItem("Chatterbox", "model_temperature", 80, RangeValidator(1, 200))
+    chatterbox_min_p = RangeConfigItem("Chatterbox", "min_p", 50, RangeValidator(0, 100))
+    chatterbox_max_new_tokens = RangeConfigItem("Chatterbox", "max_new_tokens", 2048, RangeValidator(800, 2048))
+    chatterbox_exaggeration = RangeConfigItem("Chatterbox", "exaggeration", 50, RangeValidator(0, 100))
+    chatterbox_repetition_penalty = RangeConfigItem("Chatterbox", "repetition_penalty", 12, RangeValidator(1, 15))
+    chatterbox_cfg_weight = RangeConfigItem("Chatterbox", "cfg_weight", 50, RangeValidator(0, 100))
+
+    # Higgs
+    higgs_top_p = RangeConfigItem("Higgs", "top_p", 95, RangeValidator(0.0, 100))
+    higgs_temperature = RangeConfigItem("Higgs", "model_temperature", 100, RangeValidator(1, 200))
+    higgs_top_k = RangeConfigItem("Higgs", "top_k", 50, RangeValidator(0, 100))
+    higgs_max_new_tokens = RangeConfigItem("Higgs", "max_new_tokens", 2048, RangeValidator(800, 2048))
+    higgs_ras_win_len = RangeConfigItem("Higgs", "ras_win_len", 7, RangeValidator(0, 20))
+    higgs_ras_win_max_num_repeat = RangeConfigItem("Higgs", "ras_win_max_num_repeat", 2, RangeValidator(1, 10))
+
     # theme
     themeColor = ColorConfigItem("QFluentWidgets", "ThemeColor", '#FFB642', restart=True)
     dpiScale = OptionsConfigItem(
@@ -302,6 +319,8 @@ class Config(QConfig):
         self.resetCSM()
         self.resetLlasa()
         self.resetDIA()
+        self.resetChatterbox()
+        self.resetHiggs()
 
     def resetMainSettings(self):
         self.set(self.download_configs, self.download_configs.defaultValue)
@@ -388,8 +407,24 @@ class Config(QConfig):
         self.set(self.spark_top_k, self.spark_top_k.defaultValue)
         self.set(self.spark_max_new_tokens, self.spark_max_new_tokens.defaultValue)
 
+    def resetHiggs(self):
+        self.set(self.higgs_top_p, self.higgs_top_p.defaultValue)
+        self.set(self.higgs_temperature, self.higgs_temperature.defaultValue)
+        self.set(self.higgs_top_k, self.higgs_top_k.defaultValue)
+        self.set(self.higgs_max_new_tokens, self.higgs_max_new_tokens.defaultValue)
+        self.set(self.higgs_ras_win_len, self.higgs_ras_win_len.defaultValue)
+        self.set(self.higgs_ras_win_max_num_repeat, self.higgs_ras_win_max_num_repeat.defaultValue)
+
     def resetCSM(self):
         self.set(self.spark_temperature, self.spark_temperature.defaultValue)
+
+    def resetChatterbox(self):
+        self.set(self.chatterbox_top_p, self.chatterbox_top_p.defaultValue)
+        self.set(self.chatterbox_temperature, self.chatterbox_temperature.defaultValue)
+        self.set(self.chatterbox_min_p, self.chatterbox_min_p.defaultValue)
+        self.set(self.chatterbox_max_new_tokens, self.chatterbox_max_new_tokens.defaultValue)
+        self.set(self.chatterbox_cfg_weight, self.chatterbox_cfg_weight.defaultValue)
+        self.set(self.chatterbox_exaggeration, self.chatterbox_exaggeration.defaultValue)
 
 YEAR = 2025
 AUTHOR = "Bryant21"

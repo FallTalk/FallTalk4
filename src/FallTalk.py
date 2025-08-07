@@ -8,51 +8,49 @@ import sys
 import threading
 import uuid
 import webbrowser
-import random
-import tempfile
-import soundfile as sf
-import numpy as np
+from typing import Optional
 
 import PySide6
 from PySide6.QtCore import Qt, QSize, Slot, QUrl, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 from packaging import version
-from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, MessageBox
+from qfluentwidgets import FluentIcon as FIF, SplashScreen, StateToolTip, Flyout, InfoBarIcon, InfoBar, InfoBarPosition, \
+    MessageBox
 from qfluentwidgets import NavigationItemPosition
-from typing import Optional
-from src.config.config import cfg, DISCLAIMER, REPO, VERSION, RELEASE_URL
+
+from src.config.config import cfg, DISCLAIMER, VERSION, RELEASE_URL
 from src.enums.engine_type import EngineType
+from src.tts_engines import tts_engine
 from src.utils.audio_utils import combine_wav_files
 from src.utils.bulk_utils import bulk_inference, bulk_rvc_inference, bulk_fuz
 from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp, formatted_time_stamp_uuid
-from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models, download_all_models_config
+from src.utils.filesystem_utils import get_app_root
+from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models, \
+    download_all_models_config
 from src.utils.icons import FallTalkIcons
 from src.utils.inference_utils import (
     do_transcribe, eleven_labs_inference, edge_tts_inference,
     rvc_inference, xtts_inference, dia_inference, fish_inference, f5_inference,
     gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference, spark_inference, csm_inference,
-    do_transcribe_before_gen, preprocess_text
+    higgs_inference, chatterbox_inference, do_transcribe_before_gen, preprocess_text
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
     load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc, load_spark,
-    load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler, load_csm
+    load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler, load_csm,
+    load_higgs, load_chatterbox
 )
-
-from src.utils.audio_utils import extra_audio_from_bsa
-from src.widgets.falltalk_fluent_window import FallTalkFluentWindow
-from src.utils.filesystem_utils import get_app_root
-from src.tts_engines import tts_engine
-from tts_engines.whisper_engine import Whisper_Engine
-
 # Import widgets here to avoid circular imports
 from src.widgets import (
     StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget,
     DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget,
     XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, BulkGenerationWidget,
-    EzVoiceCreatorWidget, FallTalkWidget, SparkWidget, CSMWidget
+    EzVoiceCreatorWidget, FallTalkWidget, SparkWidget, CSMWidget, HiggsWidget,
+    ChatterboxWidget
 )
+from src.widgets.falltalk_fluent_window import FallTalkFluentWindow
+from tts_engines.whisper_engine import Whisper_Engine
 
 
 class FallTalkApp(FallTalkFluentWindow):
@@ -96,7 +94,9 @@ class FallTalkApp(FallTalkFluentWindow):
             EngineType.F5: load_f5,
             EngineType.RVC: load_rvc,
             EngineType.SPARK: load_spark,
-            EngineType.CSM: load_csm
+            EngineType.CSM: load_csm,
+            EngineType.HIGGS: load_higgs,
+            EngineType.CHATTERBOX: load_chatterbox
         }
 
         clean_folder("temp/")
@@ -323,6 +323,8 @@ class FallTalkApp(FallTalkFluentWindow):
         self.engine_widgets[EngineType.RVC] = RVCWidget(self)
         self.engine_widgets[EngineType.SPARK] = SparkWidget(self)
         self.engine_widgets[EngineType.CSM] = CSMWidget(self)
+        self.engine_widgets[EngineType.HIGGS] = HiggsWidget(self)
+        self.engine_widgets[EngineType.CHATTERBOX] = ChatterboxWidget(self)
 
         self.faq_widget = FaqWidget(self)
         self.characters_widget = CharactersWidget(self)
@@ -364,6 +366,8 @@ class FallTalkApp(FallTalkFluentWindow):
         self.engine_actions[EngineType.ORPHEUS] = self.orpheus_action
         self.engine_actions[EngineType.SPARK] = self.spark_action
         self.engine_actions[EngineType.CSM] = self.csm_action
+        self.engine_actions[EngineType.HIGGS] = self.higgs_action
+        self.engine_actions[EngineType.CHATTERBOX] = self.chatterbox_action
 
         # Connect action signals
         for engine_type, action in self.engine_actions.items():
@@ -903,6 +907,11 @@ class FallTalkApp(FallTalkFluentWindow):
                 threading.Thread(target=spark_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.STYLE_TTS2:
                 threading.Thread(target=styletts2_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
+            elif current_engine == EngineType.HIGGS:
+                threading.Thread(target=higgs_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
+            elif current_engine == EngineType.CHATTERBOX:
+                threading.Thread(target=chatterbox_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
+
 
     def showErrorPopup(self, parent, target, content):
         Flyout.create(

@@ -206,7 +206,7 @@ def downloadDIA(parent: 'FallTalkApp'):
     os.makedirs(os.path.join(get_app_root(),"models/DIA"), exist_ok=True)
     snapshot_download(
         repo_id=REPO,
-        allow_patterns=[f"models/DIA/0.1/*"],
+        allow_patterns=[f"models/DIA/3b-0.1/*"],
         local_dir=get_app_root(),
         local_dir_use_symlinks=False,
         tqdm_class=FallTalkTqdm,
@@ -238,6 +238,35 @@ def downloadSpark(parent: 'FallTalkApp'):
     )
 
 
+def downloadHiggs(parent: 'FallTalkApp'):
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
+
+    os.makedirs(os.path.join(get_app_root(),"models/Higgs"), exist_ok=True)
+    os.makedirs(os.path.join(get_app_root(),"models/Higgs/v2"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"models/Higgs/v2/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
+
+def downloadChatterbox(parent: 'FallTalkApp'):
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
+
+    os.makedirs(os.path.join(get_app_root(),"models/Chatterbox"), exist_ok=True)
+    os.makedirs(os.path.join(get_app_root(),"models/Chatterbox/0.5B"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"models/Chatterbox/0.5B/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
+
+
 def downloadStyleTTS2(parent: 'FallTalkApp'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
@@ -258,6 +287,7 @@ def downloadBaseModels(parent: 'FallTalkApp'):
         downloadGPTSoVITS(parent)
         downloadStyleTTS2(parent)
         downloadDIA(parent)
+        downloadHiggs(parent)
         QMetaObject.invokeMethod(parent, "afterDownload", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
     except Exception as e:
         logger.exception(f"Error: {e}")
