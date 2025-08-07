@@ -284,6 +284,12 @@ class Config(QConfig):
     chatterbox_repetition_penalty = RangeConfigItem("Chatterbox", "repetition_penalty", 12, RangeValidator(1, 15))
     chatterbox_cfg_weight = RangeConfigItem("Chatterbox", "cfg_weight", 50, RangeValidator(0, 100))
 
+    # DMSpeech2 settings
+    dmo_speech2_temperature = RangeConfigItem("DMSpeech2", "model_temperature", 80, RangeValidator(1, 200))
+    dmo_speech2_teacher_steps = RangeConfigItem("DMSpeech2", "teacher_steps", 16, RangeValidator(1, 50))
+    dmo_speech2_teacher_stopping_time = RangeConfigItem("DMSpeech2", "teacher_stopping_time", 7, RangeValidator(1, 20))
+    dmo_speech2_student_start_step = RangeConfigItem("DMSpeech2", "student_start_step", 1, RangeValidator(1, 10))
+
     # Higgs
     higgs_top_p = RangeConfigItem("Higgs", "top_p", 95, RangeValidator(0.0, 100))
     higgs_temperature = RangeConfigItem("Higgs", "model_temperature", 100, RangeValidator(1, 200))
@@ -321,6 +327,7 @@ class Config(QConfig):
         self.resetDIA()
         self.resetChatterbox()
         self.resetHiggs()
+        self.resetDMSpeech2()
 
     def resetMainSettings(self):
         self.set(self.download_configs, self.download_configs.defaultValue)
@@ -425,6 +432,12 @@ class Config(QConfig):
         self.set(self.chatterbox_max_new_tokens, self.chatterbox_max_new_tokens.defaultValue)
         self.set(self.chatterbox_cfg_weight, self.chatterbox_cfg_weight.defaultValue)
         self.set(self.chatterbox_exaggeration, self.chatterbox_exaggeration.defaultValue)
+
+    def resetDMSpeech2(self):
+        self.set(self.dmo_speech2_temperature, self.dmo_speech2_temperature.defaultValue)
+        self.set(self.dmo_speech2_teacher_steps, self.dmo_speech2_teacher_steps.defaultValue)
+        self.set(self.dmo_speech2_teacher_stopping_time, self.dmo_speech2_teacher_stopping_time.defaultValue)
+        self.set(self.dmo_speech2_student_start_step, self.dmo_speech2_student_start_step.defaultValue)
 
 YEAR = 2025
 AUTHOR = "Bryant21"

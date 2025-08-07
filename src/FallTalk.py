@@ -33,13 +33,13 @@ from src.utils.inference_utils import (
     do_transcribe, eleven_labs_inference, edge_tts_inference,
     rvc_inference, xtts_inference, dia_inference, fish_inference, f5_inference,
     gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference, spark_inference, csm_inference,
-    higgs_inference, chatterbox_inference, do_transcribe_before_gen, preprocess_text
+    higgs_inference, chatterbox_inference, dmo_speech2_inference, do_transcribe_before_gen, preprocess_text
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
     load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc, load_spark,
     load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler, load_csm,
-    load_higgs, load_chatterbox
+    load_higgs, load_chatterbox, load_dmo_speech2
 )
 # Import widgets here to avoid circular imports
 from src.widgets import (
@@ -95,7 +95,8 @@ class FallTalkApp(FallTalkFluentWindow):
             EngineType.SPARK: load_spark,
             EngineType.CSM: load_csm,
             EngineType.HIGGS: load_higgs,
-            EngineType.CHATTERBOX: load_chatterbox
+            EngineType.CHATTERBOX: load_chatterbox,
+            EngineType.DMOSPEECH2: load_dmo_speech2
         }
 
         clean_folder("temp/")
@@ -313,7 +314,7 @@ class FallTalkApp(FallTalkFluentWindow):
         # Initialize all engine widgets
         self.engine_widgets[EngineType.XTTS_V2] = GenericGenerationWidget(self, EngineType.XTTS_V2)
         self.engine_widgets[EngineType.GPT_SOVITS] = GenericGenerationWidget(self, EngineType.GPT_SOVITS)
-        self.engine_widgets[EngineType.STYLE_TTS2] = GenericGenerationWidget(self, EngineType.STYLETTS2)
+        self.engine_widgets[EngineType.STYLE_TTS2] = GenericGenerationWidget(self, EngineType.STYLE_TTS2)
         self.engine_widgets[EngineType.DIA] = GenericGenerationWidget(self, EngineType.DIA)
         self.engine_widgets[EngineType.F5] = GenericGenerationWidget(self, EngineType.F5)
         self.engine_widgets[EngineType.FISH_SPEECH] = GenericGenerationWidget(self, EngineType.FISH_SPEECH)
@@ -324,6 +325,7 @@ class FallTalkApp(FallTalkFluentWindow):
         self.engine_widgets[EngineType.CSM] = GenericGenerationWidget(self, EngineType.CSM)
         self.engine_widgets[EngineType.HIGGS] = GenericGenerationWidget(self, EngineType.HIGGS)
         self.engine_widgets[EngineType.CHATTERBOX] = GenericGenerationWidget(self, EngineType.CHATTERBOX)
+        self.engine_widgets[EngineType.DMOSPEECH2] = GenericGenerationWidget(self, EngineType.DMOSPEECH2)
 
         self.faq_widget = FaqWidget(self)
         self.characters_widget = CharactersWidget(self)
@@ -367,6 +369,7 @@ class FallTalkApp(FallTalkFluentWindow):
         self.engine_actions[EngineType.CSM] = self.csm_action
         self.engine_actions[EngineType.HIGGS] = self.higgs_action
         self.engine_actions[EngineType.CHATTERBOX] = self.chatterbox_action
+        self.engine_actions[EngineType.DMOSPEECH2] = self.dmo_speech2_action
 
         # Connect action signals
         for engine_type, action in self.engine_actions.items():
@@ -910,6 +913,8 @@ class FallTalkApp(FallTalkFluentWindow):
                 threading.Thread(target=higgs_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
             elif current_engine == EngineType.CHATTERBOX:
                 threading.Thread(target=chatterbox_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
+            elif current_engine == EngineType.DMOSPEECH2:
+                threading.Thread(target=dmo_speech2_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
 
 
     def showErrorPopup(self, parent, target, content):

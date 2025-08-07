@@ -18,7 +18,7 @@ from src.enums.engine_type import EngineType
 from src.utils.huggingface_utils import (
     downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA, downloadSpark,
     downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models, downloadAPBWE, downloadCSM,
-    downloadHiggs, downloadChatterbox
+    downloadHiggs, downloadChatterbox, downloadDMSpeech2
 )
 
 logger = logging.getLogger('falltalk')
@@ -266,6 +266,10 @@ def load_higgs(parent: 'FallTalkApp'):
 def load_chatterbox(parent: 'FallTalkApp'):
     from src.tts_engines.chatterbox_engine import ChatterboxEngine
     generic_engine_loader(parent, ChatterboxEngine, downloadChatterbox, EngineType.CHATTERBOX.value)
+
+def load_dmo_speech2(parent: 'FallTalkApp'):
+    from src.tts_engines.dmo_engine import DMSpeech2Engine
+    generic_engine_loader(parent, DMSpeech2Engine, downloadDMSpeech2, EngineType.DMOSPEECH2.value)
 
 def load_apbwe(parent: 'FallTalkApp'):
     if parent.apbwe_engine is None:

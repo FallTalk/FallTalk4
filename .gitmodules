@@ -25,3 +25,6 @@
 [submodule "third_party/higgs"]
 	path = third_party/higgs
 	url = https://github.com/boson-ai/higgs-audio
+[submodule "third_party/DMOSpeech2"]
+	path = third_party/DMOSpeech2
+	url = https://github.com/yl4579/DMOSpeech2

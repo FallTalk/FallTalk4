@@ -266,6 +266,20 @@ def downloadChatterbox(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
+def downloadDMSpeech2(parent: 'FallTalkApp'):
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
+
+    os.makedirs(os.path.join(get_app_root(),"models/DMOSpeech2"), exist_ok=True)
+    os.makedirs(os.path.join(get_app_root(),"models/DMOSpeech2/v2"), exist_ok=True)
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"models/DMOSpeech2/v2/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
+
 
 def downloadStyleTTS2(parent: 'FallTalkApp'):
     # Set the parent for the tqdm class

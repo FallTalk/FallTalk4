@@ -28,6 +28,7 @@ from src.settings.chatterbox_settings import ChatterboxSettings
 from src.settings.xtts_settings import XTTSSettings
 from src.settings.styletts2_settings import StyleTTS2Settings
 from src.settings.f5_settings import F5Settings
+from src.settings.dmo_speech2_settings import DMSpeech2Settings
 
 from src.help.fish_help import FishHelp
 from src.help.gpt_sovits_help import GPTSoVITSHelp
@@ -41,6 +42,7 @@ from src.help.chatterbox_help import ChatterboxHelp
 from src.help.xtts_help import XTTSHelp
 from src.help.styletts2_help import StyleTTS2Help
 from src.help.f5_help import F5Help
+from src.help.dmo_speech2_help import DMSpeech2Help
 
 class GenericGenerationWidget(GenerationWidget):
     """
@@ -62,6 +64,7 @@ class GenericGenerationWidget(GenerationWidget):
         EngineType.XTTS_V2: XTTSSettings,
         EngineType.STYLE_TTS2: StyleTTS2Settings,
         EngineType.F5: F5Settings,
+        EngineType.DMOSPEECH2: DMSpeech2Settings,
     }
 
     HELP_WIDGETS: Dict[EngineType, Type] = {
@@ -77,6 +80,7 @@ class GenericGenerationWidget(GenerationWidget):
         EngineType.XTTS_V2: XTTSHelp,
         EngineType.STYLE_TTS2: StyleTTS2Help,
         EngineType.F5: F5Help,
+        EngineType.DMOSPEECH2: DMSpeech2Help,
     }
 
     def __init__(self, parent: FallTalkApp, engine_type: EngineType):
@@ -115,22 +119,22 @@ class GenericGenerationWidget(GenerationWidget):
         # Add generate button
         self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
-        
+
         # Special case for F5 to pass transcribe_state
         if engine_type == EngineType.F5:
             self.generate_button.clicked.connect(lambda: self.parent.generate_audio(transcribe_state=self.transcribe_state))
         else:
             self.generate_button.clicked.connect(self.parent.generate_audio)
-            
+
         self.buttons_layout.addWidget(self.generate_button, stretch=1)
 
         # Add settings and help widgets based on engine type
         if engine_type in self.SETTINGS_WIDGETS:
             self.settings_drawer.addWidget(self.SETTINGS_WIDGETS[engine_type](self))
-        
+
         if engine_type in self.HELP_WIDGETS:
             self.help_drawer.addWidget(self.HELP_WIDGETS[engine_type](self))
-            
+
         self.buttons_layout.addWidget(self.settings_button)
         self.buttons_layout.addWidget(self.help_button)
 
@@ -185,7 +189,7 @@ class GenericGenerationWidget(GenerationWidget):
         """Handle mode changes for F5 widget"""
         if self.engine_type != EngineType.F5:
             return
-            
+
         self.start_and_end.setVisible(change.value == "edit")
         self.temp_and_rep.setVisible(change.value == "edit")
         self.transcribe_button.setVisible(change.value == "edit")
@@ -228,7 +232,7 @@ class GenericGenerationWidget(GenerationWidget):
                 self.transcribe_button.setEnabled(False)
             self.text_input.setPlaceholderText(f"Transcript: {self.transcribe_state['transcript']} \n\nPlease Enter Your Text Now")
             logger.debug(f"{self.transcribe_state['words_info']}")
-            
+
             if self.start_dropdown_card and self.end_dropdown_card:
                 self.start_dropdown_card.setTranscript(self.transcribe_state['words_info'])
                 self.end_dropdown_card.setTranscript(self.transcribe_state['words_info'])

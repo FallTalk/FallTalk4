@@ -263,3 +263,6 @@ def csm_inference(parent: 'FallTalkApp', output_file, text, selected_audio, pane
 
 def chatterbox_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
     generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)
+
+def dmo_speech2_inference(parent: 'FallTalkApp', output_file, text, selected_audio, panel, transcribe_state, speaker=None, api=False):
+    generic_inference(parent, output_file, text, selected_audio, panel, transcribe_state, api=api, speaker=speaker)

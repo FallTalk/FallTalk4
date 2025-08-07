@@ -27,7 +27,6 @@ class HiggsTtsEngine(tts_engine):
         super().__init__()
         self.engin_type = EngineType.HIGGS
         self.engine_name = self.engin_type.value
-        self.model_type = "safetensors"
         self.model = None
         self.device = cfg.get(cfg.device)
         self.tokenizer = None

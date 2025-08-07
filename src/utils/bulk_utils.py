@@ -26,7 +26,7 @@ from src.utils.huggingface_utils import download_models, download_rvc_models
 from src.utils.inference_utils import (
     do_transcribe, rvc_inference, xtts_inference, gpt_sovits_inference, styletts2_inference, dia_inference,
     f5_inference, fish_inference, orpheus_inference, llasa_inference, csm_inference, spark_inference, higgs_inference,
-    chatterbox_inference, preprocess_text
+    chatterbox_inference, dmo_speech2_inference, preprocess_text
 )
 from src.enums.engine_type import EngineType
 
@@ -358,6 +358,8 @@ def process_inference_data(parent, data, output_file, character, model, is_train
                 higgs_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
             elif engine_type == EngineType.CHATTERBOX:
                 chatterbox_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
+            elif engine_type == EngineType.DMOSPEECH2:
+                dmo_speech2_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
 
         if cfg.get(cfg.xwm_enabled):
             create_lip_and_fuz(parent, output_file, 44100, True)
