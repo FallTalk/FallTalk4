@@ -36,10 +36,6 @@ class LlasaEngine(tts_engine):
         self.codec_model = None
         self.tokenizer = None
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
-        # Get audio data and sample rate from inference
-        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker)
-        self.process_audio(audio_data, sample_rate, output_file)
 
 
     def load_model(self):

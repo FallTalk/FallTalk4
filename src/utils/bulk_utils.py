@@ -24,9 +24,7 @@ from src.utils.filesystem_utils import get_app_root
 from src.utils.model_utils import get_character_model, get_trained_character
 from src.utils.huggingface_utils import download_models, download_rvc_models
 from src.utils.inference_utils import (
-    do_transcribe, rvc_inference, xtts_inference, gpt_sovits_inference, styletts2_inference, dia_inference,
-    f5_inference, fish_inference, orpheus_inference, llasa_inference, csm_inference, spark_inference, higgs_inference,
-    chatterbox_inference, dmo_speech2_inference, preprocess_text
+    do_transcribe, rvc_inference, generic_inference, preprocess_text
 )
 from src.enums.engine_type import EngineType
 
@@ -334,32 +332,17 @@ def process_inference_data(parent, data, output_file, character, model, is_train
                     transcribe_state = resp if resp is not None else None
                     transcript = transcribe_state['transcript'] if transcribe_state is not None else None
 
-            if engine_type == EngineType.GPT_SOVITS:
-                gpt_sovits_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
-            elif engine_type == EngineType.XTTS_V2:
-                xtts_inference(parent, output_file, text_or_file, reference_path, None, api)
-            elif engine_type == EngineType.STYLE_TTS2:
-                styletts2_inference(parent, output_file, text_or_file, reference_path, None, api)
-            elif engine_type == EngineType.DIA:
-                dia_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
-            elif engine_type == EngineType.F5:
-                f5_inference(parent, output_file, text_or_file, reference_path, None, None, None, transcribe_state=transcribe_state, api=api)
-            elif engine_type == EngineType.FISH_SPEECH:
-                fish_inference(parent, output_file, text_or_file, reference_path, None, transcript, api)
-            elif engine_type == EngineType.ORPHEUS:
-                orpheus_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
-            elif engine_type == EngineType.LLASA:
-                llasa_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
-            elif engine_type == EngineType.CSM:
-                csm_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
-            elif engine_type == EngineType.SPARK:
-                spark_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
-            elif engine_type == EngineType.HIGGS:
-                higgs_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
-            elif engine_type == EngineType.CHATTERBOX:
-                chatterbox_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
-            elif engine_type == EngineType.DMOSPEECH2:
-                dmo_speech2_inference(parent, output_file, text_or_file, reference_path, None, transcript, api=api, speaker=character)
+            # All engines use generic_inference
+            generic_inference(
+                parent=parent,
+                output_file=output_file,
+                text=text_or_file,
+                selected_audio=reference_path,
+                panel=None,
+                transcribe_state=transcribe_state,
+                api=api,
+                speaker=character
+            )
 
         if cfg.get(cfg.xwm_enabled):
             create_lip_and_fuz(parent, output_file, 44100, True)

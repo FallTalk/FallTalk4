@@ -28,10 +28,6 @@ class CSMEngine(tts_engine):
         self.processor = None
         self.tokenize = None
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
-        # Get audio data and sample rate from inference
-        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker)
-        self.process_audio(audio_data, sample_rate, output_file)
 
     def load_model(self):
         print("Loading CSM Model")
@@ -67,8 +63,7 @@ class CSMEngine(tts_engine):
         return audio
 
     @torch.no_grad()
-    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False,
-                  speaker=None):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         speaker_id = "0" if speaker is None else string_to_int(speaker)
         conversation = []
 

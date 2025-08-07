@@ -47,13 +47,9 @@ class XTTS_Engine(tts_engine):
     def unload_model(self):
         super().basic_unload_model()
 
-    @torch.no_grad()
-    def generate_audio(self, text=None, voice=None, language=None, output_file=None, streaming=False, speaker=None):
-        audio_data, sample_rate = self.inference(text=text, voice=voice, language=language, output_file=output_file, streaming=streaming)
-        self.process_audio(audio_data, sample_rate, output_file)
 
     @torch.no_grad()
-    def inference(self, text=None, voice=None, language=None, output_file=None, streaming=False):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         logging_utils.logger.debug("Generating Audio...")
         if cfg.low_vram and self.device == "cpu":  # If necessary, move the model out of System Ram to VRAM
             self.handle_lowvram_change()

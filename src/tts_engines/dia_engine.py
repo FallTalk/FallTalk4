@@ -46,15 +46,11 @@ class DIA_Engine(tts_engine):
             self.model = DiaForConditionalGeneration.from_pretrained(self.model_path).to(self.device)
             self.processor = AutoProcessor.from_pretrained(self.model_path)
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False):
-        # Get audio data and sample rate from inference
-        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming)
-        self.process_audio(audio_data, sample_rate, output_file)
 
     @torch.no_grad()
-    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         transcript = "[S1] "+transcript
-        input_text = [transcript +" [S2] "+text]
+        input_text = [transcript + " " + text]
 
         audio, _ = librosa.load(voice, sr=DEFAULT_SAMPLE_RATE)
 

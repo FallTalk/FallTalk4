@@ -93,12 +93,8 @@ class OrpheusEngine(tts_engine):
         audio_hat = self.snac_model.decode(codes)
         return audio_hat
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
-        # Get audio data and sample rate from inference
-        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker=speaker)
-        self.process_audio(audio_data, sample_rate, output_file)
 
-    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         reference_mode = voice is not None and transcript is not None
         processed_prompts = [f"{speaker}: " + text if speaker else text]
 

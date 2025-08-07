@@ -30,10 +30,8 @@ from src.utils.huggingface_utils import get_latest_release, get_model_diff, down
     download_all_models_config
 from src.utils.icons import FallTalkIcons
 from src.utils.inference_utils import (
-    do_transcribe, eleven_labs_inference, edge_tts_inference,
-    rvc_inference, xtts_inference, dia_inference, fish_inference, f5_inference,
-    gpt_sovits_inference, styletts2_inference, orpheus_inference, llasa_inference, spark_inference, csm_inference,
-    higgs_inference, chatterbox_inference, dmo_speech2_inference, do_transcribe_before_gen, preprocess_text
+    do_transcribe, eleven_labs_inference, edge_tts_inference, generic_inference,
+    rvc_inference, do_transcribe_before_gen, preprocess_text
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
@@ -880,11 +878,8 @@ class FallTalkApp(FallTalkFluentWindow):
                 return
 
             self.showLoaderPopup("Generating Audio", "Please Wait")
-            if current_engine == EngineType.GPT_SOVITS:
-                threading.Thread(target=gpt_sovits_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.DIA:
-                threading.Thread(target=dia_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.F5:
+            # F5 has special handling with start_time and end_time parameters
+            if current_engine == EngineType.F5:
                 start_word = current_widget.start_dropdown_card.getWordInfo()
                 end_word = current_widget.end_dropdown_card.getWordInfo()
                 start_time = start_word['start'] if start_word is not None else None
@@ -894,27 +889,43 @@ class FallTalkApp(FallTalkFluentWindow):
                 elif cfg.get(cfg.f5_mode) == "edit" and start_time > end_time:
                     self.showErrorPopup(current_widget, current_widget.generate_button, "Start must come before the end time")
                 else:
-                    threading.Thread(target=f5_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, start_time, end_time, transcribe_state, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.XTTS_V2:
-                threading.Thread(target=xtts_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.LLASA:
-                threading.Thread(target=llasa_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.ORPHEUS:
-                threading.Thread(target=orpheus_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.FISH_SPEECH:
-                threading.Thread(target=fish_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.CSM:
-                threading.Thread(target=csm_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.SPARK:
-                threading.Thread(target=spark_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.STYLE_TTS2:
-                threading.Thread(target=styletts2_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.HIGGS:
-                threading.Thread(target=higgs_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.CHATTERBOX:
-                threading.Thread(target=chatterbox_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
-            elif current_engine == EngineType.DMOSPEECH2:
-                threading.Thread(target=dmo_speech2_inference, args=(self, self.get_output_file(current_widget), text, self.combine_references(references), current_widget, transcribe_state['transcript'] if transcribe_state else None, self.tts_engine.model_name), daemon=True).start()
+                    threading.Thread(
+                        target=generic_inference,
+                        args=(
+                            self,
+                            self.get_output_file(current_widget),
+                            text,
+                            self.combine_references(references),
+                            current_widget,
+                            transcribe_state,
+                        ),
+                        kwargs={
+                            'start_time': start_time,
+                            'end_time': end_time,
+                            'speaker': self.tts_engine.model_name,
+                            'api': False
+                        },
+                        daemon=True
+                    ).start()
+            else:
+                # All other engines use generic_inference
+                transcript = transcribe_state['transcript'] if transcribe_state else None
+                threading.Thread(
+                    target=generic_inference,
+                    args=(
+                        self,
+                        self.get_output_file(current_widget),
+                        text,
+                        self.combine_references(references),
+                        current_widget,
+                        transcribe_state,
+                    ),
+                    kwargs={
+                        'speaker': self.tts_engine.model_name,
+                        'api': False
+                    },
+                    daemon=True
+                ).start()
 
 
     def showErrorPopup(self, parent, target, content):

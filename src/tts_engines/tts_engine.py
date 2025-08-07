@@ -1,7 +1,11 @@
 import glob
 import os
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.tts_engines.apbwe_engine import APBWE_SR
+    from src.tts_engines.whisper_engine import Whisper_Engine
 
 import librosa
 import numpy as np
@@ -33,8 +37,9 @@ class tts_engine(ABC):
         self.rvc_pth_path = None
         self.rvc_index_path = None
         self.rvc_model_version = None
-        self.apbwe_engine = None
+        self.apbwe_engine: Optional['APBWE_SR'] = None
         self.characters = []
+        self.whisper_engine: Optional['Whisper_Engine'] = None
 
     def get_model(self, engin_type: EngineType, model_type=None, model_engine_version=None, shared_model_name=None):
         if(model_type is None):
@@ -172,6 +177,46 @@ class tts_engine(ABC):
     def unload_model(self):
         """UNLOAD"""
         pass
+
+    @abstractmethod
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
+        """
+        Generate audio data from text input.
+
+        Args:
+            text (str): The text to convert to speech
+            transcript (str, optional): Transcript for reference
+            voice (str, optional): Path to reference voice file
+            language (str, optional): Language code
+            output_file (str, optional): Path to save the output file
+            streaming (bool, optional): Whether to stream the output
+            speaker (str, optional): Speaker identifier
+            start_time (float, optional): Start time for audio editing (F5 engine)
+            end_time (float, optional): End time for audio editing (F5 engine)
+
+        Returns:
+            tuple: (audio_data, sample_rate)
+        """
+        pass
+
+    def generate_audio(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
+        """
+        Generate audio from text input and process it.
+
+        Args:
+            text (str): The text to convert to speech
+            transcript (str, optional): Transcript for reference
+            voice (str, optional): Path to reference voice file
+            language (str, optional): Language code
+            output_file (str, optional): Path to save the output file
+            streaming (bool, optional): Whether to stream the output
+            speaker (str, optional): Speaker identifier
+            start_time (float, optional): Start time for audio editing (F5 engine)
+            end_time (float, optional): End time for audio editing (F5 engine)
+        """
+        # Get audio data and sample rate from inference
+        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
+        self.process_audio(audio_data, sample_rate, output_file)
 
     def preload_rvc_params(self):
         self.rvc_preload = True

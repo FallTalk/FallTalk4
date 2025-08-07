@@ -148,12 +148,14 @@ class FallTalkFluentWindow(FluentWindowBase):
         # Only add actions for enabled engines
         actions_to_add = []
 
+        if EngineType.CHATTERBOX.enabled:
+            actions_to_add.append(self.chatterbox_action)
+        if EngineType.GPT_SOVITS.enabled:
+            actions_to_add.append(self.gpt_sovits_action)
         if EngineType.F5.enabled:
             actions_to_add.append(self.f5_action)
         if EngineType.RVC.enabled:
             actions_to_add.append(self.rvc_action)
-        if EngineType.FISH_SPEECH.enabled:
-            actions_to_add.append(self.fish_action)
         if EngineType.DIA.enabled:
             actions_to_add.append(self.dia_action)
         if EngineType.LLASA.enabled:
@@ -166,12 +168,10 @@ class FallTalkFluentWindow(FluentWindowBase):
             actions_to_add.append(self.csm_action)
         if EngineType.HIGGS.enabled:
             actions_to_add.append(self.higgs_action)
-        if EngineType.CHATTERBOX.enabled:
-            actions_to_add.append(self.chatterbox_action)
+        if EngineType.FISH_SPEECH.enabled:
+            actions_to_add.append(self.fish_action)
         if EngineType.DMOSPEECH2.enabled:
             actions_to_add.append(self.dmo_speech2_action)
-        if EngineType.GPT_SOVITS.enabled:
-            actions_to_add.append(self.gpt_sovits_action)
         if EngineType.XTTS_V2.enabled:
             actions_to_add.append(self.xtts_action)
         if EngineType.STYLE_TTS2.enabled:

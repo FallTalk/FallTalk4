@@ -152,7 +152,7 @@ class Config(QConfig):
     rvc_embedder_model = OptionsConfigItem("RVC", "rvc_embedding_model", "contentvec", OptionsValidator(["contentvec", "hubert"]))
 
     # General Model
-    engine = OptionsConfigItem("TTS", "engine", EngineType.SPARK.value, OptionsValidator([e.value for e in EngineType if e.enabled]))
+    engine = OptionsConfigItem("TTS", "engine", EngineType.CHATTERBOX.value, OptionsValidator([e.value for e in EngineType if e.enabled]))
     load_engine_art_start = ConfigItem("TTS", "load_at_start", False, BoolValidator())
     auto_update_models = ConfigItem("TTS", "auto_update_models", False, BoolValidator())
     device = OptionsConfigItem("TTS", "device", "cuda" if torch.cuda.is_available() else "cpu", DeviceValidator())

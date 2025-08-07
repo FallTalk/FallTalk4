@@ -141,7 +141,7 @@ class HiggsTtsEngine(tts_engine):
         return messages, audio_ids
 
     @torch.inference_mode()
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
+    def inference(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
         """Generate audio using Higgs TTS model."""
         try:
             # Prepare generation context
@@ -223,9 +223,6 @@ class HiggsTtsEngine(tts_engine):
             # Decode the audio
             audio_data = self.audio_tokenizer.decode(audio_out_ids_cpu.unsqueeze(0))[0, 0]
             sample_rate = 24000
-
-            # Process the audio (apply effects, save to file)
-            self.process_audio(audio_data, sample_rate, output_file)
 
             return audio_data, sample_rate
 
