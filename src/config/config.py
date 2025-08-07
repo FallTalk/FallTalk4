@@ -276,7 +276,7 @@ class Config(QConfig):
     spark_max_new_tokens = RangeConfigItem("Spark", "max_new_tokens", 2048, RangeValidator(800, 2048))
 
     # Chatterbox settings
-    chatterbox_top_p = RangeConfigItem("Chatterbox", "top_p", 100, RangeValidator(0.0, 100))
+    chatterbox_top_p = RangeConfigItem("Chatterbox", "top_p", 120, RangeValidator(0.0, 200))
     chatterbox_temperature = RangeConfigItem("Chatterbox", "model_temperature", 80, RangeValidator(1, 200))
     chatterbox_min_p = RangeConfigItem("Chatterbox", "min_p", 50, RangeValidator(0, 100))
     chatterbox_max_new_tokens = RangeConfigItem("Chatterbox", "max_new_tokens", 2048, RangeValidator(800, 2048))

@@ -33,15 +33,16 @@ class ChatterboxSettings(ScrollArea):
             parent=self.settings_group
         )
 
-        self.top_k_card = RangeSettingCard(
+        self.top_k_card = RangeSettingCardScaled(
             cfg.chatterbox_min_p,
             FIF.DOWN,
             self.tr('Min P'),
             self.tr('Lower values make it more predictable and coherent'),
-            parent=self
+            parent=self,
+            scale=1000.0
         )
 
-        self.max_new_tokens_card = RangeSettingCard(
+        self.max_new_tokens_card = RangeSettingCardScaled(
             cfg.chatterbox_exaggeration,
             FIF.EXPRESSIVE_INPUT_ENTRY,
             self.tr('Exaggeration'),
@@ -49,7 +50,7 @@ class ChatterboxSettings(ScrollArea):
             parent=self
         )
 
-        self.cfg_weight_card = RangeSettingCard(
+        self.cfg_weight_card = RangeSettingCardScaled(
             cfg.chatterbox_cfg_weight,
             FIF.STOP_WATCH,
             self.tr('Config Weight'),
@@ -57,11 +58,12 @@ class ChatterboxSettings(ScrollArea):
             parent=self
         )
 
-        self.repetition_penalty_card = RangeSettingCard(
+        self.repetition_penalty_card = RangeSettingCardScaled(
             cfg.chatterbox_repetition_penalty,
             FIF.MORE,
             self.tr('Repetition penalty'),
             self.tr('How diverse should the generation be'),
+            scale=10.0
         )
 
         self.__initWidget()

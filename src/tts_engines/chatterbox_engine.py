@@ -48,7 +48,7 @@ class ChatterboxEngine(tts_engine):
                                   audio_prompt_path=voice,
                                   repetition_penalty=cfg.get(cfg.chatterbox_repetition_penalty) / 10.0,
                                   top_p=cfg.get(cfg.chatterbox_top_p) / 100.0,
-                                  min_p=cfg.get(cfg.chatterbox_min_p) / 100.0,
+                                  min_p=cfg.get(cfg.chatterbox_min_p) / 1000.0,
                                   exaggeration=cfg.get(cfg.chatterbox_exaggeration) / 100.0,
                                   cfg_weight=cfg.get(cfg.chatterbox_cfg_weight) / 100.0
                                   )
