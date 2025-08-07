@@ -43,12 +43,11 @@ from src.utils.model_utils import (
 )
 # Import widgets here to avoid circular imports
 from src.widgets import (
-    StyleTTS2Widget, F5Widget, FishWidget, OrpheusWidget, LlasaWidget,
-    DIAWidget, UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget,
-    XttsWidget, FaqWidget, GPT_SoVITSWidget, RVCWidget, BulkGenerationWidget,
-    EzVoiceCreatorWidget, FallTalkWidget, SparkWidget, CSMWidget, HiggsWidget,
-    ChatterboxWidget
+    UpscaleWidget, SettingsWidget, CharactersWidget, ReferencesWidget,
+    FaqWidget, RVCWidget, BulkGenerationWidget,
+    EzVoiceCreatorWidget, FallTalkWidget
 )
+from src.widgets.generic_generation_widget import GenericGenerationWidget
 from src.widgets.falltalk_fluent_window import FallTalkFluentWindow
 from tts_engines.whisper_engine import Whisper_Engine
 
@@ -312,19 +311,19 @@ class FallTalkApp(FallTalkFluentWindow):
 
 
         # Initialize all engine widgets
-        self.engine_widgets[EngineType.XTTS_V2] = XttsWidget(self)
-        self.engine_widgets[EngineType.GPT_SOVITS] = GPT_SoVITSWidget(self)
-        self.engine_widgets[EngineType.STYLE_TTS2] = StyleTTS2Widget(self)
-        self.engine_widgets[EngineType.DIA] = DIAWidget(self)
-        self.engine_widgets[EngineType.F5] = F5Widget(self)
-        self.engine_widgets[EngineType.FISH_SPEECH] = FishWidget(self)
-        self.engine_widgets[EngineType.ORPHEUS] = OrpheusWidget(self)
-        self.engine_widgets[EngineType.LLASA] = LlasaWidget(self)
+        self.engine_widgets[EngineType.XTTS_V2] = GenericGenerationWidget(self, EngineType.XTTS_V2)
+        self.engine_widgets[EngineType.GPT_SOVITS] = GenericGenerationWidget(self, EngineType.GPT_SOVITS)
+        self.engine_widgets[EngineType.STYLE_TTS2] = GenericGenerationWidget(self, EngineType.STYLETTS2)
+        self.engine_widgets[EngineType.DIA] = GenericGenerationWidget(self, EngineType.DIA)
+        self.engine_widgets[EngineType.F5] = GenericGenerationWidget(self, EngineType.F5)
+        self.engine_widgets[EngineType.FISH_SPEECH] = GenericGenerationWidget(self, EngineType.FISH_SPEECH)
+        self.engine_widgets[EngineType.ORPHEUS] = GenericGenerationWidget(self, EngineType.ORPHEUS)
+        self.engine_widgets[EngineType.LLASA] = GenericGenerationWidget(self, EngineType.LLASA)
         self.engine_widgets[EngineType.RVC] = RVCWidget(self)
-        self.engine_widgets[EngineType.SPARK] = SparkWidget(self)
-        self.engine_widgets[EngineType.CSM] = CSMWidget(self)
-        self.engine_widgets[EngineType.HIGGS] = HiggsWidget(self)
-        self.engine_widgets[EngineType.CHATTERBOX] = ChatterboxWidget(self)
+        self.engine_widgets[EngineType.SPARK] = GenericGenerationWidget(self, EngineType.SPARK)
+        self.engine_widgets[EngineType.CSM] = GenericGenerationWidget(self, EngineType.CSM)
+        self.engine_widgets[EngineType.HIGGS] = GenericGenerationWidget(self, EngineType.HIGGS)
+        self.engine_widgets[EngineType.CHATTERBOX] = GenericGenerationWidget(self, EngineType.CHATTERBOX)
 
         self.faq_widget = FaqWidget(self)
         self.characters_widget = CharactersWidget(self)

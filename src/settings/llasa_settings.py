@@ -9,7 +9,7 @@ from src.config.config import cfg
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
 
 
-class LLASASettings(ScrollArea):
+class LlasaSettings(ScrollArea):
     def __init__(self, parent=None):
         super().__init__(parent)
 

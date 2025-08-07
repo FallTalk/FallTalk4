@@ -212,29 +212,29 @@ class FallTalkFluentWindow(FluentWindowBase):
         return bar
 
     def __reset(self):
-        if cfg.get(cfg.engine) == "XTTSv2":
+        if cfg.get(cfg.engine) == EngineType.XTTS_V2.value:
             cfg.resetXtts()
-        elif cfg.get(cfg.engine) == "GPT_SoVITS":
+        elif cfg.get(cfg.engine) == EngineType.GPT_SOVITS.value:
             cfg.resetGPT()
-        elif cfg.get(cfg.engine) == "StyleTTS2":
+        elif cfg.get(cfg.engine) == EngineType.STYLE_TTS2.value:
             cfg.resetStyleTTS()
-        elif cfg.get(cfg.engine) == "F5":
+        elif cfg.get(cfg.engine) == EngineType.F5.value:
             cfg.resetF5()
-        elif cfg.get(cfg.engine) == "DIA":
+        elif cfg.get(cfg.engine) == EngineType.DIA.value:
             cfg.resetDIA()
-        elif cfg.get(cfg.engine) == "FishSpeech":
+        elif cfg.get(cfg.engine) == EngineType.FISH_SPEECH.value:
             cfg.resetDIA()
-        elif cfg.get(cfg.engine) == "Llasa":
+        elif cfg.get(cfg.engine) == EngineType.LLASA.value:
             cfg.resetLlasa()
-        elif cfg.get(cfg.engine) == "Orpheus":
+        elif cfg.get(cfg.engine) == EngineType.ORPHEUS.value:
             cfg.resetOrpheus()
-        elif cfg.get(cfg.engine) == "Spark":
+        elif cfg.get(cfg.engine) == EngineType.SPARK.value:
             cfg.resetSpark()
-        elif cfg.get(cfg.engine) == "CSM":
+        elif cfg.get(cfg.engine) == EngineType.CSM.value:
             cfg.resetCSM()
-        elif cfg.get(cfg.engine) == "Higgs":
+        elif cfg.get(cfg.engine) == EngineType.HIGGS.value:
             cfg.resetHiggs()
-        elif cfg.get(cfg.engine) == "Chatterbox":
+        elif cfg.get(cfg.engine) == EngineType.CHATTERBOX.value:
             cfg.resetChatterbox()
 
 

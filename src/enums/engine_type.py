@@ -17,6 +17,7 @@ class EngineType(Enum):
     CHATTERBOX = ("Chatterbox", False, True, ["0.5B"], "0.5B", 30, 3, True, True)
     INDEX = ("Index", False, True, ["v1.5", "v2"], "v1.5", 15, 3, True, False)
     HIGGS = ("Higgs", True, True, ["v2"], "v2", 15, 3, True, False)
+    DMOSPEECH2 = ("DMO Speech 2", True, True, ["v2"], "v2", 15, 3, True, False)
 
     def __new__(cls, value, needs_reference_when_trained, needs_transcription, supported_versions, version, max_reference_length, min_reference_length, loads_from_dir, enabled):
         obj = object.__new__(cls)
