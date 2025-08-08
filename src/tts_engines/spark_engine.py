@@ -111,19 +111,8 @@ class SparkEngine(tts_engine):
         return inputs, global_token_ids
 
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
-        # Get audio data and sample rate from inference
-        audio_data, sample_rate = self.inference(text, voice, transcript, speaker)
-        self.process_audio(audio_data, sample_rate, output_file)
-
     @torch.no_grad()
-    def inference(
-        self,
-        text: str,
-        voice: Path = None,
-        transcript: str = None,
-        speaker: str = None,
-    ):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         if not transcript and not voice:
             text = f"{speaker}: " + text if speaker else text
 

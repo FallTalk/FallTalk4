@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
+import random
 from typing import TYPE_CHECKING
+
+from enums.engine_type import EngineType
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -14,11 +18,144 @@ from PySide6.QtCore import QMetaObject, Qt, Q_ARG, QMetaType, QObject
 import PySide6
 
 from src.config.config import cfg
-from src.utils.audio_utils import create_lip_and_fuz
+from src.utils.audio_utils import create_lip_and_fuz, extra_audio_from_bsa
+from src.utils.filesystem_utils import get_app_root
+
 from num2words import num2words
 
 logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)
+
+
+
+def get_default_reference(parent, character_name):
+    """Get a default reference for a character from default_references.json and characters.json
+
+    Args:
+        parent: The parent application instance
+        character_name: The name of the character
+
+    Returns:
+        tuple: (reference_path, transcript, filename) or (None, None, None) if no reference found
+    """
+    # First check if we have default references for this character
+    if hasattr(parent, 'default_references') and parent.default_references and character_name in parent.default_references:
+        # Get a random default reference for this character
+        default_refs = parent.default_references[character_name]
+        if default_refs:
+            # Select a random default reference
+            random_ref = random.choice(default_refs)
+
+            # Get the filename and transcript from default_references.json
+            wav_filename = random_ref.get('filename', '')
+            transcript = random_ref.get('transcript', '')
+
+            # Convert WAV filename to FUZ filename to match with characters.json
+            # Example: "00112D18_1.wav" -> "00112d18_1.fuz"
+            fuz_filename = wav_filename.replace('.wav', '.fuz').lower()
+
+            # Now find the matching entry in characters.json to get BSA info
+            if character_name in parent.characters_data:
+                character = parent.characters_data[character_name]
+                if character.get('voicefiles'):
+                    # Find the matching voice file in characters.json
+                    matching_voice_file = None
+                    for voice_file in character['voicefiles']:
+                        if voice_file.get('filename', '').lower() == fuz_filename:
+                            matching_voice_file = voice_file
+                            break
+
+                    if matching_voice_file:
+                        # Create a temporary WAV file for the reference
+                        temp_dir = os.path.join(get_app_root(), "temp")
+                        os.makedirs(temp_dir, exist_ok=True)
+                        temp_file = os.path.join(temp_dir, wav_filename)
+
+                        # Check if the file already exists in the temp directory
+                        if not os.path.exists(temp_file):
+                            # Try to extract from BSA if it's a game file
+                            matching_voice_file['folder'] = character_name
+                            try:
+                                extra_audio_from_bsa(matching_voice_file, fuz_filename.replace('.fuz', ''))
+                            except Exception as e:
+                                logger.warning(f"Could not extract audio from BSA: {e}")
+                                # Continue to try other methods if this fails
+
+                        # If the file exists now, return it
+                        if os.path.exists(temp_file):
+                            return temp_file, transcript, wav_filename
+
+    # Fallback to using characters.json directly if default_references.json didn't work
+    if character_name not in parent.characters_data:
+        logger.warning(f"Character {character_name} not found in characters data")
+        return None, None, None
+
+    character = parent.characters_data[character_name]
+    if not character.get('voicefiles'):
+        logger.warning(f"No voice files found for character {character_name}")
+        return None, None, None
+
+    # Sort voice files by dialogue length (longer is better for reference)
+    voice_files = []
+    for voice_file in character['voicefiles']:
+        if voice_file.get('filename') and voice_file.get('dialogue'):
+            voice_files.append((voice_file, len(voice_file['dialogue'])))
+
+    if not voice_files:
+        logger.warning(f"No valid voice files found for character {character_name}")
+        return None, None, None
+
+    # Sort by dialogue length and get the top one
+    voice_files.sort(key=lambda x: x[1], reverse=True)
+    voice_file, _ = voice_files[0]
+
+    # Get the filename and dialogue
+    filename = voice_file['filename']
+    transcript = voice_file.get('dialogue', '')
+
+    # Create a temporary WAV file for the reference
+    temp_dir = os.path.join(get_app_root(), "temp")
+    os.makedirs(temp_dir, exist_ok=True)
+    wav_filename = filename.replace('.fuz', '.wav')
+    temp_file = os.path.join(temp_dir, wav_filename)
+
+    # Check if the file already exists in the temp directory
+    if not os.path.exists(temp_file):
+        # Try to extract from BSA if it's a game file
+        voice_file['folder'] = character_name
+        try:
+            extra_audio_from_bsa(voice_file, filename.replace('.fuz', ''))
+        except Exception as e:
+            logger.warning(f"Could not extract audio from BSA: {e}")
+            return None, None, None
+
+    # If the file exists now, return it
+    if os.path.exists(temp_file):
+        return temp_file, transcript, wav_filename
+
+    return None, None, None
+
+
+def get_default_reference_and_transcript(parent, character_name):
+    """Get a default reference audio and transcript for a character.
+
+    Args:
+        parent: The parent application instance
+        character_name: The name of the character
+
+    Returns:
+        tuple: (reference_path, transcribe_state) where reference_path is the path to the reference audio file
+               and transcribe_state is a dictionary containing the transcript
+    """
+    # Get default reference from default_references.json and characters.json
+    reference_path, transcript, filename = get_default_reference(parent, character_name)
+
+    # If we have a transcript, create the transcribe state
+    transcribe_state = None
+    if transcript:
+        transcribe_state = {'transcript': transcript}
+
+    return reference_path, transcribe_state
 
 def do_transcribe_before_gen(parent: 'FallTalkApp', selected_audio):
     try:
@@ -180,7 +317,10 @@ def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=N
 
         # Add optional parameters if they exist
         if transcribe_state is not None:
-            kwargs['transcript'] = transcribe_state
+            if isinstance(transcribe_state, dict) and parent.tts_engine.engin_type != EngineType.F5:
+                kwargs['transcript'] = transcribe_state['transcript']
+            else:
+                kwargs['transcript'] = transcribe_state
         if start_time is not None:
             kwargs['start_time'] = start_time
         if end_time is not None:
@@ -226,5 +366,3 @@ def rvc_inference(parent: 'FallTalkApp', input_file, panel, api=False):
                                    Q_ARG(PySide6.QtCore.QObject, parent), 
                                    Q_ARG(str, "Unable to Generate Audio"), 
                                    Q_ARG(str, "An Error Occurred while attempting to generate audio. Please check your logs and report the issue if needed"))
-
-

@@ -186,6 +186,8 @@ class Config(QConfig):
     accepted_disclaimer = ConfigItem('App', 'accepts_disclaimer', False, BoolValidator())
     accepts_custom_disclaimer = ConfigItem('App', 'accepts_custom_disclaimer', False, BoolValidator())
 
+    steps = RangeConfigItem("Image", "steps", 50, RangeValidator(1, 200))
+
     #Bulk
     replace_existing = ConfigItem("bulk", "replace_existing", False, BoolValidator())
     include_subdir = ConfigItem("bulk", "include_subdir", True, BoolValidator())
@@ -277,13 +279,17 @@ class Config(QConfig):
     spark_max_new_tokens = RangeConfigItem("Spark", "max_new_tokens", 2048, RangeValidator(800, 2048))
 
     # Chatterbox settings
-    chatterbox_top_p = RangeConfigItem("Chatterbox", "top_p", 120, RangeValidator(0.0, 200))
+    chatterbox_top_p = RangeConfigItem("Chatterbox", "top_p", 100, RangeValidator(0.0, 100))
     chatterbox_temperature = RangeConfigItem("Chatterbox", "model_temperature", 80, RangeValidator(1, 200))
     chatterbox_min_p = RangeConfigItem("Chatterbox", "min_p", 50, RangeValidator(0, 100))
     chatterbox_max_new_tokens = RangeConfigItem("Chatterbox", "max_new_tokens", 2048, RangeValidator(800, 2048))
     chatterbox_exaggeration = RangeConfigItem("Chatterbox", "exaggeration", 50, RangeValidator(0, 100))
     chatterbox_repetition_penalty = RangeConfigItem("Chatterbox", "repetition_penalty", 12, RangeValidator(1, 15))
     chatterbox_cfg_weight = RangeConfigItem("Chatterbox", "cfg_weight", 50, RangeValidator(0, 100))
+
+    # Chat model settings
+    chat_model = OptionsConfigItem("Chat", "model", "Qwen/Qwen3-4B-Instruct-2507", 
+                                  OptionsValidator(["Qwen/Qwen3-1.7B", "Qwen/Qwen3-4B-Instruct-2507"]))
 
     # DMSpeech2 settings
     dmo_speech2_temperature = RangeConfigItem("DMSpeech2", "model_temperature", 80, RangeValidator(1, 200))

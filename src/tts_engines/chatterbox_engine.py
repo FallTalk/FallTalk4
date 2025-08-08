@@ -48,4 +48,4 @@ class ChatterboxEngine(tts_engine):
                                   exaggeration=cfg.get(cfg.chatterbox_exaggeration) / 100.0,
                                   cfg_weight=cfg.get(cfg.chatterbox_cfg_weight) / 100.0
                                   )
-        return wav.cpu().float().numpy(), self.model.sr
+        return wav.cpu().float().numpy().squeeze(0), self.model.sr

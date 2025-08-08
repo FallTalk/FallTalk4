@@ -1,5 +1,6 @@
 import glob
 import os
+import random
 import re
 from difflib import SequenceMatcher
 from abc import ABC, abstractmethod
@@ -19,6 +20,28 @@ from src.utils import logging_utils
 from src.config.config import cfg
 from src.utils.filesystem_utils import get_app_root
 
+FALLOUT_FILLER_PHRASES = [
+    "Just another day in the Commonwealth.",
+    "Keep your eyes on the horizon.",
+    "The wasteland never sleeps.",
+    "Hope there's no storm coming.",
+    "Stay sharp out there.",
+    "You never know what's around the corner.",
+    "Gotta keep moving.",
+    "Ain’t nothing easy out here.",
+    "Watch your back.",
+    "Let’s hope it stays quiet.",
+    "Caps don’t earn themselves.",
+    "Time to scavenge some supplies.",
+    "Could use a cold Nuka Cola.",
+    "Wish I brought more ammo.",
+    "That Pip Boy sure comes in handy.",
+    "Better check the map.",
+    "Looks like Raider territory.",
+    "At least it's not full of ghouls.",
+    "I should've joined the Minutemen.",
+    "War, war never changes."
+]
 
 def normalize_text(text):
     """
@@ -238,7 +261,9 @@ class tts_engine(ABC):
         # If text is short and pad_short_phrases is enabled, duplicate it
         if text and cfg.get(cfg.pad_short_phrases) and len(text) < 30:
             while len(text) < 30:
-                text = text + " " + original_text
+                filler = random.choice(FALLOUT_FILLER_PHRASES)
+                text += " " + filler
+            text += " " + original_text
 
         # Get audio data and sample rate from inference
         audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
@@ -295,7 +320,11 @@ class tts_engine(ABC):
                     end_sample = int(end_time_padded * sample_rate)
 
                     if end_sample > start_sample:
-                        audio_data = audio_data[:, start_sample:end_sample]
+                        # if output_file:
+                        #     base, ext = os.path.splitext(output_file)
+                        #     padded_output_file = f"{base}_padded{ext}"
+                        #     sf.write(padded_output_file, audio_data, sample_rate)
+                        audio_data = audio_data[start_sample:end_sample]
 
         # Save or process final audio
         self.process_audio(audio_data, sample_rate, output_file)
@@ -323,6 +352,10 @@ class tts_engine(ABC):
         return params
 
     def process_audio(self, audio_data: np.ndarray, sample_rate: int, output_file: str):
+        # If the audio is 2D with shape (1, N), flatten to 1D
+        if audio_data.ndim == 2 and audio_data.shape[0] == 1:
+            audio_data = audio_data.squeeze(0)  # from (1, N) to (N,)
+
         apbwe_enabled = cfg.get(cfg.apbwe_enabled)
         if apbwe_enabled and self.apbwe_engine and sample_rate == 24000 or sample_rate == 16000:
             audio_data, sample_rate = self.apbwe_engine.upscale(audio_data, sample_rate)

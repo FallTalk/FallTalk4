@@ -31,7 +31,7 @@ from src.utils.huggingface_utils import get_latest_release, get_model_diff, down
 from src.utils.icons import FallTalkIcons
 from src.utils.inference_utils import (
     do_transcribe, eleven_labs_inference, edge_tts_inference, generic_inference,
-    rvc_inference, do_transcribe_before_gen, preprocess_text
+    rvc_inference, do_transcribe_before_gen, preprocess_text, get_default_reference_and_transcript
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
@@ -45,6 +45,7 @@ from src.widgets import (
     FaqWidget, RVCWidget, BulkGenerationWidget,
     EzVoiceCreatorWidget, FallTalkWidget
 )
+from src.widgets.chat_widget import ChatWidget
 from src.widgets.generic_generation_widget import GenericGenerationWidget
 from src.widgets.falltalk_fluent_window import FallTalkFluentWindow
 from tts_engines.whisper_engine import Whisper_Engine
@@ -333,6 +334,7 @@ class FallTalkApp(FallTalkFluentWindow):
         self.upscale_widget = UpscaleWidget(parent=self)
         self.setting_widget = SettingsWidget(self)
         self.ez_voice_creator_widget = EzVoiceCreatorWidget(parent=self)
+        self.chat_widget = ChatWidget(parent=self)
 
         # Add all engine widgets to the generate widget
         for engine_type, widget in self.engine_widgets.items():
@@ -345,6 +347,7 @@ class FallTalkApp(FallTalkFluentWindow):
         self.addSubInterface(self.characters_widget, FIF.PEOPLE, 'Character Models', NavigationItemPosition.TOP)
         self.addSubInterface(self.reference_widget, FIF.MIX_VOLUMES, 'Reference Audio', NavigationItemPosition.TOP)
         self.addSubInterface(self.generate_widget, FIF.ROBOT, 'Generate Voice', NavigationItemPosition.TOP)
+        self.addSubInterface(self.chat_widget, FIF.CHAT, 'Chat', NavigationItemPosition.TOP)
         self.navigationInterface.addSeparator()
         self.addSubInterface(self.bulk_generate_widget, FallTalkIcons.BULK.icon(), 'Bulk Generation', NavigationItemPosition.TOP)
         self.addSubInterface(self.upscale_widget, FallTalkIcons.UP.icon(stroke=True), 'Bulk Enhancement', NavigationItemPosition.TOP)
@@ -394,6 +397,7 @@ class FallTalkApp(FallTalkFluentWindow):
     def onWarn(self, parent: 'FallTalkApp', title, text):
         parent.createErrorInfoBar(title, text)
 
+    @Slot( str, str)
     def createErrorInfoBar(self, title, text):
         InfoBar.error(
             title=title,
@@ -405,6 +409,7 @@ class FallTalkApp(FallTalkFluentWindow):
             parent=self
         )
 
+    @Slot(str, str)
     def showLoaderPopup(self, title, text):
         self.setEnabled(False)
         self.stateTooltip = StateToolTip(title, text, self)
@@ -419,6 +424,10 @@ class FallTalkApp(FallTalkFluentWindow):
     @Slot(str)
     def update_loader(self, content):
         self.stateTooltip.setContent(content)
+
+    @Slot(PySide6.QtCore.QObject)
+    def close_loader(self, parent: 'FallTalkApp'):
+        parent.complete_loader()
 
     def complete_loader(self):
         if self.stateTooltip:
@@ -450,6 +459,8 @@ class FallTalkApp(FallTalkFluentWindow):
             widget.setVisible(False)
             widget.setEnabled(False)
 
+        self.chat_widget.clear_chat()
+        self.chat_widget.setEnabled(False)
         self.bulk_generate_widget.setEnabled(False)
         self.character_label.setText(f"Please Load Model")
 
@@ -481,7 +492,7 @@ class FallTalkApp(FallTalkFluentWindow):
         engine_type = EngineType(engine)
         parent.complete_loader()
         widget = self.engine_widgets[engine_type]
-        widget.setEnabled(True)
+        widget.setEnabled(False)
         widget.setVisible(True)
         widget.media_player.setVisible(True)
         parent.bulk_generate_widget.setEnabled(True)
@@ -490,7 +501,10 @@ class FallTalkApp(FallTalkFluentWindow):
     def afterModelLoader(self, parent: 'FallTalkApp'):
         parent.complete_loader()
         engine_type = EngineType(cfg.get(cfg.engine))
+        self.chat_widget.clear_chat()
+        self.chat_widget.setEnabled(True)
         widget = self.engine_widgets[engine_type]
+        widget.setEnabled(True)
         if engine_type == EngineType.RVC:
             self.stackedWidget.setCurrentWidget(self.generate_widget)
         elif (self.tts_engine.is_base or engine_type.needs_reference_when_trained) and engine_type.needs_transcription:
@@ -851,13 +865,8 @@ class FallTalkApp(FallTalkFluentWindow):
             if current_engine.needs_reference_when_trained or self.tts_engine.is_base:
                 if references is None or not references:
                     # Get default reference from default_references.json and characters.json
-                    from src.utils.bulk_utils import get_default_reference
                     character_name = self.tts_engine.model_name
-                    reference_path, transcript, filename = get_default_reference(self, character_name)
-
-                    # If we have a transcript, create the transcribe state
-                    if transcript:
-                        transcribe_state = {'transcript': transcript}
+                    reference_path, transcribe_state = get_default_reference_and_transcript(self, character_name)
 
                     # If reference found, use it
                     if reference_path:
