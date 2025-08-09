@@ -53,6 +53,7 @@ class FallTalkIcons(FluentIconBase, Enum):
     TEAM = "team"
     GROUP = "group"
     MULTI = "multi"
+    BETHESDA = "bethesda"
 
     # Stroke-only icons
     ALPHA = "alpha"
