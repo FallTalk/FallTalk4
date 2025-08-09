@@ -157,7 +157,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.gen_settings.setStyleSheet("border: none")
         self.gen_settings_layout = QHBoxLayout()
         self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
-        self.f_and_u_layout.addWidget(self.threads_card, 2)
+        self.gen_settings_layout.addWidget(self.threads_card, 2)
         self.gen_settings_layout.addWidget(self.xwm_card, 2)
         self.gen_settings_layout.addWidget(self.delete_leftovers, 2)
         self.gen_settings.setLayout(self.gen_settings_layout)
