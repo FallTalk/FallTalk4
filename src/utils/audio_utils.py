@@ -220,3 +220,17 @@ def load_audio(file, sampling_rate, channels=1):
         raise RuntimeError(f"Failed to load audio: {error}")
 
     return np.frombuffer(out, np.float32).flatten()
+
+
+def combine_references(references):
+    logger.debug(f"{references}")
+    if not references:
+        return None
+    elif len(references) == 1:
+        logger.debug(references)
+        selected_audio = references[0]
+    else:
+        logger.debug(references)
+        selected_audio = combine_wav_files(references)
+
+    return selected_audio

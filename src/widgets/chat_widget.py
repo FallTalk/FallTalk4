@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import traceback
 from typing import TYPE_CHECKING, List, Dict, Optional
 import os
 import threading
 
 import PySide6
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from pure_eval.my_getattr_static import user_method_descriptor
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+from src.audio.audio_recorder import StandardAudioRecorderBar
+# vLLM not supported on Windows - using optimized transformers instead
 
 from utils.icons import FallTalkIcons
 from widgets import RightDrawer
@@ -17,7 +22,7 @@ if TYPE_CHECKING:
 from PySide6.QtCore import Qt, Signal, QMetaObject, Q_ARG, QUrl, QTimer
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QScrollArea, QWidget, QLabel, QTextEdit, QFrame, QGroupBox
 from qfluentwidgets import PrimaryPushButton, ScrollArea, FluentIcon as FIF, InfoBar, InfoBarPosition, isDarkTheme, \
-    SwitchSettingCard, ToolButton, OptionsSettingCard, PushButton
+    SwitchSettingCard, ToolButton, OptionsSettingCard, PushButton, TextEdit, SingleDirectionScrollArea
 
 from src.audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
@@ -29,7 +34,7 @@ from src.utils.inference_utils import get_default_reference_and_transcript, gene
 
 DEFAULT_SYSTEM_PROMPT = """
 Setting:
-You are an AI designed to roleplay characters, factions, and scenarios within the Fallout 4 universe. The game is set in the post-nuclear wasteland of the Commonwealth (formerly Boston, Massachusetts) in the year 2287, 210 years after the Great War. The world is a mix of ruined pre-war architecture, makeshift settlements, dangerous creatures, and warring factions. Technology is a bizarre blend of retro-futurism (1950s-style atomic age aesthetics) and advanced robotics, energy weapons, and cybernetics.
+You are an AI designed to imitate characters, factions, and scenarios within the Fallout 4 universe. The game is set in the post-nuclear wasteland of the Commonwealth (formerly Boston, Massachusetts) in the year 2287, 210 years after the Great War. The world is a mix of ruined pre-war architecture, makeshift settlements, dangerous creatures, and warring factions. Technology is a bizarre blend of retro-futurism (1950s-style atomic age aesthetics) and advanced robotics, energy weapons, and cybernetics.
 
 Key Lore & Details to Remember:
 
@@ -45,9 +50,9 @@ Key Lore & Details to Remember:
     Radiation, Mutants & Hazards: Super Mutants, feral ghouls, raiders, Deathclaws, and radiation storms are common threats.
     Pre-War Culture: 1950s aesthetics, propaganda, and corporations like Vault-Tec, RobCo, and Nuka-Cola dominate remnants of the old world.
 
-Roleplaying Guidelines:
+Guidelines:
 
-    Stay true to Fallout’s dark humor, moral ambiguity, and retro-futuristic tone.
+    Stay true to Fallout's dark humor, moral ambiguity, and retro-futuristic tone.
     Characters should speak authentically (e.g., wastelanders use slang like "caps" for currency, "chems" for drugs, "smoothskin" for non-ghouls).
     Factions have strong ideologies—Brotherhood knights are rigid, Railroad agents are paranoid, etc.
     The world is dangerous but full of oddities (e.g., a settlement obsessed with mannequins, a ghoul poet, a robot detective).
@@ -55,9 +60,9 @@ Roleplaying Guidelines:
 
 Example Character Prompts:
 
-    Raider: "You step into Lexington, and a voice crackles over a busted PA system: ‘This is Slab’s turf, stranger. Hand over your caps or become dog food!’"
+    Raider: "You step into Lexington, and a voice crackles over a busted PA system: 'This is Slab's turf, stranger. Hand over your caps or become dog food!'"
     Brotherhood Scribe: "By order of Elder Maxson, unauthorized access to pre-war technology is prohibited. State your business, wastelander."
-    Ghoul Settler: "Ain’t seen you ‘round here before. Don’t mind the rads—just gives ya character. Need a bed for the night? 20 caps, and I’ll throw in a lukewarm Nuka."
+    Ghoul Settler: "Ain't seen you 'round here before. Don't mind the rads—just gives ya character. Need a bed for the night? 20 caps, and I'll throw in a lukewarm Nuka."
 
 Limitations:
 
@@ -68,7 +73,7 @@ Response Style:
 
     Use descriptive, immersive language.
     Offer choices when appropriate (e.g., "Do you draw your weapon, haggle, or walk away?").
-    Adapt to the player’s tone (serious, sarcastic, or unhinged).    
+    Adapt to the player's tone (serious, sarcastic, or unhinged).    
     Do not use any special characters, emojis or styling. Use only basic punctuation.
     You are using a TTS to generate audio, keep all responses under 450 characters. 
 
@@ -125,10 +130,10 @@ class ChatMessage(QFrame):
         """Update the style based on the current theme."""
         if isDarkTheme():
             user_bg = "#1E3A5F"  # Darker blue for user messages in dark theme
-            ai_bg = "#2D2D30"    # Dark gray for AI messages in dark theme
+            ai_bg = "#2D2D30"  # Dark gray for AI messages in dark theme
         else:
             user_bg = "#E3F2FD"  # Light blue for user messages in light theme
-            ai_bg = "#F5F5F5"    # Light gray for AI messages in light theme
+            ai_bg = "#F5F5F5"  # Light gray for AI messages in light theme
 
         self.setStyleSheet(
             "QFrame#ChatMessage { "
@@ -168,9 +173,16 @@ class ChatWidget(GenerationWidget):
     def __init__(self, parent: 'FallTalkApp'):
         super().__init__(parent=parent, text="Chat")
 
-        # Initialize LLM components
-        self.model = None
-        self.tokenizer = None
+        # Initialize optimized transformers components for Windows
+        self.model = None  # Transformers model
+        self.tokenizer = None  # Transformers tokenizer
+        self.generation_config = {
+            "max_new_tokens": 32768,
+            "temperature": 0.7,
+            "do_sample": True,
+            "top_p": 0.9,
+            "repetition_penalty": 1.1,
+        }
         self.model_name = cfg.get(cfg.chat_model)
         self.update_system_prompt()
         self.messages = [self.system_prompt]  # Chat history
@@ -192,7 +204,7 @@ class ChatWidget(GenerationWidget):
         self.system_prompt = {
             "role": "system",
             "content": DEFAULT_SYSTEM_PROMPT
-        }# Update messages list if it exists
+        }  # Update messages list if it exists
         if hasattr(self, 'messages') and self.messages:
             self.messages[0] = self.system_prompt
 
@@ -216,9 +228,12 @@ class ChatWidget(GenerationWidget):
                 parent=self
             )
 
+            self.clear_chat()
+
     def unload_model(self):
         """Unload the current model."""
         if self.model is not None:
+            self.model.to('cpu')
             del self.model
             self.model = None
 
@@ -236,7 +251,7 @@ class ChatWidget(GenerationWidget):
             FIF.DEVELOPER_TOOLS,
             self.tr('Chat Model'),
             self.tr('Select the model to use for chat'),
-            texts=["Qwen/Qwen3-1.7B", "Qwen/Qwen3-4B-Instruct-2507"],
+            texts=["Qwen3 1.7B (3GB)", "Qwen3 4B (6GB)", "Qwen3 0.6B (1GB)"],
             parent=self
         )
         self.model_selector.optionChanged.connect(self.handle_model_change)
@@ -297,7 +312,7 @@ class ChatWidget(GenerationWidget):
             self.text_input.setParent(None)
 
         # Create a scroll area for messages
-        self.scroll_area = ScrollArea(self)
+        self.scroll_area = SingleDirectionScrollArea(orient=Qt.Vertical, parent=self)
         self.scroll_area.setWidgetResizable(True)
         self.scroll_content = QWidget()
         self.scroll_layout = QVBoxLayout(self.scroll_content)
@@ -308,10 +323,14 @@ class ChatWidget(GenerationWidget):
         # Add scroll area to main layout
         self.addToFrame(self.scroll_area)
 
+        self.media_recorder = StandardAudioRecorderBar(self)
+        self.addToFrame(self.media_recorder)
+        self.media_recorder.doneRecording.connect(self.transcribe_audio)
+
         # Create input area at the bottom
         self.input_layout = QHBoxLayout()
-        self.text_input = QTextEdit()
-        self.text_input.setPlaceholderText("Type your message here...")
+        self.text_input = TextEdit()
+        self.text_input.setPlaceholderText("Type your message here, or record it above")
         self.text_input.setMaximumHeight(100)
 
         # Create buttons layout
@@ -339,16 +358,74 @@ class ChatWidget(GenerationWidget):
 
         self.addGenSettings()
 
+    def transcribe_audio(self, recording_file):
+        QMetaObject.invokeMethod(self.parent, "showLoaderPopup", Qt.QueuedConnection,
+                                 Q_ARG(str, f"Transcribing Audio"),
+                                 Q_ARG(str, f"Sending Audio to AI chat"))
+        threading.Thread(target=self.transcibe_and_send, args={recording_file}, daemon=True).start()
+
+
+    def transcibe_and_send(self, recording_file):
+
+        transcript = self.parent.transcription_engine.transcribe(recording_file)
+        if transcript:
+            user_message = transcript['transcript']
+            QMetaObject.invokeMethod(self.parent, "close_loader", Qt.QueuedConnection,
+                                     Q_ARG(PySide6.QtCore.QObject, self.parent))
+            # Add user message to UI
+            self.add_user_message(user_message)
+
+            if self.model is None or self.tokenizer is None:
+                QMetaObject.invokeMethod(self.parent, "showLoaderPopup", Qt.QueuedConnection,
+                                         Q_ARG(str, f"Loading Chat"),
+                                         Q_ARG(str, f"Downloading and Loading Chat Model"))
+                threading.Thread(target=self.load_model, args=(user_message,), daemon=True).start()
+            else:
+                threading.Thread(target=self.process_message, args=(user_message,), daemon=True).start()
+        else:
+            QMetaObject.invokeMethod(self.parent, "close_loader", Qt.QueuedConnection,
+                                     Q_ARG(PySide6.QtCore.QObject, self.parent))
+
     def load_model(self, user_message):
-        """Load the LLM model."""
+        """Load the model with Windows-optimized transformers."""
         try:
-            # Load tokenizer and model
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            # Load tokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name,
+                trust_remote_code=True,
+            )
+
+            # Set pad token if not present
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+
+            # Configure quantization for better memory usage (optional)
+            quantization_config = None
+            if torch.cuda.is_available():
+                try:
+                    # Try 4-bit quantization to save VRAM
+                    quantization_config = BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_quant_type="nf4",
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_compute_dtype=torch.float16,
+                    )
+                except:
+                    # Fallback without quantization if BitsAndBytesConfig fails
+                    quantization_config = None
+
+            # Load model with optimizations
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                torch_dtype="auto",
-                device_map="auto"
+                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                device_map="auto" if torch.cuda.is_available() else None,
+                low_cpu_mem_usage=True,
+                trust_remote_code=True,
+                quantization_config=quantization_config,
+                # Try flash attention if available
+                attn_implementation="flash_attention_2" if torch.cuda.is_available() else None,
             )
+
             # Enable the widget now that the model is loaded
             self.setEnabled(True)
             self.first_message_sent = False
@@ -393,33 +470,41 @@ class ChatWidget(GenerationWidget):
             # Add message to history
             self.messages.append({"role": "user", "content": user_message})
 
-            # Prepare model input
+            # Use transformers with optimized generation
             text = self.tokenizer.apply_chat_template(
                 self.messages,
                 tokenize=False,
                 add_generation_prompt=True,
+                enable_thinking=False
             )
-            model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
 
-            # Generate response
-            generated_ids = self.model.generate(
-                **model_inputs,
-                max_new_tokens=10024
+            model_inputs = self.tokenizer(
+                [text],
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=2048,
             )
-            output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
 
-            # Parse thinking content and response
-            try:
-                # rindex finding 151668 (</think>)
-                index = len(output_ids) - output_ids[::-1].index(151668)
-            except ValueError:
-                index = 0
+            # Move inputs to same device as model
+            if torch.cuda.is_available() and next(self.model.parameters()).is_cuda:
+                model_inputs = {k: v.to(self.model.device) for k, v in model_inputs.items()}
 
-            thinking_content = self.tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
-            content = self.tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+            # Generate response with optimized parameters
+            with torch.no_grad():
+                generated_ids = self.model.generate(
+                    **model_inputs,
+                    **self.generation_config,
+                    pad_token_id=self.tokenizer.pad_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    use_cache=True,
+                )
 
-            # Log thinking content for debugging
-            logger.debug(f"Thinking content: {thinking_content}")
+            # Extract only the new tokens
+            new_tokens = generated_ids[0][len(model_inputs['input_ids'][0]):]
+            content = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+
+            # Log for debugging
             logger.debug(f"Response content: {content}")
 
             # Add AI message to history
@@ -440,8 +525,11 @@ class ChatWidget(GenerationWidget):
                                      Q_ARG(PySide6.QtCore.QObject, self.parent))
 
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"Error processing message: {e}")
             self.message_received.emit(f"Error: {e}", None)
+            QMetaObject.invokeMethod(self.parent, "close_loader", Qt.QueuedConnection,
+                                     Q_ARG(PySide6.QtCore.QObject, self.parent))
 
     def generate_audio_for_response(self, text: str) -> str:
         """Generate audio for the AI response."""
@@ -452,9 +540,11 @@ class ChatWidget(GenerationWidget):
             # Create output file path
             output_dir = os.path.join(get_app_root(), "output")
             os.makedirs(output_dir, exist_ok=True)
-            output_file = os.path.join(output_dir, f"chat_{self.parent.tts_engine.model_name}_{formatted_time_stamp_uuid()}.wav")
+            output_file = os.path.join(output_dir,
+                                       f"chat_{self.parent.tts_engine.model_name}_{formatted_time_stamp_uuid()}.wav")
 
-            reference_path, transcribe_state = get_default_reference_and_transcript(self.parent, self.parent.tts_engine.model_name)
+            reference_path, transcribe_state = get_default_reference_and_transcript(self.parent,
+                                                                                    self.parent.tts_engine.model_name)
 
             # Generate audio using the current TTS engine
             if self.parent.tts_engine:
@@ -472,6 +562,7 @@ class ChatWidget(GenerationWidget):
                 logger.error("No TTS engine available")
                 return None
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"Error generating audio: {e}")
             QMetaObject.invokeMethod(self.parent, "onError", Qt.QueuedConnection,
                                      Q_ARG(PySide6.QtCore.QObject, self.parent),
@@ -504,11 +595,10 @@ class ChatWidget(GenerationWidget):
 
         # Remove all message widgets
         for widget in self.message_widgets:
-            widget.setParent(None)
             widget.deleteLater()
 
         # Clear the message widgets list
-        self.message_widgets = [self.system_prompt]
+        self.messages = [self.system_prompt]
 
         # Reset first message flag
         self.first_message_sent = False

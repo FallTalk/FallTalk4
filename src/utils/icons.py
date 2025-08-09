@@ -49,6 +49,10 @@ class FallTalkIcons(FluentIconBase, Enum):
     CHATTERBOX = "chatterbox"
     DMO2 = "dmo2"
     PADDING = "padding"
+    ROBOTS = "robots"
+    TEAM = "team"
+    GROUP = "group"
+    MULTI = "multi"
 
     # Stroke-only icons
     ALPHA = "alpha"

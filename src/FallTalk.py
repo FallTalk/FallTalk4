@@ -22,9 +22,9 @@ from qfluentwidgets import NavigationItemPosition
 from src.config.config import cfg, DISCLAIMER, VERSION, RELEASE_URL
 from src.enums.engine_type import EngineType
 from src.tts_engines import tts_engine
-from src.utils.audio_utils import combine_wav_files
+from src.utils.audio_utils import combine_wav_files, combine_references
 from src.utils.bulk_utils import bulk_inference, bulk_rvc_inference, bulk_fuz
-from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp, formatted_time_stamp_uuid
+from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp, formatted_time_stamp_uuid, get_output_file_name
 from src.utils.filesystem_utils import get_app_root
 from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models, \
     download_all_models_config
@@ -49,6 +49,7 @@ from src.widgets.chat_widget import ChatWidget
 from src.widgets.generic_generation_widget import GenericGenerationWidget
 from src.widgets.falltalk_fluent_window import FallTalkFluentWindow
 from tts_engines.whisper_engine import Whisper_Engine
+from src.widgets.generic_multi_generation_widget import GenericMultiGenerationWidget
 
 
 class FallTalkApp(FallTalkFluentWindow):
@@ -335,6 +336,7 @@ class FallTalkApp(FallTalkFluentWindow):
         self.setting_widget = SettingsWidget(self)
         self.ez_voice_creator_widget = EzVoiceCreatorWidget(parent=self)
         self.chat_widget = ChatWidget(parent=self)
+        self.multi_generation_widget = GenericMultiGenerationWidget(parent=self)
 
         # Add all engine widgets to the generate widget
         for engine_type, widget in self.engine_widgets.items():
@@ -346,7 +348,9 @@ class FallTalkApp(FallTalkFluentWindow):
         # Add navigation interfaces
         self.addSubInterface(self.characters_widget, FIF.PEOPLE, 'Character Models', NavigationItemPosition.TOP)
         self.addSubInterface(self.reference_widget, FIF.MIX_VOLUMES, 'Reference Audio', NavigationItemPosition.TOP)
-        self.addSubInterface(self.generate_widget, FIF.ROBOT, 'Generate Voice', NavigationItemPosition.TOP)
+        self.addSubInterface(self.generate_widget, FIF.ROBOT, 'Generation', NavigationItemPosition.TOP)
+        self.addSubInterface(self.multi_generation_widget, FallTalkIcons.MULTI.icon(), 'Multi Generation', NavigationItemPosition.TOP)
+        self.navigationInterface.addSeparator()
         self.addSubInterface(self.chat_widget, FIF.CHAT, 'Chat', NavigationItemPosition.TOP)
         self.navigationInterface.addSeparator()
         self.addSubInterface(self.bulk_generate_widget, FallTalkIcons.BULK.icon(), 'Bulk Generation', NavigationItemPosition.TOP)
@@ -461,6 +465,8 @@ class FallTalkApp(FallTalkFluentWindow):
 
         self.chat_widget.clear_chat()
         self.chat_widget.setEnabled(False)
+        self.multi_generation_widget.clear_results()
+        self.multi_generation_widget.setEnabled(False)
         self.bulk_generate_widget.setEnabled(False)
         self.character_label.setText(f"Please Load Model")
 
@@ -503,6 +509,8 @@ class FallTalkApp(FallTalkFluentWindow):
         engine_type = EngineType(cfg.get(cfg.engine))
         self.chat_widget.clear_chat()
         self.chat_widget.setEnabled(True)
+        self.multi_generation_widget.clear_results()
+        self.multi_generation_widget.setEnabled(True)
         widget = self.engine_widgets[engine_type]
         widget.setEnabled(True)
         if engine_type == EngineType.RVC:
@@ -548,7 +556,7 @@ class FallTalkApp(FallTalkFluentWindow):
         if parent.pending_bulk:
             parent.bulk_inference()
         elif parent.pending_ez:
-            parent.ez_voice_creator_inference()
+            parent.ez_voice_creator_inference(cfg.get(cfg.ez_total))
         elif parent.pending_character and not parent.pending_base:
             parent.stackedWidget.setCurrentWidget(parent.generate_widget)
             parent.load_trained_model(parent.pending_character, parent.pending_model, parent.pending_rvc)
@@ -680,30 +688,6 @@ class FallTalkApp(FallTalkFluentWindow):
         t = json.loads(transcribe_state)
         parent.generate_audio(None, t)
 
-
-    def combine_references(self, references):
-        logger.debug(f"{references}")
-        if not references:
-            return None
-        elif len(references) == 1:
-            logger.debug(references)
-            selected_audio = references[0]
-        else:
-            logger.debug(references)
-            selected_audio = combine_wav_files(references)
-
-        return selected_audio
-
-    def get_output_file_name(self, file_name):
-        if file_name is None or file_name == "" or file_name == "Random":
-            unique_id = uuid.uuid4()
-            file_name = f"{formatted_time_stamp()}_{self.tts_engine.model_name}_{self.tts_engine.engine_name}_{unique_id.hex[:10]}"
-
-        file_name = sanitize_filename(file_name)
-        path = os.path.abspath(os.path.join(cfg.get(cfg.output_dir), self.tts_engine.model_name, f"{file_name}.wav"))
-        os.makedirs(os.path.join(cfg.get(cfg.output_dir), self.tts_engine.model_name), exist_ok=True)
-        return path
-
     def get_music_file(self, file_name, wav=False):
         if file_name is None or file_name == "" or file_name == "Random":
             file_name = formatted_time_stamp_uuid()
@@ -723,7 +707,7 @@ class FallTalkApp(FallTalkFluentWindow):
         return path
 
     def get_output_file(self, widget):
-        return self.get_output_file_name(widget.output_name.value)
+        return get_output_file_name(widget.output_name.value, cfg.get(cfg.output_dir), self.tts_engine.model_name, self.tts_engine.engin_type.value)
 
 
     @Slot(PySide6.QtCore.QObject)
@@ -745,7 +729,7 @@ class FallTalkApp(FallTalkFluentWindow):
                 tr = (threading.Thread(target=self.upscale_engine.upscale_dir, args=(up_dir, cfg.get(cfg.replace_existing), cfg.get(cfg.include_subdir), self.upscale_widget.audio_mode.value, self.upscale_widget.sample_rate.value), daemon=True))
                 tr.start()
 
-    def ez_voice_creator_inference(self):
+    def ez_voice_creator_inference(self, runs=1):
         """Handle generation button click in EzVoiceCreator widget"""
         if not self.ez_voice_creator_widget.dialogue_table.model() or self.ez_voice_creator_widget.dialogue_table.model().rowCount() == 0:
             MessageBox("Error", "No dialogue data to generate", self).exec()
@@ -760,7 +744,7 @@ class FallTalkApp(FallTalkFluentWindow):
             if data > 0:
                 self.showLoaderPopup(f"Generating Audio", f"Completed: 0/{data}")
                 from src.utils.bulk_utils import ez_voice_creator_inference
-                tr = (threading.Thread(target=ez_voice_creator_inference, args={self}, daemon=True))
+                tr = (threading.Thread(target=ez_voice_creator_inference, args=(self, runs), daemon=True))
                 tr.start()
             else:
                 self.showErrorPopup(self.ez_voice_creator_widget, self.ez_voice_creator_widget.generate_button, "Please Load some Data")
@@ -906,7 +890,7 @@ class FallTalkApp(FallTalkFluentWindow):
                             self,
                             self.get_output_file(current_widget),
                             text,
-                            self.combine_references(references),
+                            combine_references(references),
                             current_widget,
                             transcribe_state,
                         ),
@@ -920,14 +904,13 @@ class FallTalkApp(FallTalkFluentWindow):
                     ).start()
             else:
                 # All other engines use generic_inference
-                transcript = transcribe_state['transcript'] if transcribe_state else None
                 threading.Thread(
                     target=generic_inference,
                     args=(
                         self,
                         self.get_output_file(current_widget),
                         text,
-                        self.combine_references(references),
+                        combine_references(references),
                         current_widget,
                         transcribe_state,
                     ),

@@ -91,7 +91,6 @@ triton-windows>=3.3
 pywin32==308
 deepspeed==0.16.5
 descript-audio-codec
-vllm==0.9.1
 diffusers
 torchsde
 snac
@@ -110,3 +109,4 @@ dacite
 resemble-perth
 s3tokenizer
 conformer
+llama-cpp-python

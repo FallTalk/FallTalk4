@@ -410,7 +410,7 @@ def bulk_inference(parent):
 
 
 
-def ez_voice_creator_inference(parent):
+def ez_voice_creator_inference(parent, runs=1):
     if parent.tts_engine.engine_name != EngineType.RVC.value:
         model = parent.ez_voice_creator_widget.dialogue_table.model()
         table = parent.ez_voice_creator_widget.dialogue_table
@@ -431,54 +431,55 @@ def ez_voice_creator_inference(parent):
 
         last_character = None
 
-        for data in datas:
-            start = datetime.now()
-            try:
-                file_name = data[0]  # FILE_NAME
-                text = data[1]       # RESPONSE TEXT
-                voice_type = data[2] # VOICE TYPE
-                full_path = data[3]  # FULLPATH
-                reference_voice = data[4]  # REFERENCE FILE
-                plugin_name = data[5]  # PLUGIN
-                plugin_name = f"{plugin_name}_{timestamp}"
-
-                # Get character data
-                character = parent.characters_data.get(voice_type)
-                if not character:
-                    continue
-
-                model = get_character_model(character['name'], parent.models, parent.custom_models)
-                is_trained, has_rvc = get_trained_character(model, parent.tts_engine.engine_name)
-                engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
-                if engine_type is None:
-                    raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")
-
-                # Construct the output path with plugin name
-                # Remove the plugin name from the full path if it exists
-                path_parts = full_path.split(os.sep)
-                if len(path_parts) > 1 and path_parts[0] == 'Data':
-                    path_parts = path_parts[1:]  # Remove 'Data' from the path
-
-                output_path = os.path.join(get_app_root(), 'bulk_outputs/', plugin_name, 'Data', *path_parts)
-                output_file = output_path.replace('.fuz', '.wav')
-
-                # Create the directory structure if it doesn't exist
-                output_dir = os.path.dirname(output_file)
+        for i in range(runs):
+            for data in datas:
+                start = datetime.now()
                 try:
-                    os.makedirs(output_dir, exist_ok=True)
-                except OSError as e:
-                    logger.exception(f"Failed to create directory {output_dir}: {e}")
-                    continue
+                    file_name = data[0]  # FILE_NAME
+                    text = data[1]       # RESPONSE TEXT
+                    voice_type = data[2] # VOICE TYPE
+                    full_path = data[3]  # FULLPATH
+                    reference_voice = data[4]  # REFERENCE FILE
+                    plugin_name = data[5]  # PLUGIN
+                    plugin_name = f"{plugin_name}_{timestamp}_run_{i}"
 
-                process_inference_data(parent, data, output_file, character['name'], model, is_trained, has_rvc, reference_voice, text, last_character=last_character)
-                last_character = character['name']
+                    # Get character data
+                    character = parent.characters_data.get(voice_type)
+                    if not character:
+                        continue
 
-            except Exception as e:
-                logger.exception(f"ez_voice_creator_inference failed for row {data}")
+                    model = get_character_model(character['name'], parent.models, parent.custom_models)
+                    is_trained, has_rvc = get_trained_character(model, parent.tts_engine.engine_name)
+                    engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
+                    if engine_type is None:
+                        raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")
 
-            count += 1
-            end = datetime.now()
-            time_total += (end - start).total_seconds()
-            update_progress(parent, total, time_total, count)
+                    # Construct the output path with plugin name
+                    # Remove the plugin name from the full path if it exists
+                    path_parts = full_path.split(os.sep)
+                    if len(path_parts) > 1 and path_parts[0] == 'Data':
+                        path_parts = path_parts[1:]  # Remove 'Data' from the path
+
+                    output_path = os.path.join(get_app_root(), 'bulk_outputs/', plugin_name, 'Data', *path_parts)
+                    output_file = output_path.replace('.fuz', '.wav')
+
+                    # Create the directory structure if it doesn't exist
+                    output_dir = os.path.dirname(output_file)
+                    try:
+                        os.makedirs(output_dir, exist_ok=True)
+                    except OSError as e:
+                        logger.exception(f"Failed to create directory {output_dir}: {e}")
+                        continue
+
+                    process_inference_data(parent, data, output_file, character['name'], model, is_trained, has_rvc, reference_voice, text, last_character=last_character)
+                    last_character = character['name']
+
+                except Exception as e:
+                    logger.exception(f"ez_voice_creator_inference failed for row {data}")
+
+                count += 1
+                end = datetime.now()
+                time_total += (end - start).total_seconds()
+                update_progress(parent, total * runs, time_total, count)
 
     QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))

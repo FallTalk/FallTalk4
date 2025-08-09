@@ -35,8 +35,8 @@ class SparkEngine(tts_engine):
         
     def load_model(self):
         if self.is_base:
-            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B' "LLM"))))
-            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B' "LLM"))))
+            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B', "LLM"))))
+            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B', "LLM"))))
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
             self.model = AutoModelForCausalLM.from_pretrained(self.model_path)

@@ -3,12 +3,16 @@ from __future__ import annotations
 import json
 import os
 import random
+import shutil
+import threading
+import uuid
 from typing import TYPE_CHECKING
 
 from enums.engine_type import EngineType
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
+    from src.widgets import GenerationWidget
 
 import logging
 import asyncio
@@ -49,6 +53,7 @@ def get_default_reference(parent, character_name):
             # Get the filename and transcript from default_references.json
             wav_filename = random_ref.get('filename', '')
             transcript = random_ref.get('transcript', '')
+            duration = random_ref.get('duration', '')
 
             # Convert WAV filename to FUZ filename to match with characters.json
             # Example: "00112D18_1.wav" -> "00112d18_1.fuz"
@@ -83,17 +88,17 @@ def get_default_reference(parent, character_name):
 
                         # If the file exists now, return it
                         if os.path.exists(temp_file):
-                            return temp_file, transcript, wav_filename
+                            return temp_file, transcript, wav_filename, duration
 
     # Fallback to using characters.json directly if default_references.json didn't work
     if character_name not in parent.characters_data:
         logger.warning(f"Character {character_name} not found in characters data")
-        return None, None, None
+        return None, None, None, None
 
     character = parent.characters_data[character_name]
     if not character.get('voicefiles'):
         logger.warning(f"No voice files found for character {character_name}")
-        return None, None, None
+        return None, None, None, None
 
     # Sort voice files by dialogue length (longer is better for reference)
     voice_files = []
@@ -103,7 +108,7 @@ def get_default_reference(parent, character_name):
 
     if not voice_files:
         logger.warning(f"No valid voice files found for character {character_name}")
-        return None, None, None
+        return None, None, None, None
 
     # Sort by dialogue length and get the top one
     voice_files.sort(key=lambda x: x[1], reverse=True)
@@ -127,13 +132,13 @@ def get_default_reference(parent, character_name):
             extra_audio_from_bsa(voice_file, filename.replace('.fuz', ''))
         except Exception as e:
             logger.warning(f"Could not extract audio from BSA: {e}")
-            return None, None, None
+            return None, None, None, None
 
     # If the file exists now, return it
     if os.path.exists(temp_file):
-        return temp_file, transcript, wav_filename
+        return temp_file, transcript, wav_filename, None
 
-    return None, None, None
+    return None, None, None, None
 
 
 def get_default_reference_and_transcript(parent, character_name):
@@ -148,7 +153,7 @@ def get_default_reference_and_transcript(parent, character_name):
                and transcribe_state is a dictionary containing the transcript
     """
     # Get default reference from default_references.json and characters.json
-    reference_path, transcript, filename = get_default_reference(parent, character_name)
+    reference_path, transcript, filename, duration = get_default_reference(parent, character_name)
 
     # If we have a transcript, create the transcribe state
     transcribe_state = None

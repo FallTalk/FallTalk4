@@ -315,10 +315,7 @@ class FallTalkAPI:
             # Handle reference audio (single file or list of files)
             reference_audio = data.get('reference_audio', None)
             if isinstance(reference_audio, list) and len(reference_audio) > 0:
-                if self.falltak_app:
-                    reference_audio = self.falltak_app.combine_references(reference_audio)
-                else:
-                    reference_audio = self.server_thread.combine_references(reference_audio)
+                reference_audio = self.server_thread.combine_references(reference_audio)
 
             transcript = data.get('transcript', None)
             start_time = data.get('start_time', None)

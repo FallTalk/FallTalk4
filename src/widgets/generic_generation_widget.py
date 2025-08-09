@@ -143,7 +143,7 @@ class GenericGenerationWidget(GenerationWidget):
 
         self.setVisible(cfg.engine.value == engine_type.value)
         self.media_player.setVisible(cfg.engine.value == engine_type.value)
-        self.setEnabled(engine_type == EngineType.GPT_SOVITS)  # Enable by default for GPT_SOVITS, others will be enabled later
+        self.setEnabled(False)
 
     def setup_f5_specific_ui(self):
         """Set up the F5-specific UI elements for edit mode"""

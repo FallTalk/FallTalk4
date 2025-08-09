@@ -21,26 +21,36 @@ from src.config.config import cfg
 from src.utils.filesystem_utils import get_app_root
 
 FALLOUT_FILLER_PHRASES = [
-    "Just another day in the Commonwealth.",
-    "Keep your eyes on the horizon.",
-    "The wasteland never sleeps.",
-    "Hope there's no storm coming.",
-    "Stay sharp out there.",
-    "You never know what's around the corner.",
-    "Gotta keep moving.",
-    "Ain’t nothing easy out here.",
-    "Watch your back.",
-    "Let’s hope it stays quiet.",
-    "Caps don’t earn themselves.",
-    "Time to scavenge some supplies.",
-    "Could use a cold Nuka Cola.",
-    "Wish I brought more ammo.",
-    "That Pip Boy sure comes in handy.",
-    "Better check the map.",
-    "Looks like Raider territory.",
-    "At least it's not full of ghouls.",
-    "I should've joined the Minutemen.",
-    "War, war never changes."
+    "War never changes, but the Commonwealth sure keeps trying.",
+    "Another settlement needs your help, better get moving fast.",
+    "Radiation levels are rising, better keep that Rad X handy.",
+    "Diamond City is bustling with gossip and shady deals today.",
+    "The Brotherhood of Steel marches ever onward toward their goals.",
+    "Ghouls wander the wasteland, searching for scraps and lost memories.",
+    "Synths may look human, but their hearts are wires and steel.",
+    "In the wasteland, every bullet counts more than your words.",
+    "Vault Tec promised safety, but delivered something far more sinister.",
+    "A Super Mutant roar echoes through the broken city streets.",
+    "Caps buy food, water, and occasionally questionable human loyalty.",
+    "The Minutemen rise again, standing watch over the settlements.",
+    "Nuka Cola still tastes sweet, even two hundred years later.",
+    "The Railroad works in shadows, freeing synths from hidden chains.",
+    "Power armor feels like walking in the skin of gods.",
+    "Rad storms sweep the land, turning day into glowing green night.",
+    "Every choice you make echoes across the ruined wasteland forever.",
+    "Even the strongest weapons break if you fire them carelessly.",
+    "Sanctuary Hills stands as a fragile hope in the dark.",
+    "The Institute watches the surface world with cold calculating eyes.",
+    "Mire lurks scuttle through the shallows, waiting for careless travelers.",
+    "Even the air smells like old rust and bad memories.",
+    "A good gun is worth more than a thousand caps.",
+    "Pre War relics hide in plain sight, forgotten by most folks.",
+    "Life in the wasteland is nasty, brutish, and often short.",
+    "Some legends are born, others are forged in nuclear fire.",
+    "Not all heroes wear armor, some wear patched leather jackets.",
+    "The wasteland takes everything from you, then demands even more.",
+    "Even in ruin, Bostons skyline cuts a haunting silhouette.",
+    "Every step in the wasteland risks a bullet or worse."
 ]
 
 def normalize_text(text):
@@ -262,16 +272,16 @@ class tts_engine(ABC):
         if text and cfg.get(cfg.pad_short_phrases) and len(text) < 30:
             while len(text) < 30:
                 filler = random.choice(FALLOUT_FILLER_PHRASES)
-                text += " " + filler
-            text += " " + original_text
+                text = filler + " " + text
 
         # Get audio data and sample rate from inference
         audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
 
+
         # If we padded the text, we need to extract just the first instance using whisperx
         if original_text != text and cfg.get(cfg.pad_short_phrases) and self.whisper_engine and output_file:
             # Transcribe the audio directly
-            transcription = self.whisper_engine.transcribe(audio_data)
+            transcription = self.whisper_engine.transcribe(audio_data, sample_rate)
 
             if transcription and 'words_info' in transcription:
                 words_info = transcription['words_info']
@@ -313,17 +323,22 @@ class tts_engine(ABC):
 
                     # Optional padding (e.g., for smoother cuts)
                     pad = 0.05
-                    start_time_padded = max(0.0, start_time - pad)
-                    end_time_padded = end_time + pad
+                    end_pad = 0.5
 
-                    start_sample = int(start_time_padded * sample_rate)
-                    end_sample = int(end_time_padded * sample_rate)
+                    start_time_padded = max(0.0, start_time - pad)
+                    end_time_padded = end_time + end_pad
+
+                    start_sample = max(0, int(start_time_padded * sample_rate))
+                    end_sample = min(len(audio_data), int(end_time_padded * sample_rate))
+
+                    print(f"Sample rate: {sample_rate} Hz")
+                    print(f"Audio duration: {len(audio_data) / sample_rate:.3f} sec")
+                    print(f"Word: ({start_time:.3f}s to {end_time:.3f}s)")
+                    print(f"Padded range: {start_time_padded:.3f}s to {end_time_padded:.3f}s")
+                    print(f"Computed samples: start={start_sample}, end={end_sample}")
+                    print(f"Audio data length: {len(audio_data)}")
 
                     if end_sample > start_sample:
-                        # if output_file:
-                        #     base, ext = os.path.splitext(output_file)
-                        #     padded_output_file = f"{base}_padded{ext}"
-                        #     sf.write(padded_output_file, audio_data, sample_rate)
                         audio_data = audio_data[start_sample:end_sample]
 
         # Save or process final audio

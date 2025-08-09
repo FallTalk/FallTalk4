@@ -3,7 +3,7 @@ from typing import Union
 
 import numpy as np
 from num2words import num2words
-
+import librosa
 from src.config.config import cfg
 
 from whisperx import load_model
@@ -88,10 +88,13 @@ class Whisper_Engine():
         self.align_model = WhisperxAlignModel()
         self.transcribe_model = WhisperxModel("distil-large-v3.5", self.align_model)
 
-
-    def transcribe(self, audio: Union[str, np.ndarray]):
+    def transcribe(self, audio: Union[str, np.ndarray], sr: float = None):
         if isinstance(audio, np.ndarray) and audio.ndim > 1 and audio.shape[0] == 1:
             audio = audio.flatten()
+
+        if isinstance(audio, np.ndarray) and sr is not None and sr != 16000:
+            audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+
         segments = self.transcribe_model.transcribe(audio)
         return get_transcribe_state(segments)
 

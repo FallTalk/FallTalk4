@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from utils.icons import FallTalkIcons
+from src.ui.cards import SpinSettingCard
+from src.utils.icons import FallTalkIcons
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -96,14 +97,25 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.csv_file_card.clicked.connect(self.__onCSVFileClicked)
 
 
+        self.threads_card = SpinSettingCard(
+            cfg.ez_total,
+            FIF.STOP_WATCH,
+            self.tr('Total Runs'),
+            self.tr('How many times to generate the dataset?'),
+            step=1
+        )
+
         self.f_and_u = QGroupBox()
         self.f_and_u.setStyleSheet("border: none")
         self.f_and_u_layout = QHBoxLayout()
         self.f_and_u_layout.setContentsMargins(0, 0, 0, 0)
+        self.f_and_u_layout.addWidget(self.threads_card)
         self.f_and_u_layout.addWidget(self.csv_file_card, 1)
         self.f_and_u.setLayout(self.f_and_u_layout)
 
         # Generation settings
+
+
         self.xwm_card = SwitchSettingCard(
             FIF.COMMAND_PROMPT,
             self.tr('Create FUZ'),
@@ -171,6 +183,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.generate_button = PrimaryPushButton(text="Generate Audio")
         self.generate_button.setIcon(FIF.SEND)
         self.generate_button.clicked.connect(self.generate_audio)
+        self.generate_button.setEnabled(False)
 
         self.buttons_layout.addWidget(self.run_xedit_button)
         self.buttons_layout.addWidget(self.generate_button)
@@ -216,9 +229,9 @@ class EzVoiceCreatorWidget(FallTalkWidget):
             self.edit_mode_button.setText("Edit Mode")
 
     def __onCSVFileClicked(self):
-        allowed_file_types = "CSV files (*.csv)"
+        allowed_file_types = "CSV files (*.csv);;Text files (*.txt)"
         file = QFileDialog.getOpenFileName(
-            self, self.tr("Choose CSV File"), "./", allowed_file_types)
+            self, self.tr("Choose File"), "./", allowed_file_types)
         if not file or file[0] == "":
             return
 
@@ -274,6 +287,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
             self.dialogue_table.setColumnHidden(4, False)
             self.dialogue_table.setColumnHidden(5, False)
             self.dialogue_table.model().setHeaderData(1, Qt.Orientation.Horizontal, "Text")
+            self.generate_button.setEnabled(True)
 
             self.apply_filter()
 
@@ -306,12 +320,13 @@ class EzVoiceCreatorWidget(FallTalkWidget):
 
     def generate_audio(self):
         """Handle generate button click"""
-        self.parent.ez_voice_creator_inference()
+        self.parent.ez_voice_creator_inference(cfg.get(cfg.ez_total))
 
     def clear(self):
         model = TableModel([], self.headers)
         self.dialogue_table.setModel(model)
-        self.player_dialogue_checkbox.setChecked(False)
+        self.player_dialogue_checkbox.setChecked(True)
+        self.generate_button.setEnabled(False)
 
     def apply_filter(self):
         text = self.filter_line_edit.text()

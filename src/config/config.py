@@ -193,6 +193,9 @@ class Config(QConfig):
     include_subdir = ConfigItem("bulk", "include_subdir", True, BoolValidator())
     threads = RangeConfigItem("bulk", "threads", 1, RangeValidator(1, 2))
 
+    multigen_total = RangeConfigItem("multigen", "total", 3, RangeValidator(1, 10))
+    ez_total = RangeConfigItem("ez", "total", 1, RangeValidator(1, 10))
+
     #Audio
     # fx_duration = RangeConfigItem("fx", "duration", 10, RangeValidator(5, 120))
     # audio_mode = OptionsConfigItem("music", "mode", "stereo", OptionsValidator(["mono", "stereo", "songstarter"]))
@@ -288,8 +291,8 @@ class Config(QConfig):
     chatterbox_cfg_weight = RangeConfigItem("Chatterbox", "cfg_weight", 50, RangeValidator(0, 100))
 
     # Chat model settings
-    chat_model = OptionsConfigItem("Chat", "model", "Qwen/Qwen3-4B-Instruct-2507", 
-                                  OptionsValidator(["Qwen/Qwen3-1.7B", "Qwen/Qwen3-4B-Instruct-2507"]))
+    chat_model = OptionsConfigItem("Chat", "model", "Qwen/Qwen3-1.7B",
+                                  OptionsValidator(["Qwen/Qwen3-1.7B", "Qwen/Qwen3-4B-Instruct-2507",  "Qwen/Qwen3-0.6B"]))
 
     # DMSpeech2 settings
     dmo_speech2_temperature = RangeConfigItem("DMSpeech2", "model_temperature", 80, RangeValidator(1, 200))
