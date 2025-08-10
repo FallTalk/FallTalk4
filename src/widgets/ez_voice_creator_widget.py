@@ -7,6 +7,7 @@ import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from settings.generic_settings import GenericSettings
 from src.ui.cards import SpinSettingCard
 from src.utils.icons import FallTalkIcons
 
@@ -214,6 +215,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
 
         self.help_drawer.addWidget(EzVoiceCreatorHelp(self))
+        self.settings_drawer.addWidget(GenericSettings(self))
         self.settings_button = ToolButton()
         self.settings_button.setIcon(FIF.SETTING)
         self.settings_button.setEnabled(True)
@@ -226,6 +228,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
         self.help_button.setFixedWidth(50)
 
+        self.buttons_layout.addWidget(self.settings_button)
         self.buttons_layout.addWidget(self.help_button)
 
         # Create a widget to hold the buttons layout

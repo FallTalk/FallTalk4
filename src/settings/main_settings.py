@@ -266,7 +266,7 @@ class FallTalkSettings(ScrollArea):
         self.aboutGroup.addSettingCard(self.discord)
         self.aboutGroup.addSettingCard(self.hugging_face)
 
-        
+
 
         self.resetGroup.addSettingCard(self.reset_to_default)
         # add setting card group to layout

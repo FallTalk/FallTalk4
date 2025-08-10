@@ -31,7 +31,7 @@ from src.help.reference_help import ReferencesHelp
 
 class ReferencesWidget(FallTalkWidget):
 
-    def __init__(self, parent: FallTalkApp):
+    def __init__(self, parent: 'FallTalkApp'):
         super().__init__(parent=parent, text="Reference Audio", vertical=True)
         self.parent = parent
         self.media_player = StandardAudioPlayerBar(self)
@@ -180,9 +180,12 @@ class ReferencesWidget(FallTalkWidget):
 
     def load_files_from_folder(self, folder_path):
         # Clear all widgets that have a clear method
-        for widget in self.parent.engine_widgets.values():
-            if hasattr(widget, 'clear'):
-                widget.clear()
+        if self.parent.tts_widget:
+            self.parent.tts_widget.clear()
+        if self.parent.bulk_generate_widget:
+            self.parent.bulk_generate_widget.clear()
+        if self.parent.multi_generation_widget:
+            self.parent.multi_generation_widget.clear()
 
         os.makedirs(folder_path, exist_ok=True)
         files = os.listdir(folder_path)
@@ -269,10 +272,8 @@ class ReferencesWidget(FallTalkWidget):
     def select_row(self):
         index = self.stackedWidget.currentWidget().currentIndex()
         if index.isValid():
-            # Call onReferenceSelect for all widgets that have the method
-            for widget in self.parent.engine_widgets.values():
-                if hasattr(widget, 'onReferenceSelect'):
-                    widget.onReferenceSelect()
+            if self.parent.tts_widget:
+                self.parent.tts_widget.onReferenceSelect()
 
             row = index.row()
             model = self.stackedWidget.currentWidget().model()
@@ -306,10 +307,8 @@ class ReferencesWidget(FallTalkWidget):
     def remove_row(self):
         index = self.stackedWidget.currentWidget().currentIndex()
         if index.isValid():
-            # Call onReferenceSelect for all widgets that have the method
-            for widget in self.parent.engine_widgets.values():
-                if hasattr(widget, 'onReferenceSelect'):
-                    widget.onReferenceSelect()
+            if self.parent.tts_widget:
+                self.parent.tts_widget.onReferenceSelect()
 
             row = index.row()
             model = self.stackedWidget.currentWidget().model()

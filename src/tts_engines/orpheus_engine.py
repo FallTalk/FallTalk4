@@ -18,8 +18,6 @@ from src.utils import torch_utils
 
 class OrpheusEngine(tts_engine):
 
-
-
     def __init__(self):
         super().__init__()
         print("Setting Up Orpheus Engine")

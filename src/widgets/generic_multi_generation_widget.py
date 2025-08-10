@@ -10,7 +10,8 @@ import PySide6
 from src.ui.cards import TextSettingCard, SpinSettingCard
 from src.utils.icons import FallTalkIcons
 from src.widgets import RightDrawer
-from widgets import GenerationWidget
+from src.widgets.generation_widget import GenerationWidget
+from src.widgets.engine_widgets_config import SETTINGS_WIDGETS, HELP_WIDGETS
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -128,6 +129,7 @@ class GenericMultiGenerationWidget(GenerationWidget):
 
     def __init__(self, parent: 'FallTalkApp'):
         super().__init__(parent=parent, text="Multi Generation")
+        self.engine_type = None  # Will be set by update_engine_type
         self.text_input.setPlaceholderText("If no reference is selected, a default will be used. Selecting a reference audio can help change the emotion of the generated speech. ")
 
         # Remove the media player that was added by GenericGenerationWidget
@@ -162,10 +164,10 @@ class GenericMultiGenerationWidget(GenerationWidget):
         # Add buttons to layout
         self.buttons_layout.addWidget(self.clear_button)
         self.buttons_layout.addWidget(self.generate_button)
+        self.buttons_layout.addWidget(self.settings_button)
+        self.buttons_layout.addWidget(self.help_button)
 
         self.boxLayout.addLayout(self.buttons_layout)
-
-
 
         self.setEnabled(False)
 
@@ -274,6 +276,15 @@ class GenericMultiGenerationWidget(GenerationWidget):
         """Update the widget's engine type."""
         self.engine_type = engine_type
         self.clear_results()
+
+        # Add settings and help widgets based on engine type
+        if engine_type in SETTINGS_WIDGETS:
+            self.settings_widget = SETTINGS_WIDGETS[engine_type](self)
+            self.settings_drawer.addWidget(self.settings_widget)
+
+        if engine_type in HELP_WIDGETS:
+            self.help_widget = HELP_WIDGETS[engine_type](self)
+            self.help_drawer.addWidget(self.help_widget)
 
     def setup_multi_generation_ui(self):
         """Setup the UI for multi-generation."""

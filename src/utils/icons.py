@@ -81,7 +81,9 @@ class FallTalkIcons(FluentIconBase, Enum):
         """
         path = self.path(theme)
 
-        if not color:
+        if color:
+            color = color.name()
+        elif not color:
             color = getIconColor(theme)
 
         if stroke:

@@ -95,6 +95,7 @@ class RightDrawer(QFrame):
 
         # Ensure background is properly set
         self.updateBackground()
+        self.current_widget = None
 
     def backgroundColor(self):
         return QColor(40, 40, 40) if isDarkTheme() else QColor(248, 248, 248)
@@ -132,7 +133,11 @@ class RightDrawer(QFrame):
 
     def addWidget(self, widget):
         """Add widget to content area"""
+        if self.current_widget:
+            self.content_layout.removeWidget(self.current_widget)
+
         self.content_layout.addWidget(widget)
+        self.current_widget = widget
 
     def setClickOutsideToClose(self, enable: bool):
         """Set whether clicking outside closes the drawer"""

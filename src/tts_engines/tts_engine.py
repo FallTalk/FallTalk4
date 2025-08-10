@@ -265,12 +265,61 @@ class tts_engine(ABC):
             start_time (float, optional): Start time for audio editing (F5 engine)
             end_time (float, optional): End time for audio editing (F5 engine)
         """
+        from src.utils.inference_utils import split_text, preprocess_text
+        import numpy as np
+
+        # Apply text preprocessing
+        if text:
+            text = preprocess_text(text)
 
         original_text = text
 
+        # If text is too long, split it into chunks
+        max_text_size = cfg.get(cfg.max_text_size)
+        min_chunk_size = cfg.get(cfg.min_chunk_size)
+
+        if text and len(text) > max_text_size:
+            # Split text into chunks
+            chunks = split_text(text, max_text_size, min_chunk_size)
+
+            # Process each chunk and combine the audio
+            combined_audio = None
+            combined_sample_rate = None
+
+            for chunk in chunks:
+                # Apply preprocessing to each chunk
+                processed_chunk = preprocess_text(chunk)
+
+                # If chunk is short and pad_short_phrases is enabled, duplicate it
+                if processed_chunk and cfg.get(cfg.pad_short_phrases) and len(processed_chunk) < min_chunk_size:
+                    while len(processed_chunk) < min_chunk_size:
+                        filler = random.choice(FALLOUT_FILLER_PHRASES)
+                        processed_chunk = filler + " " + processed_chunk
+
+                # Get audio data and sample rate from inference for this chunk
+                chunk_audio, chunk_sample_rate = self.inference(processed_chunk, transcript, voice, language, None, streaming, speaker, start_time, end_time)
+
+                # If this is the first chunk, initialize combined audio
+                if combined_audio is None:
+                    combined_audio = chunk_audio
+                    combined_sample_rate = chunk_sample_rate
+                else:
+                    # Ensure both chunks have the same sample rate
+                    if chunk_sample_rate != combined_sample_rate:
+                        import librosa
+                        chunk_audio = librosa.resample(chunk_audio, orig_sr=chunk_sample_rate, target_sr=combined_sample_rate)
+
+                    # Append this chunk's audio to the combined audio
+                    combined_audio = np.concatenate((combined_audio, chunk_audio))
+
+            # Process the combined audio
+            self.process_audio(combined_audio, combined_sample_rate, output_file)
+            return
+
+        # For short text, proceed with the original logic
         # If text is short and pad_short_phrases is enabled, duplicate it
-        if text and cfg.get(cfg.pad_short_phrases) and len(text) < 30:
-            while len(text) < 30:
+        if text and cfg.get(cfg.pad_short_phrases) and len(text) < min_chunk_size:
+            while len(text) < min_chunk_size:
                 filler = random.choice(FALLOUT_FILLER_PHRASES)
                 text = filler + " " + text
 

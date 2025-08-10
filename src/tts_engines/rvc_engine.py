@@ -1,16 +1,18 @@
 import librosa
 import numpy as np
+import soundfile as sf
 
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
-import soundfile as sf
-from src.utils.audio_utils import load_audio
+
 
 class RVC_Engine(tts_engine):
+
     def __init__(self):
         super().__init__()
         self.engin_type = EngineType.RVC
         self.engine_name = self.engin_type.value
+        self.model_type = 'pth'
 
     def load_model(self):
         pass
@@ -22,6 +24,10 @@ class RVC_Engine(tts_engine):
         super().clean()
 
     def unload_model(self):
+        pass
+
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False,
+                  speaker=None, start_time=None, end_time=None):
         pass
 
     def run_rvc_file(self, input_tts_path):

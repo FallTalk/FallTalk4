@@ -237,16 +237,192 @@ def replace_numbers_with_words(sentence):
         return None
 
 
+def remove_emojis(text):
+    # Regex pattern to match most emojis
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # Emoticons
+        "\U0001F300-\U0001F5FF"  # Symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # Transport & map symbols
+        "\U0001F700-\U0001F77F"  # Alchemical symbols
+        "\U0001F780-\U0001F7FF"  # Geometric Shapes Extended
+        "\U0001F800-\U0001F8FF"  # Supplemental Arrows-C
+        "\U0001F900-\U0001F9FF"  # Supplemental Symbols and Pictographs
+        "\U0001FA00-\U0001FA6F"  # Chess Symbols
+        "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
+        "\U00002702-\U000027B0"  # Dingbats
+        "\U000024C2-\U0001F251" 
+        "]+",
+        flags=re.UNICODE,
+    )
+    return emoji_pattern.sub(r'', text)
+
+def normalize_whitespace(text):
+    """
+    Normalizes whitespace by removing extra spaces and newlines.
+    """
+    if text:
+        # Replace multiple spaces with a single space
+        text = re.sub(r'\s+', ' ', text)
+        # Trim leading and trailing whitespace
+        text = text.strip()
+        return text
+    return None
+
+
+def convert_to_lowercase(text):
+    """
+    Converts text to lowercase.
+    """
+    if text:
+        return text.lower()
+    return None
+
+
+def fix_dot_letters(text):
+    """
+    Converts patterns like "J.R.R." to "J R R" to improve initialisms and names.
+    """
+    if text:
+        # Find patterns like X.Y.Z. where X, Y, Z are single letters
+        return re.sub(r'(\b[A-Za-z]\.)+', lambda m: m.group(0).replace('.', ' ').strip(), text)
+    return None
+
+
+def remove_inline_references(text):
+    """
+    Removes numbers after sentence-ending punctuation (e.g., .188 or ."3).
+    """
+    if text:
+        # Find patterns like .[number] or ."[number]
+        return re.sub(r'([\.\!\?][\"\']?)(\d+)', r'\1', text)
+    return None
+
+
+def split_text(text, max_length=300, min_length=30):
+    """
+    Splits text into chunks of maximum length, trying to split at natural boundaries.
+
+    Args:
+        text (str): The text to split
+        max_length (int): Maximum length of each chunk
+        min_length (int): Minimum length of each chunk
+
+    Returns:
+        list: List of text chunks
+    """
+    if not text:
+        return []
+
+    # If text is already short enough, return it as is
+    if len(text) <= max_length:
+        return [text]
+
+    # Define split points in order of preference
+    split_points = ['. ', '; ', ': ', '- ', ', ']
+
+    chunks = []
+    current_chunk = ""
+
+    # Split text into sentences first
+    sentences = []
+    current_sentence = ""
+
+    for char in text:
+        current_sentence += char
+        if char in '.!?' and len(current_sentence) > 0:
+            sentences.append(current_sentence)
+            current_sentence = ""
+
+    # Add any remaining text as a sentence
+    if current_sentence:
+        sentences.append(current_sentence)
+
+    # Process sentences into chunks
+    for sentence in sentences:
+        # If adding this sentence would exceed max_length
+        if len(current_chunk) + len(sentence) > max_length:
+            # If current_chunk is too small, we need to split the sentence
+            if len(current_chunk) < min_length:
+                # Try to find a good split point in the sentence
+                split_found = False
+                for split_char in split_points:
+                    if split_char in sentence:
+                        parts = sentence.split(split_char, 1)
+                        if len(current_chunk) + len(parts[0] + split_char) >= min_length:
+                            current_chunk += parts[0] + split_char
+                            chunks.append(current_chunk)
+                            current_chunk = parts[1]
+                            split_found = True
+                            break
+
+                # If no good split point, just add as much as we can
+                if not split_found:
+                    available_space = max_length - len(current_chunk)
+                    if available_space > 0:
+                        current_chunk += sentence[:available_space]
+                        chunks.append(current_chunk)
+                        current_chunk = sentence[available_space:]
+                    else:
+                        chunks.append(current_chunk)
+                        current_chunk = sentence
+            else:
+                # Current chunk is big enough, add it and start a new one
+                chunks.append(current_chunk)
+                current_chunk = sentence
+        else:
+            # Add sentence to current chunk
+            current_chunk += sentence
+
+    # Add the last chunk if it's not empty
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    # Handle any chunks that are still too large
+    result = []
+    for chunk in chunks:
+        if len(chunk) > max_length:
+            # Split by character count if still too large
+            result.extend([chunk[i:i+max_length] for i in range(0, len(chunk), max_length)])
+        else:
+            result.append(chunk)
+
+    return result
+
+
 def preprocess_text(text):
     """
-    Applies both text preprocessing functions:
-    1. Ensures text ends with punctuation
-    2. Replaces numbers with words
+    Applies text preprocessing functions based on configuration:
+    1. Lowercase conversion (optional)
+    2. Whitespace normalization (optional)
+    3. Dot-letter fix (optional)
+    4. Inline reference number removal (optional)
+    5. Ensures text ends with punctuation
+    6. Replaces numbers with words
 
     Returns the processed text.
     """
+    if not text:
+        return None
+
+    # Apply optional preprocessing based on configuration
+    if cfg.get(cfg.lowercase_conversion):
+        text = convert_to_lowercase(text)
+
+    if cfg.get(cfg.whitespace_normalization):
+        text = normalize_whitespace(text)
+
+    if cfg.get(cfg.dot_letter_fix):
+        text = fix_dot_letters(text)
+
+    if cfg.get(cfg.inline_reference_removal):
+        text = remove_inline_references(text)
+
+    # Always apply these preprocessing steps
+    text = remove_emojis(text)
     text = ensure_sentence_punctuation(text)
     text = replace_numbers_with_words(text)
+
     return text
 
 

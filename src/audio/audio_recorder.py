@@ -34,10 +34,10 @@ class RecordButton(MediaPlayBarButton):
 
     def setRecording(self, isRecording: bool):
         if isRecording:
-            self.setIcon(FallTalkIcons.RECORD.icon(color=QColor.fromRgb(235, 0, 0, )))
+            self.setIcon(FallTalkIcons.RECORD.icon(color=QColor.fromRgb(235, 0, 0, 255)))
             self.setToolTip(self.tr('Stop Recording'))
         else:
-            self.setIcon(FallTalkIcons.RECORD.icon(color=QColor.fromRgb(120, 0, 0, )))
+            self.setIcon(FallTalkIcons.RECORD.icon(color=QColor.fromRgb(120, 0, 0, 255)))
             self.setToolTip(self.tr('Record'))
 
 class AudioRecorderBarBase(QWidget):

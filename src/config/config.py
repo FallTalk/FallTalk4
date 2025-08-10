@@ -167,6 +167,14 @@ class Config(QConfig):
     apbwe_enabled = ConfigItem("App", "apbwe_enabled", True, BoolValidator())
     pad_short_phrases = ConfigItem("App", "pad_short_phrases", True, BoolValidator())
 
+    # Text processing settings
+    max_text_size = RangeConfigItem("App", "max_text_size", 300, RangeValidator(50, 1000))
+    min_chunk_size = RangeConfigItem("App", "min_text_size", 30, RangeValidator(10, 100))
+    lowercase_conversion = ConfigItem("App", "lowercase_conversion", False, BoolValidator())
+    whitespace_normalization = ConfigItem("App", "whitespace_normalization", True, BoolValidator())
+    dot_letter_fix = ConfigItem("App", "dot_letter_fix", True, BoolValidator())
+    inline_reference_removal = ConfigItem("App", "inline_reference_removal", True, BoolValidator())
+
     keep_only_fuz = ConfigItem("App", "keep_only_fuz", False, BoolValidator())
     use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
     huggingface_cache_dir = ConfigItem("App", "huggingface_cache_dir", None, CustomFolderValidator(), restart=True)
@@ -350,6 +358,15 @@ class Config(QConfig):
         self.set(self.rvc_enabled, self.rvc_enabled.defaultValue)
         self.set(self.seed, self.seed.defaultValue)
         self.set(self.replace_existing, self.replace_existing.defaultValue)
+
+        # Reset text processing settings
+        self.set(self.max_text_size, self.max_text_size.defaultValue)
+        self.set(self.min_chunk_size, self.min_chunk_size.defaultValue)
+        self.set(self.lowercase_conversion, self.lowercase_conversion.defaultValue)
+        self.set(self.whitespace_normalization, self.whitespace_normalization.defaultValue)
+        self.set(self.dot_letter_fix, self.dot_letter_fix.defaultValue)
+        self.set(self.inline_reference_removal, self.inline_reference_removal.defaultValue)
+        self.set(self.pad_short_phrases, self.pad_short_phrases.defaultValue)
 
     def resetXtts(self):
         self.set(self.speed, self.speed.defaultValue)
