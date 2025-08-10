@@ -528,16 +528,18 @@ class FallTalkApp(FallTalkFluentWindow):
         parent.complete_loader()
         engine_type = EngineType(cfg.get(cfg.engine))
         self.chat_widget.clear_chat()
-        self.chat_widget.setEnabled(True)
         self.multi_generation_widget.clear_results()
-        self.multi_generation_widget.setEnabled(True)
-        
+
         # Get the appropriate widget based on engine type
         if engine_type == EngineType.RVC:
             widget = self.rvc_widget
+            self.multi_generation_widget.setEnabled(False)
+            self.chat_widget.setEnabled(False)
         else:
             widget = self.tts_widget
-            
+            self.multi_generation_widget.setEnabled(True)
+            self.chat_widget.setEnabled(True)
+
         widget.setEnabled(True)
         if engine_type == EngineType.RVC:
             self.stackedWidget.setCurrentWidget(self.generate_widget)
