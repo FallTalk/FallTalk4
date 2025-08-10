@@ -320,6 +320,8 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         # Get xEdit path
         xedit_path = os.path.join(get_app_root(), "resource", "apps", "xedit", "xEdit64.exe")
         csv_path = os.path.join(get_app_root(), "Fallout4_DialogueExport.csv")
+        if os.path.exists(csv_path):
+            os.remove(csv_path)
 
         script_path = os.path.join(get_app_root(), "resource", "apps", "xedit", "scripts", "Fallout4ExportDialogue.pas")
         if not os.path.exists(xedit_path):
@@ -434,7 +436,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
 
         # Connect signals
         def browse_mod():
-            file = QFileDialog.getOpenFileName(dialog, "Select Mod File", cfg.get(cfg.fallout_4_directory), "ESP Files (*.esp)")
+            file = QFileDialog.getOpenFileName(dialog, "Select Mod File", cfg.get(cfg.fallout_4_directory), "ESP Files (*.esp);;ESL Files (*.esl);;ESM Files (*.esm)")
             if file and file[0]:
                 mod_path.setText(file[0])
                 update_run_button()
@@ -462,6 +464,8 @@ class EzVoiceCreatorWidget(FallTalkWidget):
                 ck_dir = os.path.dirname(ck_exe)
                 output_file = os.path.join(ck_dir, "dialogueExport.txt")
                 local_output_file = os.path.join(get_app_root(), "dialogueExport.txt")
+                if os.path.exists(local_output_file):
+                    os.remove(local_output_file)
 
                 bat_contents = f"""@echo off
                 cd /d "{ck_dir}"
