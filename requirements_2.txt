@@ -1,6 +1,6 @@
 PySide6==6.8.3
 faster-whisper==1.1.1
-huggingface_hub==0.30.2
+huggingface_hub>=0.34.3
 PySide6-Fluent-Widgets==1.7.7
 fastapi
 av==14.3.0
@@ -12,16 +12,17 @@ julius
 num2words
 numpy==1.26.4
 sentencepiece
-transformers>=4.45.2
+transformers>=4.55.0
 xformers>=v0.0.30
 torchmetrics
 demucs
 encodec
-protobuf<3.21
+protobuf>=6.31.1
 pesq
 pystoi
 torchtext==0.18.0
 onnxruntime-gpu==1.21.1
+onnx==1.18.0
 pydantic==2.11.3
 python-ffmpeg==2.0.12
 python-Levenshtein>=0.25.1
@@ -90,7 +91,6 @@ triton-windows>=3.3
 pywin32==308
 deepspeed==0.16.5
 descript-audio-codec
-vllm==0.9.1
 diffusers
 torchsde
 snac
@@ -104,3 +104,9 @@ monotonic_align @git+https://github.com/resemble-ai/monotonic_align.git
 fast_langdetect
 split_lang
 peft
+descript-audio-codec
+dacite
+resemble-perth
+s3tokenizer
+conformer
+llama-cpp-python

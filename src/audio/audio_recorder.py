@@ -8,10 +8,11 @@ from PySide6.QtCore import Qt, QSize, QPropertyAnimation
 from PySide6.QtGui import QPainter, QColor
 from PySide6.QtMultimedia import QMediaRecorder, QMediaCaptureSession, QAudioInput, QMediaDevices, QMediaFormat
 from PySide6.QtWidgets import QWidget, QGraphicsOpacityEffect, QHBoxLayout, QVBoxLayout
-from qfluentwidgets import TransparentToolButton, ToolTipFilter, CaptionLabel, isDarkTheme, FluentStyleSheet, ComboBox, IndeterminateProgressBar
+from qfluentwidgets import TransparentToolButton, ToolTipFilter, CaptionLabel, isDarkTheme, FluentStyleSheet, ComboBox, \
+    IndeterminateProgressBar
 
-from src.utils.icons import FallTalkIcons
 from src.config.config import cfg
+from src.utils.icons import FallTalkIcons
 
 
 class MediaPlayBarButton(TransparentToolButton):
@@ -34,10 +35,10 @@ class RecordButton(MediaPlayBarButton):
 
     def setRecording(self, isRecording: bool):
         if isRecording:
-            self.setIcon(FallTalkIcons.RECORD.icon(color=QColor.fromRgb(235, 0, 0, )))
+            self.setIcon(FallTalkIcons.RECORD.icon(color=QColor.fromRgb(235, 0, 0, 255)))
             self.setToolTip(self.tr('Stop Recording'))
         else:
-            self.setIcon(FallTalkIcons.RECORD.icon(color=QColor.fromRgb(120, 0, 0, )))
+            self.setIcon(FallTalkIcons.RECORD.icon(color=QColor.fromRgb(120, 0, 0, 255)))
             self.setToolTip(self.tr('Record'))
 
 class AudioRecorderBarBase(QWidget):

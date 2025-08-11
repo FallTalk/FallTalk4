@@ -1,6 +1,5 @@
 # coding:utf-8
 import os
-import sys
 from enum import Enum
 from pathlib import Path
 
@@ -10,8 +9,9 @@ from qfluentwidgets import (QConfig, ConfigItem, OptionsConfigItem, BoolValidato
                             ColorConfigItem, OptionsValidator, RangeConfigItem, RangeValidator,
                             EnumSerializer, FolderValidator, ConfigSerializer, ConfigValidator, qconfig)
 
-from src.utils.filesystem_utils import get_app_root
 from src.enums.engine_type import EngineType
+from src.utils.filesystem_utils import get_app_root
+
 
 class Language(Enum):
     """ Language enumeration """
@@ -152,7 +152,7 @@ class Config(QConfig):
     rvc_embedder_model = OptionsConfigItem("RVC", "rvc_embedding_model", "contentvec", OptionsValidator(["contentvec", "hubert"]))
 
     # General Model
-    engine = OptionsConfigItem("TTS", "engine", EngineType.SPARK.value, OptionsValidator([e.value for e in EngineType if e.enabled]))
+    engine = OptionsConfigItem("TTS", "engine", EngineType.CHATTERBOX.value, OptionsValidator([e.value for e in EngineType if e.enabled]))
     load_engine_art_start = ConfigItem("TTS", "load_at_start", False, BoolValidator())
     auto_update_models = ConfigItem("TTS", "auto_update_models", False, BoolValidator())
     device = OptionsConfigItem("TTS", "device", "cuda" if torch.cuda.is_available() else "cpu", DeviceValidator())
@@ -165,6 +165,15 @@ class Config(QConfig):
     output_dir = ConfigItem("App", "output_dir", os.path.join(get_app_root(), "output"), FolderValidator())
     rvc_enabled = ConfigItem("App", "rvc_enabled", False, BoolValidator())
     apbwe_enabled = ConfigItem("App", "apbwe_enabled", True, BoolValidator())
+    pad_short_phrases = ConfigItem("App", "pad_short_phrases", True, BoolValidator())
+
+    # Text processing settings
+    max_text_size = RangeConfigItem("App", "max_text_size", 300, RangeValidator(50, 1000))
+    min_chunk_size = RangeConfigItem("App", "min_text_size", 30, RangeValidator(10, 100))
+    lowercase_conversion = ConfigItem("App", "lowercase_conversion", False, BoolValidator())
+    whitespace_normalization = ConfigItem("App", "whitespace_normalization", True, BoolValidator())
+    dot_letter_fix = ConfigItem("App", "dot_letter_fix", True, BoolValidator())
+    inline_reference_removal = ConfigItem("App", "inline_reference_removal", True, BoolValidator())
 
     keep_only_fuz = ConfigItem("App", "keep_only_fuz", False, BoolValidator())
     use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
@@ -185,10 +194,15 @@ class Config(QConfig):
     accepted_disclaimer = ConfigItem('App', 'accepts_disclaimer', False, BoolValidator())
     accepts_custom_disclaimer = ConfigItem('App', 'accepts_custom_disclaimer', False, BoolValidator())
 
+    steps = RangeConfigItem("Image", "steps", 50, RangeValidator(1, 200))
+
     #Bulk
     replace_existing = ConfigItem("bulk", "replace_existing", False, BoolValidator())
     include_subdir = ConfigItem("bulk", "include_subdir", True, BoolValidator())
     threads = RangeConfigItem("bulk", "threads", 1, RangeValidator(1, 2))
+
+    multigen_total = RangeConfigItem("multigen", "total", 3, RangeValidator(1, 10))
+    ez_total = RangeConfigItem("ez", "total", 1, RangeValidator(1, 10))
 
     #Audio
     # fx_duration = RangeConfigItem("fx", "duration", 10, RangeValidator(5, 120))
@@ -275,6 +289,33 @@ class Config(QConfig):
     spark_top_k = RangeConfigItem("Spark", "top_k", 50, RangeValidator(0, 100))
     spark_max_new_tokens = RangeConfigItem("Spark", "max_new_tokens", 2048, RangeValidator(800, 2048))
 
+    # Chatterbox settings
+    chatterbox_top_p = RangeConfigItem("Chatterbox", "top_p", 100, RangeValidator(0.0, 100))
+    chatterbox_temperature = RangeConfigItem("Chatterbox", "model_temperature", 80, RangeValidator(1, 200))
+    chatterbox_min_p = RangeConfigItem("Chatterbox", "min_p", 50, RangeValidator(0, 100))
+    chatterbox_max_new_tokens = RangeConfigItem("Chatterbox", "max_new_tokens", 2048, RangeValidator(800, 2048))
+    chatterbox_exaggeration = RangeConfigItem("Chatterbox", "exaggeration", 50, RangeValidator(0, 100))
+    chatterbox_repetition_penalty = RangeConfigItem("Chatterbox", "repetition_penalty", 12, RangeValidator(1, 15))
+    chatterbox_cfg_weight = RangeConfigItem("Chatterbox", "cfg_weight", 50, RangeValidator(0, 100))
+
+    # Chat model settings
+    chat_model = OptionsConfigItem("Chat", "model", "Qwen/Qwen3-1.7B",
+                                  OptionsValidator(["Qwen/Qwen3-1.7B", "Qwen/Qwen3-4B-Instruct-2507",  "Qwen/Qwen3-0.6B"]))
+
+    # DMSpeech2 settings
+    dmo_speech2_temperature = RangeConfigItem("DMSpeech2", "model_temperature", 80, RangeValidator(1, 200))
+    dmo_speech2_teacher_steps = RangeConfigItem("DMSpeech2", "teacher_steps", 16, RangeValidator(1, 50))
+    dmo_speech2_teacher_stopping_time = RangeConfigItem("DMSpeech2", "teacher_stopping_time", 7, RangeValidator(1, 20))
+    dmo_speech2_student_start_step = RangeConfigItem("DMSpeech2", "student_start_step", 1, RangeValidator(1, 10))
+
+    # Higgs
+    higgs_top_p = RangeConfigItem("Higgs", "top_p", 95, RangeValidator(0.0, 100))
+    higgs_temperature = RangeConfigItem("Higgs", "model_temperature", 100, RangeValidator(1, 200))
+    higgs_top_k = RangeConfigItem("Higgs", "top_k", 50, RangeValidator(0, 100))
+    higgs_max_new_tokens = RangeConfigItem("Higgs", "max_new_tokens", 2048, RangeValidator(800, 2048))
+    higgs_ras_win_len = RangeConfigItem("Higgs", "ras_win_len", 7, RangeValidator(0, 20))
+    higgs_ras_win_max_num_repeat = RangeConfigItem("Higgs", "ras_win_max_num_repeat", 2, RangeValidator(1, 10))
+
     # theme
     themeColor = ColorConfigItem("QFluentWidgets", "ThemeColor", '#FFB642', restart=True)
     dpiScale = OptionsConfigItem(
@@ -302,6 +343,9 @@ class Config(QConfig):
         self.resetCSM()
         self.resetLlasa()
         self.resetDIA()
+        self.resetChatterbox()
+        self.resetHiggs()
+        self.resetDMSpeech2()
 
     def resetMainSettings(self):
         self.set(self.download_configs, self.download_configs.defaultValue)
@@ -314,6 +358,15 @@ class Config(QConfig):
         self.set(self.rvc_enabled, self.rvc_enabled.defaultValue)
         self.set(self.seed, self.seed.defaultValue)
         self.set(self.replace_existing, self.replace_existing.defaultValue)
+
+        # Reset text processing settings
+        self.set(self.max_text_size, self.max_text_size.defaultValue)
+        self.set(self.min_chunk_size, self.min_chunk_size.defaultValue)
+        self.set(self.lowercase_conversion, self.lowercase_conversion.defaultValue)
+        self.set(self.whitespace_normalization, self.whitespace_normalization.defaultValue)
+        self.set(self.dot_letter_fix, self.dot_letter_fix.defaultValue)
+        self.set(self.inline_reference_removal, self.inline_reference_removal.defaultValue)
+        self.set(self.pad_short_phrases, self.pad_short_phrases.defaultValue)
 
     def resetXtts(self):
         self.set(self.speed, self.speed.defaultValue)
@@ -388,12 +441,35 @@ class Config(QConfig):
         self.set(self.spark_top_k, self.spark_top_k.defaultValue)
         self.set(self.spark_max_new_tokens, self.spark_max_new_tokens.defaultValue)
 
+    def resetHiggs(self):
+        self.set(self.higgs_top_p, self.higgs_top_p.defaultValue)
+        self.set(self.higgs_temperature, self.higgs_temperature.defaultValue)
+        self.set(self.higgs_top_k, self.higgs_top_k.defaultValue)
+        self.set(self.higgs_max_new_tokens, self.higgs_max_new_tokens.defaultValue)
+        self.set(self.higgs_ras_win_len, self.higgs_ras_win_len.defaultValue)
+        self.set(self.higgs_ras_win_max_num_repeat, self.higgs_ras_win_max_num_repeat.defaultValue)
+
     def resetCSM(self):
         self.set(self.spark_temperature, self.spark_temperature.defaultValue)
 
+    def resetChatterbox(self):
+        self.set(self.chatterbox_top_p, self.chatterbox_top_p.defaultValue)
+        self.set(self.chatterbox_temperature, self.chatterbox_temperature.defaultValue)
+        self.set(self.chatterbox_min_p, self.chatterbox_min_p.defaultValue)
+        self.set(self.chatterbox_max_new_tokens, self.chatterbox_max_new_tokens.defaultValue)
+        self.set(self.chatterbox_cfg_weight, self.chatterbox_cfg_weight.defaultValue)
+        self.set(self.chatterbox_exaggeration, self.chatterbox_exaggeration.defaultValue)
+        self.set(self.chatterbox_repetition_penalty, self.chatterbox_repetition_penalty.defaultValue)
+
+    def resetDMSpeech2(self):
+        self.set(self.dmo_speech2_temperature, self.dmo_speech2_temperature.defaultValue)
+        self.set(self.dmo_speech2_teacher_steps, self.dmo_speech2_teacher_steps.defaultValue)
+        self.set(self.dmo_speech2_teacher_stopping_time, self.dmo_speech2_teacher_stopping_time.defaultValue)
+        self.set(self.dmo_speech2_student_start_step, self.dmo_speech2_student_start_step.defaultValue)
+
 YEAR = 2025
 AUTHOR = "Bryant21"
-VERSION = '2.0.0-beta5'
+VERSION = '2.0.0-beta6'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"

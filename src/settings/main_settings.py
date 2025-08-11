@@ -8,9 +8,9 @@ from qfluentwidgets import FluentIcon as FIF, SettingCardGroup, isDarkTheme, Opt
 from qfluentwidgets import ScrollArea, ExpandLayout
 
 from src.config.config import cfg, HELP_URL, YEAR, AUTHOR, VERSION, NEXUS_URL, KOFI_URL, DISCORD_URL, HUGGING_FACE
+from src.enums.engine_type import EngineType
 from src.ui.cards import SpinSettingCard
 from src.utils.icons import FallTalkIcons
-from src.enums.engine_type import EngineType
 
 
 class FallTalkSettings(ScrollArea):
@@ -266,7 +266,7 @@ class FallTalkSettings(ScrollArea):
         self.aboutGroup.addSettingCard(self.discord)
         self.aboutGroup.addSettingCard(self.hugging_face)
 
-        
+
 
         self.resetGroup.addSettingCard(self.reset_to_default)
         # add setting card group to layout

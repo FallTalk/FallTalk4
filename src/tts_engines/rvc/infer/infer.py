@@ -15,7 +15,6 @@ now_dir = os.getcwd()
 sys.path.append(now_dir)
 
 from ..infer.pipeline import VC
-from ..lib.tools.split_audio import process_audio, merge_audio
 from ..lib.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
     SynthesizerTrnMs256NSFsid_nono,
@@ -330,6 +329,8 @@ class RVCPipeline:
             return (self.tgt_sr, audio_opt)
 
         except Exception as error:
+            import traceback
+            traceback.print_exc()
             print(f"Error during voice conversion: {error}")
             if audio_data is not None:
                 return sample_rate, audio_data

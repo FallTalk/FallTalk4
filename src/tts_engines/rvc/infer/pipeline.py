@@ -1,4 +1,5 @@
 import gc
+import os
 import re
 from functools import lru_cache
 from time import time as ttime
@@ -6,7 +7,6 @@ from time import time as ttime
 import faiss
 import librosa
 import numpy as np
-import os
 import parselmouth
 import pyworld
 import torch
@@ -14,7 +14,6 @@ import torch.nn.functional as F
 import torchcrepe
 from scipy import signal
 from torch import Tensor
-
 
 from src.tts_engines.rvc.lib.FCPEF0Predictor import FCPEF0Predictor
 from src.tts_engines.rvc.lib.rmvpe import RMVPE
@@ -238,13 +237,15 @@ class VC(object):
             p_len,
             hop_length,
     ):
-        methods_str = re.search("hybrid\[(.+)\]", methods_str)
-        if methods_str:
-            methods = [method.strip() for method in methods_str.group(1).split("+")]
+        match = re.search(r"hybird\[([^]]+)\]", methods_str)  # `[^]]+` = any character except ']'
+        if match:
+            methods = [method.strip() for method in match.group(1).split("+")]
+
         f0_computation_stack = []
         #print(f"Calculating f0 pitch estimations for methods {str(methods)}")
         x = x.astype(np.float32)
         x /= np.quantile(np.abs(x), 0.999)
+
         for method in methods:
             f0 = None
             if method == "crepe":
@@ -361,13 +362,7 @@ class VC(object):
             f0 = self.get_f0_crepe_computation(
                 x, f0_min, f0_max, p_len, int(hop_length), "tiny"
             )
-        elif f0_method == "rmvpe":
-            if hasattr(self, "model_rmvpe") == False:
-                model_path = os.path.join("models", "RVC", "rmvpe.pt")
-                self.model_rmvpe = RMVPE(
-                    model_path, is_half=self.is_half, device=self.device
-                )
-            f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
+
         elif f0_method == "fcpe":
             model_path = os.path.join("models", "RVC", "fcpe.pt")
             self.model_fcpe = FCPEF0Predictor(
@@ -382,7 +377,7 @@ class VC(object):
             f0 = self.model_fcpe.compute_f0(x, p_len=p_len)
             del self.model_fcpe
             gc.collect()
-        elif "hybrid" in f0_method:
+        elif 'hybird[rmcpe+fcpe]' in f0_method:
             # Store the audio data in the global dictionary for caching
             input_audio_path2wav[input_audio_path] = x.astype(np.double)
             f0 = self.get_f0_hybrid_computation(
@@ -393,6 +388,13 @@ class VC(object):
                 p_len,
                 hop_length,
             )
+        else:
+            if hasattr(self, "model_rmvpe") == False:
+                model_path = os.path.join("models", "RVC", "rmvpe.pt")
+                self.model_rmvpe = RMVPE(
+                    model_path, is_half=self.is_half, device=self.device
+                )
+            f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
 
         if f0autotune == "True":
             f0 = self.autotune_f0(f0)

@@ -74,14 +74,21 @@ class GenerationWidget(FallTalkWidget):
             cfg.apbwe_enabled
         )
 
+        self.pad_short_phrases = SwitchSettingCard(
+            FallTalkIcons.PADDING.icon(stroke=True),
+            self.tr('Pad Short Phrases'),
+            self.tr('Duplicate short phrases to improve quality, increases generation time'),
+            cfg.pad_short_phrases
+        )
+
         self.gen_settings = QGroupBox()
         self.gen_settings.setStyleSheet("border: none")
         self.gen_settings_layout = QHBoxLayout()
         self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.gen_settings_layout.addWidget(self.autoplay, 2)
         self.gen_settings_layout.addWidget(self.rvc_enabled, 2)
         self.gen_settings_layout.addWidget(self.upscaler_enabled, 2)
+        self.gen_settings_layout.addWidget(self.pad_short_phrases, 2)
         self.gen_settings.setLayout(self.gen_settings_layout)
 
         self.gen_settings2 = QGroupBox()
@@ -93,7 +100,15 @@ class GenerationWidget(FallTalkWidget):
         self.gen_settings2_layout.addWidget(self.delete_leftovers, 2)
         self.gen_settings2.setLayout(self.gen_settings2_layout)
 
-        self.addToFrame(self.output_name_card)
+        self.gen_settings3 = QGroupBox()
+        self.gen_settings3.setStyleSheet("border: none")
+        self.gen_settings3_layout = QHBoxLayout()
+        self.gen_settings3_layout.setContentsMargins(0, 0, 0, 0)
+        self.gen_settings3_layout.addWidget(self.autoplay, 2)
+        self.gen_settings3_layout.addWidget(self.output_name_card, 2)
+        self.gen_settings3.setLayout(self.gen_settings3_layout)
+
+        self.addToFrame(self.gen_settings3)
         self.addToFrame(self.gen_settings2)
         self.addToFrame(self.gen_settings)
 

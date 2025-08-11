@@ -17,7 +17,7 @@ from qfluentwidgets import ScrollArea, ExpandLayout
 from src.ui.cards import TextCard
 
 
-class XttsHelp(ScrollArea):
+class XTTSHelp(ScrollArea):
 
     def __init__(self, parent: GenerationWidget):
         super().__init__(parent)

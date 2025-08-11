@@ -6,12 +6,12 @@ import numpy as np
 import torch
 import torchaudio
 
-from src.enums.engine_type import EngineType
 from src.config.config import cfg
+from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
+from src.utils import torch_utils
 from src.utils.filesystem_utils import get_app_code_root, get_app_root
 from src.utils.logging_utils import logger
-from src.utils import torch_utils
 
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'fish')))
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'fish', 'fish_speech')))
@@ -60,9 +60,6 @@ class FishSpeechEngine(tts_engine):
 
         logger.info(f"Time to load model: {time.time() - t0:.02f} seconds")
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False):
-        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming)
-        self.process_audio(audio_data, sample_rate, output_file)
 
     def unload_model(self):
         self.basic_unload_model()
@@ -82,7 +79,7 @@ class FishSpeechEngine(tts_engine):
         )[0].squeeze().float().cpu().numpy()
 
     @torch.no_grad()
-    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         print("Loading Fish Model")
 
         prompt_audio = None

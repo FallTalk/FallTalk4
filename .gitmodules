@@ -1,9 +1,6 @@
 [submodule "GPT_SoVITS"]
 	path = third_party/GPT_SoVITS
 	url = https://github.com/RVC-Boss/GPT-SoVITS
-[submodule "StyleTTS2"]
-	path = third_party/StyleTTS2
-	url = https://github.com/yl4579/StyleTTS2
 [submodule "f5"]
 	path = third_party/f5
 	url = https://github.com/SWivid/F5-TTS
@@ -22,3 +19,6 @@
 [submodule "third_party/chatterbox"]
 	path = third_party/chatterbox
 	url = https://github.com/resemble-ai/chatterbox
+[submodule "third_party/DMOSpeech2"]
+	path = third_party/DMOSpeech2
+	url = https://github.com/yl4579/DMOSpeech2

@@ -1,7 +1,14 @@
 import glob
 import os
+import random
+import re
 from abc import ABC, abstractmethod
-from typing import Optional
+from difflib import SequenceMatcher
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.tts_engines.apbwe_engine import APBWE_SR
+    from src.tts_engines.whisper_engine import Whisper_Engine
 
 import librosa
 import numpy as np
@@ -12,6 +19,54 @@ from src.enums.engine_type import EngineType
 from src.utils import logging_utils
 from src.config.config import cfg
 from src.utils.filesystem_utils import get_app_root
+
+FALLOUT_FILLER_PHRASES = [
+    "War never changes, but the Commonwealth sure keeps trying.",
+    "Another settlement needs your help, better get moving fast.",
+    "Radiation levels are rising, better keep that Rad X handy.",
+    "Diamond City is bustling with gossip and shady deals today.",
+    "The Brotherhood of Steel marches ever onward toward their goals.",
+    "Ghouls wander the wasteland, searching for scraps and lost memories.",
+    "Synths may look human, but their hearts are wires and steel.",
+    "In the wasteland, every bullet counts more than your words.",
+    "Vault Tec promised safety, but delivered something far more sinister.",
+    "A Super Mutant roar echoes through the broken city streets.",
+    "Caps buy food, water, and occasionally questionable human loyalty.",
+    "The Minutemen rise again, standing watch over the settlements.",
+    "Nuka Cola still tastes sweet, even two hundred years later.",
+    "The Railroad works in shadows, freeing synths from hidden chains.",
+    "Power armor feels like walking in the skin of gods.",
+    "Rad storms sweep the land, turning day into glowing green night.",
+    "Every choice you make echoes across the ruined wasteland forever.",
+    "Even the strongest weapons break if you fire them carelessly.",
+    "Sanctuary Hills stands as a fragile hope in the dark.",
+    "The Institute watches the surface world with cold calculating eyes.",
+    "Mire lurks scuttle through the shallows, waiting for careless travelers.",
+    "Even the air smells like old rust and bad memories.",
+    "A good gun is worth more than a thousand caps.",
+    "Pre War relics hide in plain sight, forgotten by most folks.",
+    "Life in the wasteland is nasty, brutish, and often short.",
+    "Some legends are born, others are forged in nuclear fire.",
+    "Not all heroes wear armor, some wear patched leather jackets.",
+    "The wasteland takes everything from you, then demands even more.",
+    "Even in ruin, Bostons skyline cuts a haunting silhouette.",
+    "Every step in the wasteland risks a bullet or worse."
+]
+
+def normalize_text(text):
+    """
+    Normalize text by converting to lowercase and removing punctuation.
+
+    Args:
+        text (str): The text to normalize
+
+    Returns:
+        str: Normalized text
+    """
+    if text is None:
+        return None
+    # Convert to lowercase and remove punctuation
+    return re.sub(r'[^\w\s]', '', text.lower())
 
 
 class tts_engine(ABC):
@@ -33,8 +88,9 @@ class tts_engine(ABC):
         self.rvc_pth_path = None
         self.rvc_index_path = None
         self.rvc_model_version = None
-        self.apbwe_engine = None
+        self.apbwe_engine: Optional['APBWE_SR'] = None
         self.characters = []
+        self.whisper_engine: Optional['Whisper_Engine'] = None
 
     def get_model(self, engin_type: EngineType, model_type=None, model_engine_version=None, shared_model_name=None):
         if(model_type is None):
@@ -173,6 +229,157 @@ class tts_engine(ABC):
         """UNLOAD"""
         pass
 
+    @abstractmethod
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
+        """
+        Generate audio data from text input.
+
+        Args:
+            text (str): The text to convert to speech
+            transcript (str, optional): Transcript for reference
+            voice (str, optional): Path to reference voice file
+            language (str, optional): Language code
+            output_file (str, optional): Path to save the output file
+            streaming (bool, optional): Whether to stream the output
+            speaker (str, optional): Speaker identifier
+            start_time (float, optional): Start time for audio editing (F5 engine)
+            end_time (float, optional): End time for audio editing (F5 engine)
+
+        Returns:
+            tuple: (audio_data, sample_rate)
+        """
+        pass
+
+    def generate_audio(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
+        """
+        Generate audio from text input and process it.
+
+        Args:
+            text (str): The text to convert to speech
+            transcript (str, optional): Transcript for reference
+            voice (str, optional): Path to reference voice file
+            language (str, optional): Language code
+            output_file (str, optional): Path to save the output file
+            streaming (bool, optional): Whether to stream the output
+            speaker (str, optional): Speaker identifier
+            start_time (float, optional): Start time for audio editing (F5 engine)
+            end_time (float, optional): End time for audio editing (F5 engine)
+        """
+        from src.utils.inference_utils import split_text, preprocess_text
+        import numpy as np
+
+        # Apply text preprocessing
+        if text:
+            text = preprocess_text(text)
+
+        original_text = text
+
+        # If text is too long, split it into chunks
+        max_text_size = cfg.get(cfg.max_text_size)
+        min_chunk_size = cfg.get(cfg.min_chunk_size)
+
+        if text and len(text) > max_text_size:
+            # Split text into chunks
+            chunks = split_text(text, max_text_size, min_chunk_size)
+
+            # Process each chunk and combine the audio
+            combined_audio = None
+            combined_sample_rate = None
+
+            for chunk in chunks:
+                # Apply preprocessing to each chunk
+                processed_chunk = preprocess_text(chunk)
+
+                # Get audio data and sample rate from inference for this chunk
+                chunk_audio, chunk_sample_rate = self.inference(processed_chunk, transcript, voice, language, None, streaming, speaker, start_time, end_time)
+
+                # If this is the first chunk, initialize combined audio
+                if combined_audio is None:
+                    combined_audio = chunk_audio
+                    combined_sample_rate = chunk_sample_rate
+                else:
+                    # Append this chunk's audio to the combined audio
+                    combined_audio = np.concatenate((combined_audio, chunk_audio))
+
+            # Process the combined audio
+            self.process_audio(combined_audio, combined_sample_rate, output_file)
+        else:
+            # For short text, proceed with the original logic
+            # If text is short and pad_short_phrases is enabled, duplicate it
+            if text and cfg.get(cfg.pad_short_phrases) and len(text) < min_chunk_size:
+                while len(text) < min_chunk_size:
+                    filler = random.choice(FALLOUT_FILLER_PHRASES)
+                    text = filler + " " + text
+
+            # Get audio data and sample rate from inference
+            audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
+
+            # If we padded the text, we need to extract just the first instance using whisperx
+            if original_text != text and cfg.get(cfg.pad_short_phrases) and self.whisper_engine and output_file:
+                # Transcribe the audio directly
+                transcription = self.whisper_engine.transcribe(audio_data, sample_rate)
+
+                if transcription and 'words_info' in transcription:
+                    words_info = transcription['words_info']
+                    # Normalize each word from whisperx
+                    normalized_words = []
+                    for word_info in words_info:
+                        normalized_word = normalize_text(word_info['word'])
+                        if normalized_word:  # skip punctuation-only words
+                            normalized_words.append({
+                                'word': normalized_word,
+                                'start': word_info['start'],
+                                'end': word_info['end']
+                            })
+
+                    normalized_original = normalize_text(original_text)
+
+                    # Create list of just normalized words
+                    word_strings = [w['word'] for w in normalized_words]
+
+                    best_match = None
+                    best_ratio = 0.0
+
+                    # Try all possible windows (up to len(words))
+                    for window_size in range(1, min(15, len(word_strings)) + 1):  # 15-word max window
+                        for i in range(len(word_strings) - window_size + 1):
+                            window_words = word_strings[i:i + window_size]
+                            window_text = " ".join(window_words)
+
+                            ratio = SequenceMatcher(None, window_text, normalized_original).ratio()
+
+                            if ratio > best_ratio:
+                                best_ratio = ratio
+                                best_match = normalized_words[i:i + window_size]
+
+                    # Cut audio if a good match is found
+                    if best_match and best_ratio > 0.8:
+                        start_time = best_match[0]['start']
+                        end_time = best_match[-1]['end']
+
+                        # Optional padding (e.g., for smoother cuts)
+                        pad = 0.05
+                        end_pad = 0.5
+
+                        start_time_padded = max(0.0, start_time - pad)
+                        end_time_padded = end_time + end_pad
+
+                        start_sample = max(0, int(start_time_padded * sample_rate))
+                        end_sample = min(len(audio_data), int(end_time_padded * sample_rate))
+
+                        print(f"Sample rate: {sample_rate} Hz")
+                        print(f"Audio duration: {len(audio_data) / sample_rate:.3f} sec")
+                        print(f"Word: ({start_time:.3f}s to {end_time:.3f}s)")
+                        print(f"Padded range: {start_time_padded:.3f}s to {end_time_padded:.3f}s")
+                        print(f"Computed samples: start={start_sample}, end={end_sample}")
+                        print(f"Audio data length: {len(audio_data)}")
+
+                        if end_sample > start_sample:
+                            audio_data = audio_data[start_sample:end_sample]
+
+            # Save or process final audio
+            self.process_audio(audio_data, sample_rate, output_file)
+
     def preload_rvc_params(self):
         self.rvc_preload = True
         self.rvc_parameters = self.get_rvc_params()
@@ -196,6 +403,10 @@ class tts_engine(ABC):
         return params
 
     def process_audio(self, audio_data: np.ndarray, sample_rate: int, output_file: str):
+        # If the audio is 2D with shape (1, N), flatten to 1D
+        if audio_data.ndim == 2 and audio_data.shape[0] == 1:
+            audio_data = audio_data.squeeze(0)  # from (1, N) to (N,)
+
         apbwe_enabled = cfg.get(cfg.apbwe_enabled)
         if apbwe_enabled and self.apbwe_engine and sample_rate == 24000 or sample_rate == 16000:
             audio_data, sample_rate = self.apbwe_engine.upscale(audio_data, sample_rate)

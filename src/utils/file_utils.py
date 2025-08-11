@@ -2,7 +2,6 @@ import logging
 import os
 import platform
 import shutil
-import sys
 import uuid
 from datetime import datetime
 
@@ -55,3 +54,15 @@ def get_bulk_folder(engine_name):
     output_folder = os.path.join(get_app_root(), f"bulk_outputs/{formatted_time_stamp()}_{engine_name}")
     os.makedirs(output_folder, exist_ok=True)
     return output_folder
+
+def get_output_file_name(file_name, output_dir, model_name, engine_name):
+    if file_name is None or file_name == "" or file_name == "Random":
+        unique_id = uuid.uuid4()
+        file_name = f"{formatted_time_stamp()}_{model_name}_{engine_name}_{unique_id.hex[:10]}"
+
+    file_name = sanitize_filename(file_name)
+    path = os.path.abspath(str(os.path.join(output_dir, model_name, f"{file_name}.wav")))
+    os.makedirs(os.path.join(output_dir, model_name), exist_ok=True)
+    return path
+
+

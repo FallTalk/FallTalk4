@@ -64,6 +64,8 @@ if __name__ == '__main__':
         os.environ["TORCH_COMPILE_BACKEND"] = "eager"  # fallback to eager mode
         os.environ["PYTORCH_ENABLE_DYNAMO"] = "0"
         os.environ["TRITON_DISABLE_AUTOTUNE"] = "1"
+        os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+        os.environ["USE_LIBUV"] = "0"
 
         import getpass
         os.environ['USER'] = getpass.getuser()

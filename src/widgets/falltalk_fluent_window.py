@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QListWidgetItem
 from qfluentwidgets import FluentIcon as FIF, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, \
-    setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, \
+    setFont, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, \
     NavigationTreeWidget, BodyLabel, RoundMenu
 from qfluentwidgets.components.widgets.menu import createCheckableMenuItemDelegate, MenuAnimationType
 from qfluentwidgets.window.fluent_window import FluentWindowBase
@@ -15,10 +15,10 @@ from src.enums.engine_type import EngineType
 from src.utils.icons import FallTalkIcons
 
 
-class CheckableMenu(RoundMenu):
+class CustomCheckableMenu(RoundMenu):
     """ Checkable menu """
 
-    def __init__(self, title="", parent=None, indicatorType=MenuIndicatorType.CHECK):
+    def __init__(self, title="", parent=None, indicatorType: MenuIndicatorType = MenuIndicatorType.CHECK):
         super().__init__(title, parent)
         self.view.setItemDelegate(createCheckableMenuItemDelegate(indicatorType))
         self.view.setObjectName('checkableListWidget')
@@ -73,6 +73,9 @@ class FallTalkFluentWindow(FluentWindowBase):
         self.orpheus_action = Action(FallTalkIcons.TRIANGLE.icon(), self.tr('Orpheus\t\t8 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.ORPHEUS.value)
         self.spark_action = Action(FallTalkIcons.SPARK.icon(), self.tr('Spark\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.SPARK.value)
         self.csm_action = Action(FallTalkIcons.CSM.icon(), self.tr('CSM\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.CSM.value)
+        self.higgs_action = Action(FallTalkIcons.HIGGS.icon(), self.tr('Higgs\t\t24 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.HIGGS.value)
+        self.chatterbox_action = Action(FallTalkIcons.CHATTERBOX.icon(stroke=True), self.tr('Chatterbox\t\t6.5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.CHATTERBOX.value)
+        self.dmo_speech2_action = Action(FallTalkIcons.DMO2.icon(stroke=True), self.tr('DMO\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.DMOSPEECH2.value)
 
         self.cpu_action = Action(FallTalkIcons.CPU.icon(), self.tr('CPU'), checkable=True, checked=cfg.get(cfg.device) == 'cpu')
         self.gpu_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU'), checkable=True, checked=cfg.get(cfg.device) == 'cuda')
@@ -140,17 +143,19 @@ class FallTalkFluentWindow(FluentWindowBase):
         self.titleBar.resize(self.width() - 46, self.titleBar.height())
 
     def createEngineMenu(self, pos=None):
-        menu = CheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
+        menu = CustomCheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
 
         # Only add actions for enabled engines
         actions_to_add = []
 
+        if EngineType.CHATTERBOX.enabled:
+            actions_to_add.append(self.chatterbox_action)
+        if EngineType.GPT_SOVITS.enabled:
+            actions_to_add.append(self.gpt_sovits_action)
         if EngineType.F5.enabled:
             actions_to_add.append(self.f5_action)
         if EngineType.RVC.enabled:
             actions_to_add.append(self.rvc_action)
-        if EngineType.FISH_SPEECH.enabled:
-            actions_to_add.append(self.fish_action)
         if EngineType.DIA.enabled:
             actions_to_add.append(self.dia_action)
         if EngineType.LLASA.enabled:
@@ -161,8 +166,12 @@ class FallTalkFluentWindow(FluentWindowBase):
             actions_to_add.append(self.spark_action)
         if EngineType.CSM.enabled:
             actions_to_add.append(self.csm_action)
-        if EngineType.GPT_SOVITS.enabled:
-            actions_to_add.append(self.gpt_sovits_action)
+        if EngineType.HIGGS.enabled:
+            actions_to_add.append(self.higgs_action)
+        if EngineType.FISH_SPEECH.enabled:
+            actions_to_add.append(self.fish_action)
+        if EngineType.DMOSPEECH2.enabled:
+            actions_to_add.append(self.dmo_speech2_action)
         if EngineType.XTTS_V2.enabled:
             actions_to_add.append(self.xtts_action)
         if EngineType.STYLE_TTS2.enabled:
@@ -174,7 +183,7 @@ class FallTalkFluentWindow(FluentWindowBase):
         return menu
 
     def createDeviceMenu(self, pos=None):
-        menu = CheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
+        menu = CustomCheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
         if torch.cuda.is_available():
             num_gpus = torch.cuda.device_count()
             if num_gpus > 1:
@@ -206,26 +215,33 @@ class FallTalkFluentWindow(FluentWindowBase):
         return bar
 
     def __reset(self):
-        if cfg.get(cfg.engine) == "XTTSv2":
+        if cfg.get(cfg.engine) == EngineType.XTTS_V2.value:
             cfg.resetXtts()
-        elif cfg.get(cfg.engine) == "GPT_SoVITS":
+        elif cfg.get(cfg.engine) == EngineType.GPT_SOVITS.value:
             cfg.resetGPT()
-        elif cfg.get(cfg.engine) == "StyleTTS2":
+        elif cfg.get(cfg.engine) == EngineType.STYLE_TTS2.value:
             cfg.resetStyleTTS()
-        elif cfg.get(cfg.engine) == "F5":
+        elif cfg.get(cfg.engine) == EngineType.F5.value:
             cfg.resetF5()
-        elif cfg.get(cfg.engine) == "DIA":
+        elif cfg.get(cfg.engine) == EngineType.DIA.value:
             cfg.resetDIA()
-        elif cfg.get(cfg.engine) == "FishSpeech":
+        elif cfg.get(cfg.engine) == EngineType.FISH_SPEECH.value:
             cfg.resetDIA()
-        elif cfg.get(cfg.engine) == "Llasa":
+        elif cfg.get(cfg.engine) == EngineType.LLASA.value:
             cfg.resetLlasa()
-        elif cfg.get(cfg.engine) == "Orpheus":
-            cfg.resetOpheus()
-        elif cfg.get(cfg.engine) == "Spark":
+        elif cfg.get(cfg.engine) == EngineType.ORPHEUS.value:
+            cfg.resetOrpheus()
+        elif cfg.get(cfg.engine) == EngineType.SPARK.value:
             cfg.resetSpark()
-        elif cfg.get(cfg.engine) == "CSM":
+        elif cfg.get(cfg.engine) == EngineType.CSM.value:
             cfg.resetCSM()
+        elif cfg.get(cfg.engine) == EngineType.HIGGS.value:
+            cfg.resetHiggs()
+        elif cfg.get(cfg.engine) == EngineType.CHATTERBOX.value:
+            cfg.resetChatterbox()
+        elif cfg.get(cfg.engine) == EngineType.DMOSPEECH2.value:
+            cfg.resetDMSpeech2()
+
 
         cfg.resetRvc()
 

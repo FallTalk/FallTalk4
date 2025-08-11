@@ -45,6 +45,15 @@ class FallTalkIcons(FluentIconBase, Enum):
     UP = "up"
     SPARK = "spark"
     CSM = "sesame"
+    HIGGS = "higgs"
+    CHATTERBOX = "chatterbox"
+    DMO2 = "dmo2"
+    PADDING = "padding"
+    ROBOTS = "robots"
+    TEAM = "team"
+    GROUP = "group"
+    MULTI = "multi"
+    BETHESDA = "bethesda"
 
     # Stroke-only icons
     ALPHA = "alpha"
@@ -72,7 +81,9 @@ class FallTalkIcons(FluentIconBase, Enum):
         """
         path = self.path(theme)
 
-        if not color:
+        if color:
+            color = color.name()
+        elif not color:
             color = getIconColor(theme)
 
         if stroke:

@@ -3,8 +3,8 @@ import sys
 
 import numpy as np
 
-from src.enums.engine_type import EngineType
 from src.config.config import cfg
+from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils.filesystem_utils import get_app_code_root, get_app_root
 
@@ -35,8 +35,8 @@ class SparkEngine(tts_engine):
         
     def load_model(self):
         if self.is_base:
-            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B' "LLM"))))
-            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B' "LLM"))))
+            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B', "LLM"))))
+            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B', "LLM"))))
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
             self.model = AutoModelForCausalLM.from_pretrained(self.model_path)
@@ -111,19 +111,8 @@ class SparkEngine(tts_engine):
         return inputs, global_token_ids
 
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
-        # Get audio data and sample rate from inference
-        audio_data, sample_rate = self.inference(text, voice, transcript, speaker)
-        self.process_audio(audio_data, sample_rate, output_file)
-
     @torch.no_grad()
-    def inference(
-        self,
-        text: str,
-        voice: Path = None,
-        transcript: str = None,
-        speaker: str = None,
-    ):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         if not transcript and not voice:
             text = f"{speaker}: " + text if speaker else text
 

@@ -5,7 +5,7 @@ import random
 import shutil
 from pathlib import Path
 from typing import Tuple, List
-from src.utils.filesystem_utils import get_app_root, get_app_code_root
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -17,6 +17,7 @@ from torch.nn.utils import spectral_norm
 from torch.nn.utils import weight_norm
 
 from src.config.config import cfg
+from src.utils.filesystem_utils import get_app_root
 
 LRELU_SLOPE = 0.1
 

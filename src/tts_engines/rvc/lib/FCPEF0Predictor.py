@@ -1,22 +1,20 @@
+import math
+import os
+from functools import partial
 from typing import Union
 
-import torch.nn.functional as F
-import numpy as np
-import torch
-import torch.nn as nn
-from torch.nn.utils.parametrizations import weight_norm
-from torchaudio.transforms import Resample
-import os
 import librosa
+import numpy as np
 import soundfile as sf
+import torch
+import torch.nn.functional as F
 import torch.utils.data
-from librosa.filters import mel as librosa_mel_fn
-import math
-from functools import partial
-
 from einops import rearrange, repeat
+from librosa.filters import mel as librosa_mel_fn
 from local_attention import LocalAttention
 from torch import nn
+from torch.nn.utils.parametrizations import weight_norm
+from torchaudio.transforms import Resample
 
 from src.utils import logging_utils
 

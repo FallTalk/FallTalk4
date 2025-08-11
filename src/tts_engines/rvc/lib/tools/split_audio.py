@@ -1,8 +1,9 @@
-from pydub.silence import detect_nonsilent
-from pydub import AudioSegment
-import numpy as np
-import re
 import os
+import re
+
+import numpy as np
+from pydub import AudioSegment
+from pydub.silence import detect_nonsilent
 
 from src.tts_engines.rvc.lib.utils import format_title
 

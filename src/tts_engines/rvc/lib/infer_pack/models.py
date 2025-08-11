@@ -1,15 +1,17 @@
 import math
+from typing import Optional
+
 import torch
 from torch import nn
-from torch.nn import functional as F
-from . import modules
-from . import attentions
-from . import commons
-from .commons import init_weights, get_padding
 from torch.nn import Conv1d, ConvTranspose1d, Conv2d
+from torch.nn import functional as F
 from torch.nn.utils import remove_weight_norm
 from torch.nn.utils.parametrizations import spectral_norm, weight_norm
-from typing import Optional
+
+from . import attentions
+from . import commons
+from . import modules
+from .commons import init_weights, get_padding
 
 has_xpu = bool(hasattr(torch, "xpu") and torch.xpu.is_available())
 

@@ -1,16 +1,14 @@
-import soundfile as sf
+import os
+import sys
+
 from nltk.tokenize import word_tokenize
 from phonemizer.backend import EspeakBackend
 
-from src.enums.engine_type import EngineType
-from src.utils.filesystem_utils import get_app_root, get_app_code_root
-from src.utils.audio_utils import load_audio
-from src.utils import logging_utils
-
 from src.config.config import cfg
-
-import sys
-import os
+from src.enums.engine_type import EngineType
+from src.utils import logging_utils
+from src.utils.audio_utils import load_audio
+from src.utils.filesystem_utils import get_app_root, get_app_code_root
 
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'StyleTTS2')))
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party',  'StyleTTS2', 'utils')))
@@ -134,16 +132,14 @@ class StyleTTS2_Engine(tts_engine):
             clamp=False
         )
 
-    def generate_audio(self, text=None, voice=None, language=None, output_file=None, streaming=False, speaker=None):
+
+
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         alpha = cfg.get(cfg.style_alpha) / 100.0
         beta = cfg.get(cfg.style_beta) / 100.0
         diffusion_steps = cfg.get(cfg.style_diffusion_steps)
         embedding_scale = cfg.get(cfg.style_embedding_scale)
-        audio_data, sample_rate = self.inference(text=text, ref_s=self.compute_style(voice), output_file=output_file, alpha=alpha, beta=beta, diffusion_steps=diffusion_steps, embedding_scale=embedding_scale)
-        self.process_audio(audio_data, sample_rate, output_file)
-
-
-    def inference(self, text, ref_s, output_file, alpha=0.3, beta=0.7, diffusion_steps=5, embedding_scale=1):
+        ref_s = self.compute_style(voice)
         text = text.strip()
         ps = self.global_phonemizer.phonemize([text])
         ps = word_tokenize(ps[0])

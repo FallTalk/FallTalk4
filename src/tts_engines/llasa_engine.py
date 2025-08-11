@@ -4,17 +4,15 @@ import typing
 
 import librosa
 import omegaconf
-import soundfile as sf
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from xcodec2.modeling_xcodec2 import XCodec2Model
 
-from src.enums.engine_type import EngineType
-from src.utils.filesystem_utils import get_app_root
 from src.config.config import cfg
+from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
-from src.utils.audio_utils import load_audio
 from src.utils import torch_utils
+from src.utils.filesystem_utils import get_app_root
 
 torch.serialization.add_safe_globals([omegaconf.listconfig.ListConfig])
 torch.serialization.add_safe_globals([omegaconf.base.ContainerMetadata])
@@ -36,10 +34,6 @@ class LlasaEngine(tts_engine):
         self.codec_model = None
         self.tokenizer = None
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
-        # Get audio data and sample rate from inference
-        audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker)
-        self.process_audio(audio_data, sample_rate, output_file)
 
 
     def load_model(self):

@@ -144,12 +144,6 @@ class GPT_SoVITS_Engine(tts_engine):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    def generate_audio(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
-        with patch_gpt_sovits_imports():
-            # Get audio data and sample rate from inference
-            audio_data, sample_rate = self.inference(text=text, voice=voice, transcript=transcript, language=language, output_file=output_file, streaming=streaming)
-
-            self.process_audio(audio_data, sample_rate, output_file)
 
     def get_config(self):
         configs: dict = {}

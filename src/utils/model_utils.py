@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -15,7 +16,8 @@ from src.enums.engine_type import EngineType
 
 from src.utils.huggingface_utils import (
     downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA, downloadSpark,
-    downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models, downloadAPBWE, downloadCSM
+    downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models, downloadAPBWE, downloadCSM,
+    downloadHiggs, downloadChatterbox, downloadDMSpeech2
 )
 
 logger = logging.getLogger('falltalk')
@@ -188,6 +190,8 @@ def load_whisper(parent: 'FallTalkApp', attempt=0):
         if parent.transcription_engine is None:
             from src.tts_engines.whisper_engine import Whisper_Engine
             parent.transcription_engine = Whisper_Engine()
+            if parent.tts_engine is not None:
+                parent.tts_engine.whisper_engine = parent.transcription_engine
             print("WhisperX Loaded")
     except Exception as e:
         logger.exception(f"Error: {e}")
@@ -255,6 +259,18 @@ def load_spark(parent: 'FallTalkApp'):
 def load_csm(parent: 'FallTalkApp'):
     from src.tts_engines.csm_engine import CSMEngine
     generic_engine_loader(parent, CSMEngine, downloadCSM, EngineType.CSM.value)
+
+def load_higgs(parent: 'FallTalkApp'):
+    from src.tts_engines.higgs_tts_engine import HiggsTtsEngine
+    generic_engine_loader(parent, HiggsTtsEngine, downloadHiggs, EngineType.HIGGS.value)
+
+def load_chatterbox(parent: 'FallTalkApp'):
+    from src.tts_engines.chatterbox_engine import ChatterboxEngine
+    generic_engine_loader(parent, ChatterboxEngine, downloadChatterbox, EngineType.CHATTERBOX.value)
+
+def load_dmo_speech2(parent: 'FallTalkApp'):
+    from src.tts_engines.dmo_engine import DMSpeech2Engine
+    generic_engine_loader(parent, DMSpeech2Engine, downloadDMSpeech2, EngineType.DMOSPEECH2.value)
 
 def load_apbwe(parent: 'FallTalkApp'):
     if parent.apbwe_engine is None:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from settings.generic_settings import GenericSettings
+
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
     
@@ -128,7 +130,7 @@ class BulkLipFuzWidget(BaseBulkWidget):
         self.fuz_widget_view.addWidget(self.gen_settings)
         self.fuz_widget_view.addWidget(self.f_c_)
         self.help_drawer.addWidget(BulkFuzHelp(self))
-
+        self.buttons_layout.addWidget(self.settings_button)
         self.buttons_layout.addWidget(self.help_button)
         self.fuz_widget_view.addLayout(self.buttons_layout)
         # self.rvc_widget_view.addWidget(self.r_and_sub)
@@ -335,12 +337,23 @@ class BulkGenerationTableWidget(BaseBulkWidget):
             cfg.apbwe_enabled
         )
 
+        self.pad_short_phrases = SwitchSettingCard(
+            FallTalkIcons.PADDING.icon(stroke=True),
+            self.tr('Pad Short Phrases'),
+            self.tr('Duplicate short phrases to improve quality, increases generation time'),
+            cfg.pad_short_phrases
+        )
+
+
         self.upscaler_settings = QGroupBox()
         self.upscaler_settings.setStyleSheet("border: none")
         self.upscaler_settings_layout = QHBoxLayout()
         self.upscaler_settings_layout.setContentsMargins(0, 0, 0, 0)
         self.upscaler_settings_layout.addWidget(self.rvc_enabled, 2)
         self.upscaler_settings_layout.addWidget(self.upscaler_enabled, 2)
+        self.upscaler_settings_layout.addWidget(self.pad_short_phrases, 2)
+
+
         self.upscaler_settings.setLayout(self.upscaler_settings_layout)
 
         self.gen_settings = QGroupBox()
@@ -351,8 +364,9 @@ class BulkGenerationTableWidget(BaseBulkWidget):
         self.gen_settings_layout.addWidget(self.xwm_card, 2)
         self.gen_settings_layout.addWidget(self.delete_leftovers, 2)
         self.gen_settings.setLayout(self.gen_settings_layout)
-        self.bulk_widget_view.addWidget(self.upscaler_settings)
         self.bulk_widget_view.addWidget(self.gen_settings)
+        self.bulk_widget_view.addWidget(self.upscaler_settings)
+        self.settings_drawer.addWidget(GenericSettings(self))
         self.help_drawer.addWidget(BulkCSVHelp(self))
         self.buttons_layout.addWidget(self.help_button)
         self.bulk_widget_view.addLayout(self.buttons_layout)

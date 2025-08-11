@@ -10,11 +10,11 @@ from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QFileDialog
 from qfluentwidgets import FluentIcon as FIF, RangeSettingCard, TextEdit, PrimaryPushButton, ConfigItem, SwitchSettingCard, ConfigValidator, PushSettingCard
 
 
-from audio.audio_player import StandardAudioPlayerBar
+from src.audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg, FileValidator
 from src.utils.icons import FallTalkIcons
 from src.ui.cards import RangeSettingCardScaled, RadioSettingCard, TextSettingCard, SpinSettingCard
-from widgets import FallTalkWidget
+from src.widgets import FallTalkWidget
 
 
 class AudioGenWidget(FallTalkWidget):

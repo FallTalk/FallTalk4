@@ -1,20 +1,18 @@
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QLineEdit
-from qfluentwidgets import FluentIcon as FIF, SettingCardGroup, isDarkTheme, OptionsSettingCard, SwitchSettingCard
-from qfluentwidgets import ScrollArea, RangeSettingCard, ExpandLayout
+from PySide6.QtWidgets import QLineEdit
+from PySide6.QtWidgets import QLineEdit
+from qfluentwidgets import FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, SwitchSettingCard
+from qfluentwidgets import RangeSettingCard
 
 from src.config.config import cfg, PitchExtractionAlgorithm
+from src.settings.generic_settings import GenericSettings
 from src.ui.cards import RangeSettingCardScaled, TextSettingCard
 
 
-class RVCSettings(ScrollArea):
+class RVCSettings(GenericSettings):
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.scroll_widget = QWidget()
-        self.expand_layout = ExpandLayout(self.scroll_widget)
-        self.settings_group = SettingCardGroup(self.tr(''), self.scroll_widget)
         self.eleven_labs_group = SettingCardGroup(self.tr('Eleven Labs'), self.scroll_widget)
 
         self.rvc_pitch_extraction_card = OptionsSettingCard(
@@ -110,20 +108,6 @@ class RVCSettings(ScrollArea):
         self.__initWidget()
 
     def __initWidget(self):
-        self.resize(1000, 800)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setViewportMargins(0, 0, 0, 20)
-        self.setWidget(self.scroll_widget)
-        self.setWidgetResizable(True)
-
-        # initialize style sheet
-        self.__setQss()
-
-        # initialize layout
-        self.__initLayout()
-        self.__connectSignalToSlot()
-
-    def __initLayout(self):
         # add cards to group
         self.settings_group.addSettingCard(self.rvc_pitch_extraction_card)
         self.settings_group.addSettingCard(self.rvc_training_data_size_card)
@@ -138,20 +122,7 @@ class RVCSettings(ScrollArea):
 
         self.eleven_labs_group.addSettingCard(self.eleven_labs_key)
 
-        # add setting card group to layout
-        self.expand_layout.setSpacing(28)
-        self.expand_layout.setContentsMargins(15, 0, 15, 0)
-
         self.expand_layout.addWidget(self.settings_group)
         self.expand_layout.addWidget(self.eleven_labs_group)
 
-    def __setQss(self):
-        """ set style sheet """
-        self.scroll_widget.setObjectName('scrollWidget')
-
-        theme = 'dark' if isDarkTheme() else 'light'
-        with open(f'resource/qss/{theme}/setting_interface.qss', encoding='utf-8') as f:
-            self.setStyleSheet(f.read())
-
-    def __connectSignalToSlot(self):
-        pass
+        self.setupLayout()

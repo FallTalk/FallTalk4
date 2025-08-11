@@ -1,4 +1,3 @@
-import gc
 import math
 import os
 import sys
@@ -12,12 +11,11 @@ import torchaudio
 from hydra.utils import get_class
 from omegaconf import OmegaConf
 
-from src.enums.engine_type import EngineType
 from src.config.config import cfg
+from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
-from src.utils.filesystem_utils import get_app_root, get_app_code_root
 from src.utils import logging_utils
-from src.utils.audio_utils import load_audio
+from src.utils.filesystem_utils import get_app_root, get_app_code_root
 
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5', 'src')))
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5','src','f5_tts')))
@@ -123,8 +121,7 @@ class F5Engine(tts_engine):
             self.model = utils_infer.load_checkpoint(self.cfm_model, self.ckpt_path, device=self.device, use_ema=True)
 
 
-    def generate_audio(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, start_time=None, end_time=None):
-
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         if self.mode != cfg.get(cfg.f5_mode) or self.model is None:
             self.load_model()
 
@@ -138,14 +135,12 @@ class F5Engine(tts_engine):
         sf.write(voice, new_audio, sr)
 
         if self.mode == 'tts':
-            audio_data, sample_rate = self.inference(text, transcript['transcript'], voice, language, output_file, streaming)
+            return self._inference(text, transcript['transcript'] if isinstance(transcript, dict) else transcript, voice, language, output_file, streaming)
         else:
-            audio_data, sample_rate = self.edit_inference(text, transcript, voice, language, output_file, streaming, start_time=start_time, end_time=end_time)
-
-        self.process_audio(audio_data, sample_rate, output_file)
+            return self._edit_inference(text, transcript, voice, language, output_file, streaming, start_time=start_time, end_time=end_time)
 
     @torch.no_grad()
-    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, cross_fade_duration=0.15, nfe_step=32, speed=1, remove_silence=False):
+    def _inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, cross_fade_duration=0.15, nfe_step=32, speed=1, remove_silence=False):
         ref_audio, ref_text = utils_infer.preprocess_ref_audio_text(str(os.path.abspath(os.path.join(get_app_root(), str(voice)))), transcript)
 
         final_wave, final_sample_rate, combined_spectrogram = utils_infer.infer_process(
@@ -172,7 +167,7 @@ class F5Engine(tts_engine):
         return final_wave, final_sample_rate
 
     @torch.no_grad()
-    def edit_inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, cross_fade_duration=0.15, nfe_step=32, speed=1, remove_silence=False, start_time=0, end_time=0):
+    def _edit_inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, cross_fade_duration=0.15, nfe_step=32, speed=1, remove_silence=False, start_time=0, end_time=0):
         cfg_strength = 2.0
         sway_sampling_coef = -1.0
         target_rms = 0.1
