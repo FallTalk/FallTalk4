@@ -15,7 +15,6 @@ now_dir = os.getcwd()
 sys.path.append(now_dir)
 
 from ..infer.pipeline import VC
-from ..lib.tools.split_audio import process_audio, merge_audio
 from ..lib.infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
     SynthesizerTrnMs256NSFsid_nono,

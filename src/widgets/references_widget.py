@@ -18,7 +18,7 @@ from qfluentwidgets import (
 )
 
 
-from audio.audio_player import StandardAudioPlayerBar
+from src.audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.utils.audio_utils import extract_bsa, create_xwm, extract_fuz

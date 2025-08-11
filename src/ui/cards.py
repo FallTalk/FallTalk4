@@ -2,7 +2,7 @@
 from textwrap import dedent
 from typing import Union
 
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon, QPainter, QColor
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QButtonGroup, QGroupBox, QSizePolicy, QVBoxLayout, QFrame
 from qfluentwidgets import (ConfigItem, OptionsConfigItem, RangeConfigItem, SettingCard, FluentIconBase, SpinBox,

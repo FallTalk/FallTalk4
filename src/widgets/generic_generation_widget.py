@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QGroupBox, QHBoxLayout
 from qfluentwidgets import FluentIcon as FIF, PrimaryPushButton
 from src.ui.cards import RadioSettingCard, ComboBoxWordsCard
 
-from audio.audio_player import StandardAudioPlayerBar
+from src.audio.audio_player import StandardAudioPlayerBar
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.utils.logging_utils import logger

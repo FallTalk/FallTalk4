@@ -1,6 +1,5 @@
 # coding:utf-8
 import os
-import sys
 from enum import Enum
 from pathlib import Path
 
@@ -10,8 +9,9 @@ from qfluentwidgets import (QConfig, ConfigItem, OptionsConfigItem, BoolValidato
                             ColorConfigItem, OptionsValidator, RangeConfigItem, RangeValidator,
                             EnumSerializer, FolderValidator, ConfigSerializer, ConfigValidator, qconfig)
 
-from src.utils.filesystem_utils import get_app_root
 from src.enums.engine_type import EngineType
+from src.utils.filesystem_utils import get_app_root
+
 
 class Language(Enum):
     """ Language enumeration """
@@ -459,6 +459,7 @@ class Config(QConfig):
         self.set(self.chatterbox_max_new_tokens, self.chatterbox_max_new_tokens.defaultValue)
         self.set(self.chatterbox_cfg_weight, self.chatterbox_cfg_weight.defaultValue)
         self.set(self.chatterbox_exaggeration, self.chatterbox_exaggeration.defaultValue)
+        self.set(self.chatterbox_repetition_penalty, self.chatterbox_repetition_penalty.defaultValue)
 
     def resetDMSpeech2(self):
         self.set(self.dmo_speech2_temperature, self.dmo_speech2_temperature.defaultValue)
@@ -468,7 +469,7 @@ class Config(QConfig):
 
 YEAR = 2025
 AUTHOR = "Bryant21"
-VERSION = '2.0.0-beta5'
+VERSION = '2.0.0-beta6'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"

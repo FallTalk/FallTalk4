@@ -14,7 +14,7 @@ class EngineType(Enum):
     SPARK = ("Spark", False, False, ["0.5"], "0.5", 15, 3, True, True)
     MegaTTS3 = ("Mega TTS3", True, True, ["3"], "3", 15, 3, True, False)
     CSM = ("CSM", False, True, ["1b"], "1b", 15, 3, True, True)
-    CHATTERBOX = ("Chatterbox", False, True, ["0.5B"], "0.5B", 30, 3, True, True)
+    CHATTERBOX = ("Chatterbox", False, True, ["0.5B"], "0.5B", 30, 10, True, True)
     INDEX = ("Index", False, True, ["v1.5", "v2"], "v1.5", 15, 3, True, False)
     HIGGS = ("Higgs", True, True, ["v2"], "v2", 15, 3, True, False)
     DMOSPEECH2 = ("DMO Speech 2", True, True, ["v2"], "v2", 15, 3, True, True)

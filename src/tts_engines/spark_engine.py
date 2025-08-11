@@ -3,8 +3,8 @@ import sys
 
 import numpy as np
 
-from src.enums.engine_type import EngineType
 from src.config.config import cfg
+from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils.filesystem_utils import get_app_code_root, get_app_root
 

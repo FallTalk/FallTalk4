@@ -1,27 +1,28 @@
 from __future__ import annotations
 
-import traceback
-from typing import TYPE_CHECKING, List, Dict, Optional
 import os
 import threading
+import traceback
+from typing import TYPE_CHECKING, Optional
 
 import PySide6
 import torch
-from pure_eval.my_getattr_static import user_method_descriptor
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+from src.enums.engine_type import EngineType
 from src.audio.audio_recorder import StandardAudioRecorderBar
-# vLLM not supported on Windows - using optimized transformers instead
+from src.widgets.engine_widgets_config import SETTINGS_WIDGETS, HELP_WIDGETS
+from src.utils.icons import FallTalkIcons
+from src.widgets import RightDrawer
 
-from utils.icons import FallTalkIcons
-from widgets import RightDrawer
+# vLLM not supported on Windows - using optimized transformers instead
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
 from PySide6.QtCore import Qt, Signal, QMetaObject, Q_ARG, QUrl, QTimer
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QScrollArea, QWidget, QLabel, QTextEdit, QFrame, QGroupBox
-from qfluentwidgets import PrimaryPushButton, ScrollArea, FluentIcon as FIF, InfoBar, InfoBarPosition, isDarkTheme, \
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QLabel, QFrame, QGroupBox
+from qfluentwidgets import PrimaryPushButton, FluentIcon as FIF, InfoBar, isDarkTheme, \
     SwitchSettingCard, ToolButton, OptionsSettingCard, PushButton, TextEdit, SingleDirectionScrollArea
 
 from src.audio.audio_player import StandardAudioPlayerBar
@@ -93,6 +94,7 @@ class ChatMessage(QFrame):
         # Setup UI
         self.setObjectName("ChatMessage")
         self.updateStyle()
+        self.engine_type = None
 
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(10, 10, 10, 10)
@@ -188,6 +190,21 @@ class ChatWidget(GenerationWidget):
         self.messages = [self.system_prompt]  # Chat history
         self.message_widgets = []  # UI widgets for messages
         self.first_message_sent = False  # Flag to track if first message has been sent
+
+        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
+        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
+
+        self.settings_button = ToolButton()
+        self.settings_button.setIcon(FIF.SETTING)
+        self.settings_button.setEnabled(True)
+        self.settings_button.clicked.connect(lambda: self.toggle_settings_drawer())
+        self.settings_button.setFixedWidth(50)
+
+        self.help_button = ToolButton()
+        self.help_button.setIcon(FIF.QUESTION)
+        self.help_button.setEnabled(True)
+        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
+        self.help_button.setFixedWidth(50)
 
         # Setup UI
         self.setup_ui()
@@ -290,20 +307,7 @@ class ChatWidget(GenerationWidget):
 
         self.addToFrame(self.gen_settings)
 
-        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
-        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
 
-        self.settings_button = ToolButton()
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.clicked.connect(lambda: self.toggle_settings_drawer())
-        self.settings_button.setFixedWidth(50)
-
-        self.help_button = ToolButton()
-        self.help_button.setIcon(FIF.QUESTION)
-        self.help_button.setEnabled(True)
-        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
-        self.help_button.setFixedWidth(50)
 
     def setup_ui(self):
         """Setup the chat widget UI."""
@@ -349,6 +353,8 @@ class ChatWidget(GenerationWidget):
         # Add buttons to layout
         self.buttons_layout.addWidget(self.clear_button)
         self.buttons_layout.addWidget(self.send_button)
+        self.buttons_layout.addWidget(self.settings_button)
+        self.buttons_layout.addWidget(self.help_button)
 
         self.addToFrame(self.text_input)
         self.input_layout.addLayout(self.buttons_layout, stretch=1)
@@ -602,3 +608,17 @@ class ChatWidget(GenerationWidget):
 
         # Reset first message flag
         self.first_message_sent = False
+
+    def update_engine_type(self, engine_type: EngineType):
+        """Update the widget's engine type."""
+        self.engine_type = engine_type
+        self.clear_chat()
+
+        # Add settings and help widgets based on engine type
+        if engine_type in SETTINGS_WIDGETS:
+            self.settings_widget = SETTINGS_WIDGETS[engine_type](self)
+            self.settings_drawer.addWidget(self.settings_widget)
+
+        if engine_type in HELP_WIDGETS:
+            self.help_widget = HELP_WIDGETS[engine_type](self)
+            self.help_drawer.addWidget(self.help_widget)

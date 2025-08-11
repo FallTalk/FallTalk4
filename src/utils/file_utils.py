@@ -2,7 +2,6 @@ import logging
 import os
 import platform
 import shutil
-import sys
 import uuid
 from datetime import datetime
 

@@ -10,13 +10,13 @@ import PySide6
 from src.ui.cards import TextSettingCard, SpinSettingCard
 from src.utils.icons import FallTalkIcons
 from src.widgets import RightDrawer
-from src.widgets.generation_widget import GenerationWidget
 from src.widgets.engine_widgets_config import SETTINGS_WIDGETS, HELP_WIDGETS
+from src.widgets.generation_widget import GenerationWidget
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
 
-from PySide6.QtCore import Qt, QMetaObject, Q_ARG, QUrl, Signal, Slot
+from PySide6.QtCore import Qt, QMetaObject, Q_ARG, QUrl, Signal, Slot, QTimer
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QFrame, QGroupBox, QRadioButton, QButtonGroup
 from qfluentwidgets import (
     PrimaryPushButton, FluentIcon as FIF,
@@ -31,7 +31,7 @@ from src.utils.file_utils import formatted_time_stamp_uuid, get_output_file_name
 from src.utils.filesystem_utils import get_app_root
 from src.enums.engine_type import EngineType
 from src.utils.inference_utils import get_default_reference_and_transcript, generic_inference, preprocess_text
-from src.utils.audio_utils import combine_wav_files, combine_references
+from src.utils.audio_utils import combine_references
 
 
 class GeneratedAudioItem(QFrame):
@@ -39,6 +39,9 @@ class GeneratedAudioItem(QFrame):
 
     # Signal to notify when an item is saved
     save_requested = Signal(str)  # audio_file
+    
+    # Signal to notify when play is requested
+    play_requested = Signal(str)  # audio_file
 
     def __init__(self, index: int, audio_file: str, parent=None, output_name=None):
         super().__init__(parent)
@@ -77,16 +80,6 @@ class GeneratedAudioItem(QFrame):
         self.header_layout.addStretch()
         self.layout.addLayout(self.header_layout)
 
-        # Audio player
-        self.audio_player = StandardAudioPlayerBar(self)
-        self.audio_player.setVolume(100)
-        self.audio_player.setVisible(False)  # Hide until play is clicked
-        self.layout.addWidget(self.audio_player)
-
-        # Set audio file
-        if audio_file and os.path.exists(audio_file):
-            self.audio_player.player.setSource(QUrl.fromLocalFile(audio_file))
-
     def updateStyle(self):
         """Update the style based on the current theme."""
         if isDarkTheme():
@@ -104,12 +97,9 @@ class GeneratedAudioItem(QFrame):
         )
 
     def play_audio(self):
-        """Play the audio file."""
+        """Request to play the audio file."""
         if self.audio_file and os.path.exists(self.audio_file):
-            self.audio_player.player.stop()
-            self.audio_player.player.setSource(QUrl.fromLocalFile(self.audio_file))
-            self.audio_player.player.play()
-            self.audio_player.setVisible(True)
+            self.play_requested.emit(self.audio_file)
 
     def save_audio(self):
         """Save this audio generation."""
@@ -132,11 +122,6 @@ class GenericMultiGenerationWidget(GenerationWidget):
         self.engine_type = None  # Will be set by update_engine_type
         self.text_input.setPlaceholderText("If no reference is selected, a default will be used. Selecting a reference audio can help change the emotion of the generated speech. ")
 
-        # Remove the media player that was added by GenericGenerationWidget
-        if self.media_player:
-            self.media_player.setParent(None)
-            self.boxLayout.removeWidget(self.media_player)
-
         # List to store generated audio files
         self.generated_audio_files = []
         self.audio_items = []
@@ -144,6 +129,9 @@ class GenericMultiGenerationWidget(GenerationWidget):
 
         # Connect signals
         self.generation_complete.connect(self.update_ui_with_generated_files)
+
+        self.media_player = StandardAudioPlayerBar(self)
+        self.media_player.setVolume(100)
 
         # Setup UI for multi-generation
         self.setup_multi_generation_ui()
@@ -157,9 +145,24 @@ class GenericMultiGenerationWidget(GenerationWidget):
         self.generate_button.clicked.connect(self.generate_multiple)
 
         # Clear chat button
-        self.clear_button = PushButton(text="Clear Chat")
+        self.clear_button = PushButton(text="Clear Results")
         self.clear_button.setIcon(FIF.DELETE)
         self.clear_button.clicked.connect(self.clear_results)
+
+        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
+        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
+
+        self.settings_button = ToolButton()
+        self.settings_button.setIcon(FIF.SETTING)
+        self.settings_button.setEnabled(True)
+        self.settings_button.clicked.connect(lambda: self.toggle_settings_drawer())
+        self.settings_button.setFixedWidth(50)
+
+        self.help_button = ToolButton()
+        self.help_button.setIcon(FIF.QUESTION)
+        self.help_button.setEnabled(True)
+        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
+        self.help_button.setFixedWidth(50)
 
         # Add buttons to layout
         self.buttons_layout.addWidget(self.clear_button)
@@ -168,9 +171,15 @@ class GenericMultiGenerationWidget(GenerationWidget):
         self.buttons_layout.addWidget(self.help_button)
 
         self.boxLayout.addLayout(self.buttons_layout)
-
+        self.addToFrame(self.media_player)
+        self.media_player.setVisible(True)
         self.setEnabled(False)
 
+    def toggle_settings_drawer(self):
+        self.settings_drawer.open_drawer()
+
+    def toggle_help_drawer(self):
+        self.help_drawer.open_drawer()
 
     def addGenSettings(self):
         self.output_name = ConfigItem("TTS", "output_name", None, ConfigValidator())
@@ -256,22 +265,6 @@ class GenericMultiGenerationWidget(GenerationWidget):
         self.addToFrame(self.gen_settings2)
         self.addToFrame(self.gen_settings)
 
-        self.help_drawer = RightDrawer(self, title="About", icon=FIF.QUESTION)
-        self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
-
-        self.settings_button = ToolButton()
-        self.settings_button.setIcon(FIF.SETTING)
-        self.settings_button.setEnabled(True)
-        self.settings_button.clicked.connect(lambda: self.toggle_settings_drawer())
-        self.settings_button.setFixedWidth(50)
-
-        self.help_button = ToolButton()
-        self.help_button.setIcon(FIF.QUESTION)
-        self.help_button.setEnabled(True)
-        self.help_button.clicked.connect(lambda: self.toggle_help_drawer())
-        self.help_button.setFixedWidth(50)
-
-
     def update_engine_type(self, engine_type: EngineType):
         """Update the widget's engine type."""
         self.engine_type = engine_type
@@ -316,22 +309,12 @@ class GenericMultiGenerationWidget(GenerationWidget):
         transcribe_state = None
 
         if current_engine.needs_reference_when_trained or self.parent.tts_engine.is_base:
-            if references is None or not references:
-                # Get default reference from default_references.json and characters.json
-                character_name = self.parent.tts_engine.model_name
-                reference_path, transcribe_state = get_default_reference_and_transcript(self.parent, character_name)
 
-                # If reference found, use it
-                if reference_path:
-                    references = [reference_path]
-                else:
-                    self.showErrorPopup(self, self.generate_button, "Please Select Reference Audio")
-                    return
-            elif references_length > current_engine.max_reference_length or references_length < 3:
+            if references and (references_length > current_engine.max_reference_length or references_length < 3):
                 self.showErrorPopup(self, self.generate_button,
                                     f"Please Select between 3 and {current_engine.max_reference_length} seconds of Reference Audio")
                 return
-            elif references_length < 3:
+            elif references and references_length < 3:
                 self.showErrorPopup(self, self.generate_button,
                                     "Please Select at least 3 seconds of Reference Audio")
                 return
@@ -365,6 +348,18 @@ class GenericMultiGenerationWidget(GenerationWidget):
                 # Update loader message
                 QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection,
                                         Q_ARG(str, f"Generating sample {i+1} of {num_generations}"))
+
+                if references is None or not references:
+                    # Get default reference from default_references.json and characters.json
+                    character_name = self.parent.tts_engine.model_name
+                    reference_path, transcribe_state = get_default_reference_and_transcript(self.parent, character_name)
+
+                    # If reference found, use it
+                    if reference_path:
+                        references = [reference_path]
+                    else:
+                        self.showErrorPopup(self, self.generate_button, "Please Select Reference Audio")
+                        return
 
                 # Create output file path
                 file_name = f"multi_gen_{i}_{formatted_time_stamp_uuid()}"
@@ -422,6 +417,9 @@ class GenericMultiGenerationWidget(GenerationWidget):
 
             # Connect the save_requested signal to handle_save_requested
             item.save_requested.connect(self.handle_save_requested)
+            
+            # Connect the play_requested signal to play_audio_in_main_player
+            item.play_requested.connect(self.play_audio_in_main_player)
 
             self.scroll_layout.addWidget(item)
             self.audio_items.append(item)
@@ -497,6 +495,15 @@ class GenericMultiGenerationWidget(GenerationWidget):
     def clear(self):
         """Clear the widget state."""
         self.clear_results()
+
+    def play_audio_in_main_player(self, audio_file):
+        """Play audio file using the main widget's media player."""
+        if audio_file and os.path.exists(audio_file):
+            self.media_player.player.stop()
+            QTimer.singleShot(0, lambda: (
+                self.media_player.player.setSource(QUrl.fromLocalFile(audio_file)),
+                self.media_player.player.play()
+            ))
 
     def showErrorPopup(self, parent, target, content):
         Flyout.create(

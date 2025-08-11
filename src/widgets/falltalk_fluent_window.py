@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QListWidgetItem
 from qfluentwidgets import FluentIcon as FIF, FluentIconBase, CommandBar, Action, TransparentDropDownPushButton, \
-    setFont, CheckableMenu, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, \
+    setFont, MenuIndicatorType, qrouter, FluentTitleBar, NavigationInterface, NavigationItemPosition, \
     NavigationTreeWidget, BodyLabel, RoundMenu
 from qfluentwidgets.components.widgets.menu import createCheckableMenuItemDelegate, MenuAnimationType
 from qfluentwidgets.window.fluent_window import FluentWindowBase
@@ -15,10 +15,10 @@ from src.enums.engine_type import EngineType
 from src.utils.icons import FallTalkIcons
 
 
-class CheckableMenu(RoundMenu):
+class CustomCheckableMenu(RoundMenu):
     """ Checkable menu """
 
-    def __init__(self, title="", parent=None, indicatorType=MenuIndicatorType.CHECK):
+    def __init__(self, title="", parent=None, indicatorType: MenuIndicatorType = MenuIndicatorType.CHECK):
         super().__init__(title, parent)
         self.view.setItemDelegate(createCheckableMenuItemDelegate(indicatorType))
         self.view.setObjectName('checkableListWidget')
@@ -143,7 +143,7 @@ class FallTalkFluentWindow(FluentWindowBase):
         self.titleBar.resize(self.width() - 46, self.titleBar.height())
 
     def createEngineMenu(self, pos=None):
-        menu = CheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
+        menu = CustomCheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
 
         # Only add actions for enabled engines
         actions_to_add = []
@@ -183,7 +183,7 @@ class FallTalkFluentWindow(FluentWindowBase):
         return menu
 
     def createDeviceMenu(self, pos=None):
-        menu = CheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
+        menu = CustomCheckableMenu(parent=self, indicatorType=MenuIndicatorType.RADIO)
         if torch.cuda.is_available():
             num_gpus = torch.cuda.device_count()
             if num_gpus > 1:

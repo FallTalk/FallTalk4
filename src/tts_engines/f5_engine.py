@@ -1,4 +1,3 @@
-import gc
 import math
 import os
 import sys
@@ -12,12 +11,11 @@ import torchaudio
 from hydra.utils import get_class
 from omegaconf import OmegaConf
 
-from src.enums.engine_type import EngineType
 from src.config.config import cfg
+from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
-from src.utils.filesystem_utils import get_app_root, get_app_code_root
 from src.utils import logging_utils
-from src.utils.audio_utils import load_audio
+from src.utils.filesystem_utils import get_app_root, get_app_code_root
 
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5', 'src')))
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5','src','f5_tts')))

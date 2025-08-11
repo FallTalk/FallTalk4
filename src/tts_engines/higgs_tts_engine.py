@@ -19,7 +19,6 @@ from third_party.higgs.boson_multimodal.data_collator.higgs_audio_collator impor
 from third_party.higgs.boson_multimodal.dataset.chatml_dataset import ChatMLDatasetSample, prepare_chatml_sample
 from third_party.higgs.boson_multimodal.model.higgs_audio.utils import revert_delay_pattern
 from transformers import AutoConfig, AutoTokenizer
-from transformers.cache_utils import StaticCache
 from dataclasses import asdict
 
 class HiggsTtsEngine(tts_engine):

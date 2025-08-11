@@ -6,7 +6,7 @@ from qfluentwidgets import (
 from qfluentwidgets import ScrollArea, ExpandLayout
 
 from src.config.config import cfg
-from ui.cards import RangeSettingCardScaled, SpinSettingCard
+from ui.cards import SpinSettingCard
 
 
 class GenericSettings(ScrollArea):

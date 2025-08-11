@@ -1,22 +1,16 @@
 import glob
 import os
 
-import torch
-import torchaudio
+from TTS.config.shared_configs import BaseDatasetConfig
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
-from TTS.tts.models.xtts import XttsAudioConfig
-from TTS.config.shared_configs import BaseDatasetConfig
 from TTS.tts.models.xtts import XttsArgs
+from TTS.tts.models.xtts import XttsAudioConfig
 
-from src.enums.engine_type import EngineType
 from src.config.config import cfg
+from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
-from src.utils.audio_utils import load_audio
-
-import soundfile as sf
-
 from src.utils.filesystem_utils import get_app_root
 
 try:

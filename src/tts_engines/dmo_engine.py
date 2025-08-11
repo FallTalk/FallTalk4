@@ -11,6 +11,7 @@ from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
 from src.utils.filesystem_utils import get_app_root, get_app_code_root
 
+
 @contextmanager
 def patch_gpt_sovits_imports():
     """Full patching solution that handles both HParams and DiT method signatures"""

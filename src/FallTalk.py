@@ -6,7 +6,6 @@ import os
 import shutil
 import sys
 import threading
-import uuid
 import webbrowser
 from typing import Optional, TYPE_CHECKING
 
@@ -29,7 +28,7 @@ from src.enums.engine_type import EngineType
 from src.tts_engines import tts_engine
 from src.utils.audio_utils import combine_wav_files, combine_references
 from src.utils.bulk_utils import bulk_inference, bulk_rvc_inference, bulk_fuz
-from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp, formatted_time_stamp_uuid, get_output_file_name
+from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp_uuid, get_output_file_name
 from src.utils.filesystem_utils import get_app_root
 from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models, \
     download_all_models_config
@@ -491,6 +490,8 @@ class FallTalkApp(FallTalkFluentWindow):
             self.engine_actions[engine_type].setChecked(True)
             # Also update the multi-generation widget
             self.multi_generation_widget.update_engine_type(engine_type)
+            self.chat_widget.update_engine_type(engine_type)
+            self.ez_voice_creator_widget.update_engine_type(engine_type)
 
         if engine_type in self.engine_load_functions:
             tr = (threading.Thread(target=self.engine_load_functions[engine_type], args={self}, daemon=True))

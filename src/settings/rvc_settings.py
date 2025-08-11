@@ -1,10 +1,10 @@
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QLineEdit
-from qfluentwidgets import FluentIcon as FIF, SettingCardGroup, isDarkTheme, OptionsSettingCard, SwitchSettingCard
-from qfluentwidgets import ScrollArea, RangeSettingCard, ExpandLayout
+from PySide6.QtWidgets import QLineEdit
+from PySide6.QtWidgets import QLineEdit
+from qfluentwidgets import FluentIcon as FIF, SettingCardGroup, OptionsSettingCard, SwitchSettingCard
+from qfluentwidgets import RangeSettingCard
 
-from src.settings.generic_settings import GenericSettings
 from src.config.config import cfg, PitchExtractionAlgorithm
+from src.settings.generic_settings import GenericSettings
 from src.ui.cards import RangeSettingCardScaled, TextSettingCard
 
 

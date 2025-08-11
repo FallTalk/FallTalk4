@@ -1,12 +1,9 @@
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget
 from qfluentwidgets import (
-    FluentIcon as FIF, SubtitleLabel, ComboBoxSettingCard, RangeSettingCard, SettingCardGroup, isDarkTheme
+    FluentIcon as FIF
 )
-from qfluentwidgets import ScrollArea, ExpandLayout
 
-from src.settings.generic_settings import GenericSettings
 from src.config.config import cfg
+from src.settings.generic_settings import GenericSettings
 from ui.cards import RangeSettingCardScaled
 
 

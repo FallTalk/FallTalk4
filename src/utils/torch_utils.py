@@ -2,6 +2,7 @@ import torch
 
 from src.config.config import cfg
 
+
 def supports_bf16():
     if torch.cuda.is_available():
         return torch.cuda.is_bf16_supported()

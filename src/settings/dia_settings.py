@@ -1,14 +1,10 @@
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget
 from qfluentwidgets import (
-    FluentIcon as FIF, SettingCardGroup, RangeSettingCard, isDarkTheme, SwitchSettingCard
+    FluentIcon as FIF, RangeSettingCard
 )
-from qfluentwidgets import ScrollArea, ExpandLayout
 
-from src.settings.generic_settings import GenericSettings
 from src.config.config import cfg
-from src.ui.cards import RangeSettingCardScaled, RadioSettingCard
-from src.utils.icons import FallTalkIcons
+from src.settings.generic_settings import GenericSettings
+from src.ui.cards import RangeSettingCardScaled
 
 
 class DIASettings(GenericSettings):

@@ -3,26 +3,22 @@ from __future__ import annotations
 import json
 import os
 import random
-import shutil
-import threading
-import uuid
 from typing import TYPE_CHECKING
 
 from enums.engine_type import EngineType
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
-    from src.widgets import GenerationWidget
 
 import logging
 import asyncio
 import re
-from PySide6.QtCore import QMetaObject, Qt, Q_ARG, QMetaType, QObject
+from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 
 import PySide6
 
 from src.config.config import cfg
-from src.utils.audio_utils import create_lip_and_fuz, extra_audio_from_bsa
+from src.utils.audio_utils import create_lip_and_fuz, extra_audio_from_bsa, combine_wav_files
 from src.utils.filesystem_utils import get_app_root
 
 from num2words import num2words
@@ -41,54 +37,107 @@ def get_default_reference(parent, character_name):
 
     Returns:
         tuple: (reference_path, transcript, filename) or (None, None, None) if no reference found
-    """
+"""
+
+
+    currentEgine = parent.tts_engine.engin_type
+    max_reference_length = currentEgine.max_reference_length
+    min_reference_length = currentEgine.min_reference_length
+
+
     # First check if we have default references for this character
     if hasattr(parent, 'default_references') and parent.default_references and character_name in parent.default_references:
-        # Get a random default reference for this character
+        # Get all default references for this character
         default_refs = parent.default_references[character_name]
         if default_refs:
-            # Select a random default reference
-            random_ref = random.choice(default_refs)
+            # Create a list to hold references that meet the duration requirement
+            valid_references = []
+            combined_transcript = ""
+            
+            # Keep selecting references until we meet the minimum duration requirement
+            while len(valid_references) < len(default_refs) and len(valid_references) < 5:  # Limit to 5 to prevent infinite loops
+                # Select a random default reference
+                random_ref = random.choice(default_refs)
+                
+                # Skip if we've already selected this reference
+                if random_ref in valid_references:
+                    continue
 
-            # Get the filename and transcript from default_references.json
-            wav_filename = random_ref.get('filename', '')
-            transcript = random_ref.get('transcript', '')
-            duration = random_ref.get('duration', '')
+                # Get the filename and transcript from default_references.json
+                wav_filename = random_ref.get('filename', '')
+                transcript = random_ref.get('transcript', '')
+                duration = random_ref.get('duration', '')
 
-            # Convert WAV filename to FUZ filename to match with characters.json
-            # Example: "00112D18_1.wav" -> "00112d18_1.fuz"
-            fuz_filename = wav_filename.replace('.wav', '.fuz').lower()
+                # Convert WAV filename to FUZ filename to match with characters.json
+                # Example: "00112D18_1.wav" -> "00112d18_1.fuz"
+                fuz_filename = wav_filename.replace('.wav', '.fuz').lower()
 
-            # Now find the matching entry in characters.json to get BSA info
-            if character_name in parent.characters_data:
-                character = parent.characters_data[character_name]
-                if character.get('voicefiles'):
-                    # Find the matching voice file in characters.json
-                    matching_voice_file = None
-                    for voice_file in character['voicefiles']:
-                        if voice_file.get('filename', '').lower() == fuz_filename:
-                            matching_voice_file = voice_file
-                            break
+                # Now find the matching entry in characters.json to get BSA info
+                if character_name in parent.characters_data:
+                    character = parent.characters_data[character_name]
+                    if character.get('voicefiles'):
+                        # Find the matching voice file in characters.json
+                        matching_voice_file = None
+                        for voice_file in character['voicefiles']:
+                            if voice_file.get('filename', '').lower() == fuz_filename:
+                                matching_voice_file = voice_file
+                                break
 
-                    if matching_voice_file:
-                        # Create a temporary WAV file for the reference
-                        temp_dir = os.path.join(get_app_root(), "temp")
-                        os.makedirs(temp_dir, exist_ok=True)
-                        temp_file = os.path.join(temp_dir, wav_filename)
+                        if matching_voice_file:
+                            # Create a temporary WAV file for the reference
+                            temp_dir = os.path.join(get_app_root(), "temp")
+                            os.makedirs(temp_dir, exist_ok=True)
+                            temp_file = os.path.join(temp_dir, wav_filename)
 
-                        # Check if the file already exists in the temp directory
-                        if not os.path.exists(temp_file):
-                            # Try to extract from BSA if it's a game file
-                            matching_voice_file['folder'] = character_name
-                            try:
-                                extra_audio_from_bsa(matching_voice_file, fuz_filename.replace('.fuz', ''))
-                            except Exception as e:
-                                logger.warning(f"Could not extract audio from BSA: {e}")
-                                # Continue to try other methods if this fails
+                            # Check if the file already exists in the temp directory
+                            if not os.path.exists(temp_file):
+                                # Try to extract from BSA if it's a game file
+                                matching_voice_file['folder'] = character_name
+                                try:
+                                    extra_audio_from_bsa(matching_voice_file, fuz_filename.replace('.fuz', ''))
+                                except Exception as e:
+                                    logger.warning(f"Could not extract audio from BSA: {e}")
+                                    # Continue to try other methods if this fails
 
-                        # If the file exists now, return it
-                        if os.path.exists(temp_file):
-                            return temp_file, transcript, wav_filename, duration
+                            # If the file exists now, add it to our valid references
+                            if os.path.exists(temp_file):
+                                valid_references.append(temp_file)
+                                combined_transcript += " " + transcript if combined_transcript else transcript
+                                
+                                # Check if we have enough duration
+                                total_duration = sum(
+                                    ref.get('duration', 0) for ref in default_refs 
+                                    if ref.get('filename', '').replace('.wav', '.fuz').lower() == 
+                                       os.path.basename(temp_file).replace('.wav', '.fuz').lower()
+                                )
+                                
+                                # Try to get a more accurate duration by loading the file
+                                try:
+                                    import soundfile as sf
+                                    audio_data, sample_rate = sf.read(temp_file)
+                                    actual_duration = len(audio_data) / sample_rate
+                                    
+                                    # If we have only one reference and it's too short, try to get more
+                                    if len(valid_references) == 1 and actual_duration < min_reference_length:
+                                        continue
+                                    else:
+                                        # If we have enough duration or we've tried enough times, break
+                                        if actual_duration >= min_reference_length or len(valid_references) >= 2:
+                                            break
+                                except Exception as e:
+                                    # If we can't read the file, rely on the stored duration
+                                    if total_duration >= min_reference_length:
+                                        break
+
+            # If we have valid references, process them
+            if valid_references:
+                # If we have multiple references, combine them
+                if len(valid_references) > 1:
+                    combined_file = combine_wav_files(valid_references, target_rate=44100)
+                    return combined_file, combined_transcript.strip(), os.path.basename(combined_file), None
+                else:
+                    # Just return the single valid reference
+                    return valid_references[0], combined_transcript.strip(), os.path.basename(valid_references[0]), None
 
     # Fallback to using characters.json directly if default_references.json didn't work
     if character_name not in parent.characters_data:

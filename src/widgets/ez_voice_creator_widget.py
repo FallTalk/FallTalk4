@@ -7,9 +7,11 @@ import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from src.enums.engine_type import EngineType
 from settings.generic_settings import GenericSettings
 from src.ui.cards import SpinSettingCard
 from src.utils.icons import FallTalkIcons
+from src.widgets.engine_widgets_config import SETTINGS_WIDGETS, HELP_WIDGETS
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -38,6 +40,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
     def __init__(self, parent: FallTalkApp):
         super().__init__(parent=parent, text="ESP Voice Generator", vertical=True)
         self.parent = parent
+        self.engine_type = None
 
         # Table view
         self.dialogue_table = TableView()
@@ -215,7 +218,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.settings_drawer = RightDrawer(self, title="Advanced Settings", icon=FIF.SETTING)
 
         self.help_drawer.addWidget(EzVoiceCreatorHelp(self))
-        self.settings_drawer.addWidget(GenericSettings(self))
+
         self.settings_button = ToolButton()
         self.settings_button.setIcon(FIF.SETTING)
         self.settings_button.setEnabled(True)
@@ -577,3 +580,12 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         except Exception as e:
             traceback.print_exc()
             MessageBox("Error", f"Failed to load dialogue file: {str(e)}", self).exec()
+
+    def update_engine_type(self, engine_type: EngineType):
+        """Update the widget's engine type."""
+        self.engine_type = engine_type
+
+        # Add settings and help widgets based on engine type
+        if engine_type in SETTINGS_WIDGETS:
+            self.settings_widget = SETTINGS_WIDGETS[engine_type](self)
+            self.settings_drawer.addWidget(self.settings_widget)

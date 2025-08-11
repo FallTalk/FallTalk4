@@ -10,8 +10,8 @@ from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import torch_utils
-from src.utils.audio_utils import load_audio
 from src.utils.filesystem_utils import get_app_root
+
 
 def string_to_int(s):
     return int(hashlib.sha256(s.encode()).hexdigest(), 16) % (10 ** 8)

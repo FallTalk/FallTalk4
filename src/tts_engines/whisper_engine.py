@@ -1,12 +1,13 @@
 import re
 from typing import Union
 
+import librosa
 import numpy as np
 from num2words import num2words
-import librosa
+from whisperx import load_model
+
 from src.config.config import cfg
 
-from whisperx import load_model
 
 class WhisperxAlignModel:
     def __init__(self):

@@ -1,8 +1,7 @@
+import json
 import os.path
 import shutil
 import threading
-import json
-import copy
 from typing import Optional
 
 import uvicorn
@@ -15,14 +14,14 @@ from src.config.config import cfg, VERSION
 from src.enums.engine_type import EngineType
 from src.tts_engines import tts_engine
 from src.utils.file_utils import sanitize_filename, formatted_time_stamp
-from src.utils.logging_utils import logger
 from src.utils.inference_utils import (
-    do_transcribe, eleven_labs_inference, edge_tts_inference, generic_inference,
-    rvc_inference, do_transcribe_before_gen, preprocess_text
+    do_transcribe, generic_inference,
+    rvc_inference, preprocess_text
 )
+from src.utils.logging_utils import logger
 from src.utils.model_utils import (
     load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc, load_spark,
-    load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler, load_csm,
+    load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_csm,
     load_higgs, load_chatterbox, load_dmo_speech2
 )
 from tts_engines.whisper_engine import Whisper_Engine
