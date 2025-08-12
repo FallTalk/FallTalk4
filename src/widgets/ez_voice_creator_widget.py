@@ -211,7 +211,6 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.addToFrame(self.dialogue_table)
         self.addToFrame(self.controls_widget)
         self.addToFrame(self.f_and_u)
-        self.addToFrame(self.gen_settings)
         self.addToFrame(self.upscaler_settings)
         self.addToFrame(self.buttons_widget)
 
