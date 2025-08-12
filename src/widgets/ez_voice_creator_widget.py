@@ -132,22 +132,6 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.f_and_u_layout.addWidget(self.csv_file_card, 1)
         self.f_and_u.setLayout(self.f_and_u_layout)
 
-        # Generation settings
-
-
-        self.xwm_card = SwitchSettingCard(
-            FIF.COMMAND_PROMPT,
-            self.tr('Create FUZ'),
-            self.tr('Create XWM, LIP, and FUZ'),
-            cfg.xwm_enabled,
-        )
-
-        self.delete_leftovers = SwitchSettingCard(
-            FIF.DELETE,
-            self.tr('Keep Only FUZ'),
-            self.tr('Delete XMW, LIP, and WAV'),
-            cfg.keep_only_fuz
-        )
 
         self.rvc_enabled = SwitchSettingCard(
             FIF.MEGAPHONE,
@@ -155,16 +139,6 @@ class EzVoiceCreatorWidget(FallTalkWidget):
             self.tr('Use RVC Upscaler (Recommended for Untrained)'),
             cfg.rvc_enabled
         )
-
-        # Generation settings layout
-        self.gen_settings = QGroupBox()
-        self.gen_settings.setStyleSheet("border: none")
-        self.gen_settings_layout = QHBoxLayout()
-        self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
-        self.gen_settings_layout.addWidget(self.threads_card, 2)
-        self.gen_settings_layout.addWidget(self.xwm_card, 2)
-        self.gen_settings_layout.addWidget(self.delete_leftovers, 2)
-        self.gen_settings.setLayout(self.gen_settings_layout)
 
         self.upscaler_enabled = SwitchSettingCard(
             FIF.MEGAPHONE,
@@ -174,20 +148,13 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         )
 
 
-        self.pad_short_phrases = SwitchSettingCard(
-            FallTalkIcons.PADDING.icon(stroke=True),
-            self.tr('Pad Short Phrases'),
-            self.tr('Duplicate short phrases to improve quality, increases generation time'),
-            cfg.pad_short_phrases
-        )
-
         self.upscaler_settings = QGroupBox()
         self.upscaler_settings.setStyleSheet("border: none")
         self.upscaler_settings_layout = QHBoxLayout()
         self.upscaler_settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.upscaler_settings_layout.addWidget(self.threads_card, 2)
         self.upscaler_settings_layout.addWidget(self.rvc_enabled, 2)
         self.upscaler_settings_layout.addWidget(self.upscaler_enabled, 2)
-        self.upscaler_settings_layout.addWidget(self.pad_short_phrases, 2)
         self.upscaler_settings.setLayout(self.upscaler_settings_layout)
 
         # Buttons layout

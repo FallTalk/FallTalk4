@@ -199,24 +199,12 @@ class GenericMultiGenerationWidget(GenerationWidget):
             self.tr('Name of Generated WAV file'),
             placeholder="Random"
         )
-        self.xwm_card = SwitchSettingCard(
-            FIF.COMMAND_PROMPT,
-            self.tr('Create FUZ'),
-            self.tr('Create XWM, LIP, and FUZ'),
-            cfg.xwm_enabled,
-        )
+
         self.rvc_enabled = SwitchSettingCard(
             FIF.MEGAPHONE,
             self.tr('RVC'),
             self.tr('Use RVC Upscaler (Recommended For Untrained)'),
             cfg.rvc_enabled
-        )
-
-        self.delete_leftovers = SwitchSettingCard(
-            FIF.DELETE,
-            self.tr('Keep Only FUZ'),
-            self.tr('Delete XMW, LIP, and WAV'),
-            cfg.keep_only_fuz
         )
 
         self.upscaler_enabled = SwitchSettingCard(
@@ -226,12 +214,6 @@ class GenericMultiGenerationWidget(GenerationWidget):
             cfg.apbwe_enabled
         )
 
-        self.pad_short_phrases = SwitchSettingCard(
-            FallTalkIcons.PADDING.icon(stroke=True),
-            self.tr('Pad Short Phrases'),
-            self.tr('Duplicate short phrases to improve quality, increases generation time'),
-            cfg.pad_short_phrases
-        )
 
         self.gen_settings = QGroupBox()
         self.gen_settings.setStyleSheet("border: none")
@@ -240,18 +222,7 @@ class GenericMultiGenerationWidget(GenerationWidget):
 
         self.gen_settings_layout.addWidget(self.rvc_enabled, 2)
         self.gen_settings_layout.addWidget(self.upscaler_enabled, 2)
-        self.gen_settings_layout.addWidget(self.pad_short_phrases, 2)
         self.gen_settings.setLayout(self.gen_settings_layout)
-
-        self.gen_settings2 = QGroupBox()
-        self.gen_settings2.setStyleSheet("border: none")
-        self.gen_settings2_layout = QHBoxLayout()
-        self.gen_settings2_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.gen_settings2_layout.addWidget(self.xwm_card, 2)
-        self.gen_settings2_layout.addWidget(self.delete_leftovers, 2)
-        self.gen_settings2.setLayout(self.gen_settings2_layout)
-
 
         self.gen_settings3 = QGroupBox()
         self.gen_settings3.setStyleSheet("border: none")
@@ -262,7 +233,6 @@ class GenericMultiGenerationWidget(GenerationWidget):
         self.gen_settings3.setLayout(self.gen_settings3_layout)
 
         self.addToFrame(self.gen_settings3)
-        self.addToFrame(self.gen_settings2)
         self.addToFrame(self.gen_settings)
 
     def update_engine_type(self, engine_type: EngineType):

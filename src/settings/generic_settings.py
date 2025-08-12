@@ -6,8 +6,8 @@ from qfluentwidgets import (
 from qfluentwidgets import ScrollArea, ExpandLayout
 
 from src.config.config import cfg
-from ui.cards import SpinSettingCard
-
+from src.ui.cards import SpinSettingCard
+from src.utils.icons import FallTalkIcons
 
 class GenericSettings(ScrollArea):
     def __init__(self, parent=None):
@@ -16,6 +16,7 @@ class GenericSettings(ScrollArea):
         self.scroll_widget = QWidget()
         self.expand_layout = ExpandLayout(self.scroll_widget)
         self.settings_group = SettingCardGroup(self.tr('Engine Settings'), self.scroll_widget)
+        self.lip_fuz_group = SettingCardGroup(self.tr('LIP/FUZ Settings'), self.scroll_widget)
 
         # Text processing settings
         self.text_processing_group = SettingCardGroup(self.tr('Text Processing'), self.scroll_widget)
@@ -69,6 +70,30 @@ class GenericSettings(ScrollArea):
             parent=self.text_processing_group
         )
 
+        self.pad_short_phrases = SwitchSettingCard(
+            FallTalkIcons.PADDING.icon(stroke=True),
+            self.tr('Pad Short Phrases'),
+            self.tr('Duplicate short phrases to improve quality, increases generation time'),
+            cfg.pad_short_phrases,
+            parent=self.text_processing_group
+        )
+
+        self.xwm_card = SwitchSettingCard(
+            FIF.COMMAND_PROMPT,
+            self.tr('Create FUZ'),
+            self.tr('Create XWM, LIP, and FUZ'),
+            cfg.xwm_enabled,
+            parent=self.lip_fuz_group
+        )
+
+        self.delete_leftovers = SwitchSettingCard(
+            FIF.DELETE,
+            self.tr('Keep Only FUZ'),
+            self.tr('Delete XMW, LIP, and WAV'),
+            cfg.keep_only_fuz,
+            parent=self.lip_fuz_group
+        )
+
     def setupLayout(self):
         self.resize(1000, 800)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -88,16 +113,20 @@ class GenericSettings(ScrollArea):
         # Add cards to text processing group
         self.text_processing_group.addSettingCard(self.max_text_size_card)
         self.text_processing_group.addSettingCard(self.min_chunk_size_card)
+        self.text_processing_group.addSettingCard(self.pad_short_phrases)
         self.text_processing_group.addSettingCard(self.lowercase_conversion_card)
         self.text_processing_group.addSettingCard(self.whitespace_normalization_card)
         self.text_processing_group.addSettingCard(self.dot_letter_fix_card)
         self.text_processing_group.addSettingCard(self.inline_reference_removal_card)
 
+        self.lip_fuz_group.addSettingCard(self.xwm_card)
+        self.lip_fuz_group.addSettingCard(self.delete_leftovers)
 
         # add setting card group to layout
         self.expand_layout.setSpacing(28)
         self.expand_layout.setContentsMargins(15, 0, 15, 0)
         self.expand_layout.addWidget(self.settings_group)
+        self.expand_layout.addWidget(self.lip_fuz_group)
         self.expand_layout.addWidget(self.text_processing_group)
 
 

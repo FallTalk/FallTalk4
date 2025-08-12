@@ -294,20 +294,6 @@ def downloadStyleTTS2(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadBaseModels(parent: 'FallTalkApp'):
-    try:
-        downloadXTTS(parent)
-        downloadRVC(parent)
-        downloadGPTSoVITS(parent)
-        downloadStyleTTS2(parent)
-        downloadDIA(parent)
-        downloadHiggs(parent)
-        QMetaObject.invokeMethod(parent, "afterDownload", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    except Exception as e:
-        logger.exception(f"Error: {e}")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Models"), Q_ARG(str, "An Error Occured while attempting to connect to Hugging Face. Please check your internet connect and logs."))
-
-
 def download_rvc_models(parent: 'FallTalkApp', character, rvc):
     if rvc:
         download_model_from_hub(parent, character, rvc)
