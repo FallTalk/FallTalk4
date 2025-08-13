@@ -25,6 +25,7 @@ from src.widgets.falltalk_widget import FallTalkWidget
 from src.widgets.table_models import TableModel
 from src.widgets.drawer import RightDrawer
 from src.settings.rvc_settings import RVCSettings
+from src.settings.text_settings import TextSettings
 from src.help.bulk_csv_help import BulkCSVHelp
 from src.help.bulk_fuz_help import BulkFuzHelp
 from src.help.bulk_rvc_help import BulkRVCHelp
@@ -91,19 +92,12 @@ class BulkLipFuzWidget(BaseBulkWidget):
             cfg.include_subdir,
         )
 
-        self.gen_settings = QGroupBox()
-        self.gen_settings.setStyleSheet("border: none")
-        self.gen_settings_layout = QHBoxLayout(self.gen_settings)
-        self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
-        self.gen_settings_layout.addWidget(self.lip_dir_card, 2)
-        self.gen_settings.setLayout(self.gen_settings_layout)
-
-        self.f_c_ = QGroupBox()
-        self.f_c_.setStyleSheet("border: none")
-        self.f_c__layout = QHBoxLayout(self.f_c_)
-        self.f_c__layout.setContentsMargins(0, 0, 0, 0)
-        self.f_c__layout.addWidget(self.include_subdir, 3)
-        self.f_c_.setLayout(self.f_c__layout)
+        self.use_existing_lip = SwitchSettingCard(
+            FIF.SHARE,
+            self.tr('Use Existing LIP'),
+            self.tr('Use existing LIP if it exists or generate new'),
+            cfg.use_existing_lip
+        )
 
         self.setContentsMargins(0, 0, 0, 0)
 
@@ -112,15 +106,17 @@ class BulkLipFuzWidget(BaseBulkWidget):
         self.fuz_widget_view.setContentsMargins(0, 0, 0, 0)
         self.fuz_widget_view.addItem(self.spacer)
         self.fuz_widget_view.addWidget(self.threads_card)
-        self.fuz_widget_view.addWidget(self.gen_settings)
-        self.fuz_widget_view.addWidget(self.f_c_)
-        self.help_drawer.addWidget(BulkFuzHelp(self))
+        self.fuz_widget_view.addWidget(self.include_subdir)
+        self.fuz_widget_view.addWidget( self.use_existing_lip)
+        self.fuz_widget_view.addWidget(self.lip_dir_card)
+
         self.buttons_layout.addWidget(self.settings_button)
         self.buttons_layout.addWidget(self.help_button)
         self.fuz_widget_view.addLayout(self.buttons_layout)
         # self.rvc_widget_view.addWidget(self.r_and_sub)
 
-
+        self.settings_drawer.addWidget(TextSettings(self))
+        self.help_drawer.addWidget(BulkFuzHelp(self))
 
 
         self.lip_dir_card.clicked.connect(self.__onFolderCardClicked)
@@ -176,12 +172,6 @@ class BulkGenerationRVCWidget(BaseBulkWidget):
             self.tr('Character'),
             self.tr('Which Character to Use'))
 
-        self.use_existing_lip = SwitchSettingCard(
-            FIF.SHARE,
-            self.tr('Use Existing LIP'),
-            self.tr('Use existing LIP if it exists or generate new'),
-            cfg.use_existing_lip
-        )
 
         self.setContentsMargins(0, 0, 0, 0)
 
@@ -194,7 +184,6 @@ class BulkGenerationRVCWidget(BaseBulkWidget):
         self.rvc_widget_view.addWidget(self.threads_card)
         self.rvc_widget_view.addWidget(self.character_card)
         self.rvc_widget_view.addWidget(self.replace_existing_card)
-        self.rvc_widget_view.addWidget(self.use_existing_lip)
         self.buttons_layout.addWidget(self.settings_button)
 
         self.settings_drawer.addWidget(RVCSettings())
@@ -283,8 +272,11 @@ class BulkGenerationTableWidget(BaseBulkWidget):
 
         self.upscaler_settings.setLayout(self.upscaler_settings_layout)
         self.bulk_widget_view.addWidget(self.upscaler_settings)
-        self.settings_drawer.addWidget(GenericSettings(self))
+
+        self.settings_drawer.addWidget(TextSettings(self))
         self.help_drawer.addWidget(BulkCSVHelp(self))
+
+        self.buttons_layout.addWidget(self.settings_button)
         self.buttons_layout.addWidget(self.help_button)
         self.bulk_widget_view.addLayout(self.buttons_layout)
 

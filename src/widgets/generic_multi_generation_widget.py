@@ -313,20 +313,22 @@ class GenericMultiGenerationWidget(GenerationWidget):
             # Clear previous files
             self.generated_audio_files = []
 
+
             # Generate audio files
             for i in range(num_generations):
+                selected_reference = references
                 # Update loader message
                 QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection,
                                         Q_ARG(str, f"Generating sample {i+1} of {num_generations}"))
 
-                if references is None or not references:
+                if selected_reference is None or not selected_reference:
                     # Get default reference from default_references.json and characters.json
                     character_name = self.parent.tts_engine.model_name
                     reference_path, transcribe_state = get_default_reference_and_transcript(self.parent, character_name)
 
                     # If reference found, use it
                     if reference_path:
-                        references = [reference_path]
+                        selected_reference = [reference_path]
                     else:
                         self.showErrorPopup(self, self.generate_button, "Please Select Reference Audio")
                         return
@@ -339,7 +341,7 @@ class GenericMultiGenerationWidget(GenerationWidget):
                     self.parent,
                     output_file=output_file,
                     text=text,
-                    selected_audio=combine_references(references),
+                    selected_audio=combine_references(selected_reference),
                     panel=None,
                     transcribe_state=transcribe_state,
                     api=True
@@ -416,6 +418,7 @@ class GenericMultiGenerationWidget(GenerationWidget):
             base, ext = os.path.splitext(audio_file)
             final_output_file = f"{base}_final{ext}"
         else:
+            output_name = output_name.strip()
             dir_name = os.path.dirname(audio_file)
             final_output_file = str(os.path.join(dir_name, output_name+".wav"))
 
@@ -442,6 +445,37 @@ class GenericMultiGenerationWidget(GenerationWidget):
 
 
     def clear_and_delete_results(self):
+        # Stop the media player to release any loaded audio files
+        self.media_player.player.stop()
+        self.media_player.player.setSource(QUrl())
+        
+        # Delete the actual WAV files
+        for audio_file in self.generated_audio_files:
+            if audio_file and os.path.exists(audio_file):
+                try:
+                    os.remove(audio_file)
+                except Exception as e:
+                    logger.warning(f"Could not delete audio file {audio_file}: {e}")
+        
+        # Also delete associated lip and fuz files if they exist
+        for audio_file in self.generated_audio_files:
+            if audio_file and os.path.exists(audio_file):
+                # Try to delete .lip file
+                lip_file = audio_file.replace('.wav', '.lip')
+                if os.path.exists(lip_file):
+                    try:
+                        os.remove(lip_file)
+                    except Exception as e:
+                        logger.warning(f"Could not delete lip file {lip_file}: {e}")
+                
+                # Try to delete .fuz file
+                fuz_file = audio_file.replace('.wav', '.fuz')
+                if os.path.exists(fuz_file):
+                    try:
+                        os.remove(fuz_file)
+                    except Exception as e:
+                        logger.warning(f"Could not delete fuz file {fuz_file}: {e}")
+
         self.clear_results()
 
         # Clear UI items

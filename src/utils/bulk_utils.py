@@ -18,8 +18,8 @@ from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 import PySide6
 
 from src.config.config import cfg
-from src.utils.audio_utils import create_lip_and_fuz
-from src.utils.file_utils import get_bulk_folder, clean_tmp_folder
+from src.utils.audio_utils import create_lip_and_fuz, extract_fuz, create_xwm
+from src.utils.file_utils import get_bulk_folder, clean_tmp_folder, find_files
 from src.utils.filesystem_utils import get_app_root
 from src.utils.model_utils import get_character_model, get_trained_character
 from src.utils.huggingface_utils import download_models, download_rvc_models
@@ -71,7 +71,6 @@ def process_xwm_file(xwm_file, cfg, files, use_existing_lip=False):
 
 
 def process_fuz_file(fuz_file, cfg, files, use_existing_lip=False):
-    from src.utils.audio_utils import extract_fuz, create_xwm
     extract_fuz(fuz_file)
     xwm_file = fuz_file.replace(".fuz", ".xwm")
     wav_file = fuz_file.replace(".fuz", ".wav")
@@ -124,8 +123,8 @@ def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent, direc
 
 
 def bulk_fuz(parent, directory, include_subdir, threads=1, use_existing_lip=True):
-    wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
-    xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
+    wav_files = find_files('wav', include_subdir, directory)
+    xwm_files = find_files('xwm', include_subdir, directory)
     count = 0
     time_total = 0
     files = set()
@@ -166,16 +165,9 @@ def bulk_fuz(parent, directory, include_subdir, threads=1, use_existing_lip=True
 def bulk_rvc_inference(parent, directory, model, include_subdir, replace, threads=1, use_existing_lip=True):
     start_time = time.time()
 
-    if include_subdir:
-        pattern_base = os.path.join(directory, '**')
-        recursive = True
-    else:
-        pattern_base = directory
-        recursive = False
-
-    wav_files = glob.glob(os.path.join(pattern_base, '*.wav'), recursive=recursive)
-    fuz_files = glob.glob(os.path.join(pattern_base, '*.fuz'), recursive=recursive)
-    xwm_files = glob.glob(os.path.join(pattern_base, '*.xwm'), recursive=recursive)
+    wav_files = find_files('wav', include_subdir, directory)
+    xwm_files = find_files('xwm', include_subdir, directory)
+    fuz_files  = find_files('fuz', include_subdir, directory)
 
     count = 0
     time_total = 0

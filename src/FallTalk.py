@@ -813,7 +813,7 @@ class FallTalkApp(FallTalkFluentWindow):
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.stackedWidget.currentWidget().generate_button, "Please Select a Valid Folder")
                 else:
                     self.showLoaderPopup(f"Generating Bulk FUZ Audio", f"Gathering Files")
-                    tr = (threading.Thread(target=bulk_fuz, args=(self, lip_dir, cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads)), daemon=True))
+                    tr = (threading.Thread(target=bulk_fuz, args=(self, lip_dir, cfg.get(cfg.include_subdir), cfg.get(cfg.threads), cfg.get(cfg.use_existing_lip)), daemon=True))
                     tr.start()
 
     def generate_audio(self, recording_file=None, transcribe_state=None):

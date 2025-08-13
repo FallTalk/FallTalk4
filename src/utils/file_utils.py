@@ -1,3 +1,4 @@
+import glob
 import logging
 import os
 import platform
@@ -36,7 +37,7 @@ def clean_path(path_str):
 
 def sanitize_filename(filename):
     invalid_chars = '<>:"/\\|?*%'
-    return ''.join(c for c in filename if c not in invalid_chars)
+    return ''.join(c for c in filename if c not in invalid_chars).strip()
 
 
 def formatted_time_stamp():
@@ -49,6 +50,12 @@ def formatted_time_stamp_uuid():
     unique_id = uuid.uuid4()
     return f"{formatted_time_stamp()}_{unique_id.hex[:10]}"
 
+def find_files(ext, include_subdir, directory):
+    if include_subdir:
+        pattern = os.path.join(directory, '**', f'*.{ext}')
+    else:
+        pattern = os.path.join(directory, f'*.{ext}')
+    return glob.glob(pattern, recursive=include_subdir)
 
 def get_bulk_folder(engine_name):
     output_folder = os.path.join(get_app_root(), f"bulk_outputs/{formatted_time_stamp()}_{engine_name}")

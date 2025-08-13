@@ -439,6 +439,9 @@ class EzVoiceCreatorWidget(FallTalkWidget):
                 if os.path.exists(local_output_file):
                     os.remove(local_output_file)
 
+                if os.path.exists(output_file):
+                    os.remove(output_file)
+
                 bat_contents = f"""@echo off
                 cd /d "{ck_dir}"
                 "{ck_exe}" -ExportDialogue:{os.path.basename(mod_file)}
@@ -451,7 +454,7 @@ class EzVoiceCreatorWidget(FallTalkWidget):
                     # Run .bat blocking
                     subprocess.run([bat_file], check=True)
                 finally:
-                    time.sleep(2)
+                    time.sleep(10)
                     # Clean up the temp .bat file
                     if os.path.exists(bat_file):
                         os.remove(bat_file)
