@@ -454,11 +454,26 @@ class EzVoiceCreatorWidget(FallTalkWidget):
                     # Run .bat blocking
                     subprocess.run([bat_file], check=True)
                 finally:
-                    time.sleep(10)
+                    # Wait up to 60 seconds for the output file to be created
+                    timeout = 60  # seconds
+                    check_interval = 1  # second
+                    elapsed_time = 0
+
                     # Clean up the temp .bat file
                     if os.path.exists(bat_file):
                         os.remove(bat_file)
-                    shutil.copy2(output_file, local_output_file)
+
+                    while elapsed_time < timeout:
+                        if os.path.exists(output_file):
+                            break
+                        time.sleep(check_interval)
+                        elapsed_time += check_interval
+
+                    # Check if file exists before copying
+                    if os.path.exists(output_file):
+                        shutil.copy2(output_file, local_output_file)
+                    else:
+                        raise FileNotFoundError(f"Output file was not created within {timeout} seconds")
 
                 # Check if the output file was created
                 if os.path.exists(local_output_file):
