@@ -34,9 +34,9 @@ class GenericGenerationWidget(GenerationWidget):
         self.start_dropdown_card = None
         self.end_dropdown_card = None
         self.start_and_end = None
-        self.temp_and_rep = None
         self.transcribe_button = None
 
+        self.setup_f5_specific_ui()
         self.addGenSettings()
 
         self.media_player = StandardAudioPlayerBar(self)
@@ -67,7 +67,7 @@ class GenericGenerationWidget(GenerationWidget):
 
         self.boxLayout.addLayout(self.buttons_layout)
         self.addToFrame(self.media_player)
-
+        self.hide_f5_specific_ui()
         self.setEnabled(False)
 
     def change_engine(self, engine_type: EngineType):
@@ -84,39 +84,27 @@ class GenericGenerationWidget(GenerationWidget):
             self.help_widget.setParent(None)
             self.help_widget.deleteLater()
             self.help_widget = None
-            
-        # Clear F5-specific UI if exists
-        if self.start_and_end:
-            self.start_and_end.setParent(None)
-            self.start_and_end.deleteLater()
-            self.start_and_end = None
-            
-        if self.temp_and_rep:
-            self.temp_and_rep.setParent(None)
-            self.temp_and_rep.deleteLater()
-            self.temp_and_rep = None
-            
+
         if self.transcribe_button:
             self.transcribe_button.setVisible(False)
             self.transcribe_button.setEnabled(False)
 
         # Setup F5-specific UI if needed
         if engine_type == EngineType.F5:
-            self.setup_f5_specific_ui()
+            self.mode_card.setVisible(True)
             # Show F5-specific elements based on mode
             is_edit_mode = cfg.get(cfg.f5_mode) == "edit"
             if self.start_and_end:
                 self.start_and_end.setVisible(is_edit_mode)
-            if self.temp_and_rep:
-                self.temp_and_rep.setVisible(is_edit_mode)
             if self.transcribe_button:
                 self.transcribe_button.setVisible(is_edit_mode)
+
+            self.generate_button.setEnabled(not is_edit_mode)
         else:
+            self.mode_card.setVisible(False)
             # Hide F5-specific elements for other engines
             if self.start_and_end:
                 self.start_and_end.setVisible(False)
-            if self.temp_and_rep:
-                self.temp_and_rep.setVisible(False)
             if self.transcribe_button:
                 self.transcribe_button.setVisible(False)
 
@@ -145,6 +133,13 @@ class GenericGenerationWidget(GenerationWidget):
                 pass  # No connections to disconnect
             self.generate_button.clicked.connect(self.parent.generate_audio)
 
+    def hide_f5_specific_ui(self):
+        """Hide F5-specific UI elements"""
+        if self.transcribe_button:
+            self.transcribe_button.setVisible(False)
+        if self.mode_card:
+            self.mode_card.setVisible(False)
+
     def setup_f5_specific_ui(self):
         """Set up the F5-specific UI elements for edit mode"""
         self.mode_card = RadioSettingCard(
@@ -162,6 +157,7 @@ class GenericGenerationWidget(GenerationWidget):
             FIF.RIGHT_ARROW,
             self.tr('Start'),
             self.tr('Where do we start generating the new text'))
+
         self.end_dropdown_card = ComboBoxWordsCard(
             FIF.LEFT_ARROW,
             self.tr('End'),
@@ -174,25 +170,19 @@ class GenericGenerationWidget(GenerationWidget):
         self.start_and_end_layout.addWidget(self.start_dropdown_card, 3)
         self.start_and_end_layout.addWidget(self.end_dropdown_card, 3)
         self.start_and_end.setLayout(self.start_and_end_layout)
-        self.start_and_end.setVisible(cfg.get(cfg.f5_mode) == "edit")
         self.addToFrame(self.start_and_end)
-
-        self.temp_and_rep = QGroupBox()
-        self.temp_and_rep.setStyleSheet("border: none")
-        self.temp_and_rep_layout = QHBoxLayout()
-        self.temp_and_rep_layout.setContentsMargins(0, 0, 0, 0)
-        self.temp_and_rep.setLayout(self.temp_and_rep_layout)
-        self.temp_and_rep.setVisible(cfg.get(cfg.f5_mode) == "edit")
-        self.addToFrame(self.temp_and_rep)
 
     def mode_changed(self, change):
         """Handle mode changes for F5 widget"""
         if self.engine_type != EngineType.F5:
             return
 
-        self.start_and_end.setVisible(change.value == "edit")
-        self.temp_and_rep.setVisible(change.value == "edit")
-        self.transcribe_button.setVisible(change.value == "edit")
+        if self.start_dropdown_card:
+            self.start_dropdown_card.setVisible(change.value == "edit")
+        if self.end_dropdown_card:
+            self.end_dropdown_card.setVisible(change.value == "edit")
+        if self.transcribe_button:
+            self.transcribe_button.setVisible(change.value == "edit")
 
     def transcribe(self):
         """Transcribe reference audio"""
@@ -201,7 +191,8 @@ class GenericGenerationWidget(GenerationWidget):
     def onReferenceSelect(self):
         """Handle reference selection"""
         if self.engine_type == EngineType.F5:
-            self.generate_button.setEnabled(True)
+            is_edit_mode = cfg.get(cfg.f5_mode) == "edit"
+            self.generate_button.setEnabled(not is_edit_mode)
             if self.transcribe_button:
                 self.transcribe_button.setEnabled(True)
         else:

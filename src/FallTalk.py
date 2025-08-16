@@ -30,7 +30,7 @@ from src.utils.audio_utils import combine_wav_files, combine_references
 from src.utils.bulk_utils import bulk_inference, bulk_rvc_inference, bulk_fuz
 from src.utils.file_utils import clean_folder, sanitize_filename, formatted_time_stamp_uuid, get_output_file_name
 from src.utils.filesystem_utils import get_app_root
-from src.utils.huggingface_utils import get_latest_release, get_model_diff, downloadBaseModels, download_models, \
+from src.utils.huggingface_utils import get_latest_release, get_model_diff, download_models, \
     download_all_models_config
 from src.utils.icons import FallTalkIcons
 from src.utils.inference_utils import (
@@ -667,6 +667,7 @@ class FallTalkApp(FallTalkFluentWindow):
         references = self.reference_widget.reference_audio
         if references is None or not references:
             self.showErrorPopup(widget, widget.transcribe_button, "Please Select Reference Audio")
+            self.complete_loader()
         else:
             if len(references) == 1:
                 logger.debug(references)
@@ -812,7 +813,7 @@ class FallTalkApp(FallTalkFluentWindow):
                     self.showErrorPopup(self.bulk_generate_widget, self.bulk_generate_widget.stackedWidget.currentWidget().generate_button, "Please Select a Valid Folder")
                 else:
                     self.showLoaderPopup(f"Generating Bulk FUZ Audio", f"Gathering Files")
-                    tr = (threading.Thread(target=bulk_fuz, args=(self, lip_dir, cfg.get(cfg.include_subdir), cfg.get(cfg.replace_existing), cfg.get(cfg.threads)), daemon=True))
+                    tr = (threading.Thread(target=bulk_fuz, args=(self, lip_dir, cfg.get(cfg.include_subdir), cfg.get(cfg.threads), cfg.get(cfg.use_existing_lip)), daemon=True))
                     tr.start()
 
     def generate_audio(self, recording_file=None, transcribe_state=None):

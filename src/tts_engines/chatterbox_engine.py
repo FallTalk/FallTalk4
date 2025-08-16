@@ -29,7 +29,6 @@ class ChatterboxEngine(tts_engine):
     def unload_model(self):
         super().basic_unload_model()
 
-
     def load_model(self):
         logging_utils.logger.debug(f"Loading {self.model_path}")
         if self.is_base:

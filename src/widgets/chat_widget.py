@@ -288,13 +288,6 @@ class ChatWidget(GenerationWidget):
             cfg.apbwe_enabled
         )
 
-        self.pad_short_phrases = SwitchSettingCard(
-            FallTalkIcons.PADDING.icon(stroke=True),
-            self.tr('Pad Short Phrases'),
-            self.tr('Duplicate short phrases to improve quality, increases generation time'),
-            cfg.pad_short_phrases
-        )
-
         self.gen_settings = QGroupBox()
         self.gen_settings.setStyleSheet("border: none")
         self.gen_settings_layout = QHBoxLayout()
@@ -302,7 +295,6 @@ class ChatWidget(GenerationWidget):
 
         self.gen_settings_layout.addWidget(self.rvc_enabled, 2)
         self.gen_settings_layout.addWidget(self.upscaler_enabled, 2)
-        self.gen_settings_layout.addWidget(self.pad_short_phrases, 2)
         self.gen_settings.setLayout(self.gen_settings_layout)
 
         self.addToFrame(self.gen_settings)
@@ -330,6 +322,8 @@ class ChatWidget(GenerationWidget):
         self.media_recorder = StandardAudioRecorderBar(self)
         self.addToFrame(self.media_recorder)
         self.media_recorder.doneRecording.connect(self.transcribe_audio)
+
+        self.addGenSettings()
 
         # Create input area at the bottom
         self.input_layout = QHBoxLayout()
@@ -362,7 +356,6 @@ class ChatWidget(GenerationWidget):
         # Add input area to main layout
         self.boxLayout.addLayout(self.input_layout)
 
-        self.addGenSettings()
 
     def transcribe_audio(self, recording_file):
         QMetaObject.invokeMethod(self.parent, "showLoaderPopup", Qt.QueuedConnection,

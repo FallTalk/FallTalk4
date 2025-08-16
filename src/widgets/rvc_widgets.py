@@ -61,25 +61,12 @@ class BaseRVCWidget(QWidget):
             self.tr('Automatically Play Generated Audio'),
             cfg.auto_play,
         )
-        self.delete_leftovers = SwitchSettingCard(
-            FIF.DELETE,
-            self.tr('Keep Only FUZ'),
-            self.tr('Delete XMW, LIP, and WAV'),
-            cfg.keep_only_fuz
-        )
-        self.xwm_card = SwitchSettingCard(
-            FIF.COMMAND_PROMPT,
-            self.tr('Create FUZ'),
-            self.tr('Create XWM, LIP, and FUZ'),
-            cfg.xwm_enabled,
-        )
+
         self.gen_settings = QGroupBox()
         self.gen_settings.setStyleSheet("border: none")
         self.gen_settings_layout = QHBoxLayout()
         self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
         self.gen_settings_layout.addWidget(self.autoplay, 2)
-        self.gen_settings_layout.addWidget(self.xwm_card, 2)
-        self.gen_settings_layout.addWidget(self.delete_leftovers, 2)
 
         self.gen_settings.setLayout(self.gen_settings_layout)
         self.view.addWidget(self.gen_settings)

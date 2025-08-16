@@ -358,7 +358,7 @@ class tts_engine(ABC):
                         end_time = best_match[-1]['end']
 
                         # Optional padding (e.g., for smoother cuts)
-                        pad = 0.05
+                        pad = 0.001
                         end_pad = 0.5
 
                         start_time_padded = max(0.0, start_time - pad)

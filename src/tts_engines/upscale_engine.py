@@ -15,6 +15,7 @@ from pydub.silence import detect_silence, split_on_silence
 
 from src.utils import logging_utils
 from src.utils.filesystem_utils import get_app_code_root
+from src.utils.file_utils import find_files
 
 sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'audio_upscaler')))
 from third_party.audio_upscaler.predict import Predictor
@@ -49,11 +50,12 @@ class UpscaleEngine:
 
             print('Getting Files')
 
-            flac_files = glob.glob(os.path.join(directory, '**', '*.flac'), recursive=include_subdir)
-            wav_files = glob.glob(os.path.join(directory, '**', '*.wav'), recursive=include_subdir)
-            fuz_files = glob.glob(os.path.join(directory, '**', '*.fuz'), recursive=include_subdir)
-            xwm_files = glob.glob(os.path.join(directory, '**', '*.xwm'), recursive=include_subdir)
-            mp3_files = glob.glob(os.path.join(directory, '**', '*.mp3'), recursive=include_subdir)
+
+            flac_files = find_files('flac', include_subdir, directory)
+            wav_files = find_files('wav', include_subdir, directory)
+            fuz_files = find_files('fuz', include_subdir, directory)
+            xwm_files = find_files('xwm', include_subdir, directory)
+            mp3_files = find_files('mp3', include_subdir, directory)
 
             total = len(wav_files) + len(fuz_files) + len(xwm_files) + len(flac_files) + len(mp3_files)
             count = 0

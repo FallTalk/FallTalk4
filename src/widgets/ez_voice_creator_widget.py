@@ -132,22 +132,6 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.f_and_u_layout.addWidget(self.csv_file_card, 1)
         self.f_and_u.setLayout(self.f_and_u_layout)
 
-        # Generation settings
-
-
-        self.xwm_card = SwitchSettingCard(
-            FIF.COMMAND_PROMPT,
-            self.tr('Create FUZ'),
-            self.tr('Create XWM, LIP, and FUZ'),
-            cfg.xwm_enabled,
-        )
-
-        self.delete_leftovers = SwitchSettingCard(
-            FIF.DELETE,
-            self.tr('Keep Only FUZ'),
-            self.tr('Delete XMW, LIP, and WAV'),
-            cfg.keep_only_fuz
-        )
 
         self.rvc_enabled = SwitchSettingCard(
             FIF.MEGAPHONE,
@@ -155,16 +139,6 @@ class EzVoiceCreatorWidget(FallTalkWidget):
             self.tr('Use RVC Upscaler (Recommended for Untrained)'),
             cfg.rvc_enabled
         )
-
-        # Generation settings layout
-        self.gen_settings = QGroupBox()
-        self.gen_settings.setStyleSheet("border: none")
-        self.gen_settings_layout = QHBoxLayout()
-        self.gen_settings_layout.setContentsMargins(0, 0, 0, 0)
-        self.gen_settings_layout.addWidget(self.threads_card, 2)
-        self.gen_settings_layout.addWidget(self.xwm_card, 2)
-        self.gen_settings_layout.addWidget(self.delete_leftovers, 2)
-        self.gen_settings.setLayout(self.gen_settings_layout)
 
         self.upscaler_enabled = SwitchSettingCard(
             FIF.MEGAPHONE,
@@ -174,20 +148,13 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         )
 
 
-        self.pad_short_phrases = SwitchSettingCard(
-            FallTalkIcons.PADDING.icon(stroke=True),
-            self.tr('Pad Short Phrases'),
-            self.tr('Duplicate short phrases to improve quality, increases generation time'),
-            cfg.pad_short_phrases
-        )
-
         self.upscaler_settings = QGroupBox()
         self.upscaler_settings.setStyleSheet("border: none")
         self.upscaler_settings_layout = QHBoxLayout()
         self.upscaler_settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.upscaler_settings_layout.addWidget(self.threads_card, 2)
         self.upscaler_settings_layout.addWidget(self.rvc_enabled, 2)
         self.upscaler_settings_layout.addWidget(self.upscaler_enabled, 2)
-        self.upscaler_settings_layout.addWidget(self.pad_short_phrases, 2)
         self.upscaler_settings.setLayout(self.upscaler_settings_layout)
 
         # Buttons layout
@@ -244,7 +211,6 @@ class EzVoiceCreatorWidget(FallTalkWidget):
         self.addToFrame(self.dialogue_table)
         self.addToFrame(self.controls_widget)
         self.addToFrame(self.f_and_u)
-        self.addToFrame(self.gen_settings)
         self.addToFrame(self.upscaler_settings)
         self.addToFrame(self.buttons_widget)
 
@@ -473,6 +439,9 @@ class EzVoiceCreatorWidget(FallTalkWidget):
                 if os.path.exists(local_output_file):
                     os.remove(local_output_file)
 
+                if os.path.exists(output_file):
+                    os.remove(output_file)
+
                 bat_contents = f"""@echo off
                 cd /d "{ck_dir}"
                 "{ck_exe}" -ExportDialogue:{os.path.basename(mod_file)}
@@ -485,11 +454,26 @@ class EzVoiceCreatorWidget(FallTalkWidget):
                     # Run .bat blocking
                     subprocess.run([bat_file], check=True)
                 finally:
-                    time.sleep(2)
+                    # Wait up to 60 seconds for the output file to be created
+                    timeout = 60  # seconds
+                    check_interval = 1  # second
+                    elapsed_time = 0
+
                     # Clean up the temp .bat file
                     if os.path.exists(bat_file):
                         os.remove(bat_file)
-                    shutil.copy2(output_file, local_output_file)
+
+                    while elapsed_time < timeout:
+                        if os.path.exists(output_file):
+                            break
+                        time.sleep(check_interval)
+                        elapsed_time += check_interval
+
+                    # Check if file exists before copying
+                    if os.path.exists(output_file):
+                        shutil.copy2(output_file, local_output_file)
+                    else:
+                        raise FileNotFoundError(f"Output file was not created within {timeout} seconds")
 
                 # Check if the output file was created
                 if os.path.exists(local_output_file):

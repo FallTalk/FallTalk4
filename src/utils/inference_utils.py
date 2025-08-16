@@ -53,20 +53,32 @@ def get_default_reference(parent, character_name):
             # Create a list to hold references that meet the duration requirement
             valid_references = []
             combined_transcript = ""
+            total_duration = 0
+            
+            # Keep track of selected references to avoid duplicates
+            selected_refs = []
             
             # Keep selecting references until we meet the minimum duration requirement
             while len(valid_references) < len(default_refs) and len(valid_references) < 5:  # Limit to 5 to prevent infinite loops
-                # Select a random default reference
-                random_ref = random.choice(default_refs)
+                # Filter out already selected references
+                available_refs = [ref for ref in default_refs if ref not in selected_refs]
                 
-                # Skip if we've already selected this reference
-                if random_ref in valid_references:
-                    continue
+                # If no more references are available, break the loop
+                if not available_refs:
+                    break
+
+                random.shuffle(available_refs)
+                    
+                # Select a random default reference from available ones
+                random_ref = random.choice(available_refs)
+                
+                # Add to selected references to avoid picking it again
+                selected_refs.append(random_ref)
 
                 # Get the filename and transcript from default_references.json
                 wav_filename = random_ref.get('filename', '')
                 transcript = random_ref.get('transcript', '')
-                duration = random_ref.get('duration', '')
+                ref_duration = random_ref.get('duration', 0)
 
                 # Convert WAV filename to FUZ filename to match with characters.json
                 # Example: "00112D18_1.wav" -> "00112d18_1.fuz"
@@ -101,33 +113,25 @@ def get_default_reference(parent, character_name):
 
                             # If the file exists now, add it to our valid references
                             if os.path.exists(temp_file):
-                                valid_references.append(temp_file)
-                                combined_transcript += " " + transcript if combined_transcript else transcript
-                                
-                                # Check if we have enough duration
-                                total_duration = sum(
-                                    ref.get('duration', 0) for ref in default_refs 
-                                    if ref.get('filename', '').replace('.wav', '.fuz').lower() == 
-                                       os.path.basename(temp_file).replace('.wav', '.fuz').lower()
-                                )
-                                
-                                # Try to get a more accurate duration by loading the file
+                                # Get actual duration by reading the file once
+                                actual_duration = 0
                                 try:
                                     import soundfile as sf
                                     audio_data, sample_rate = sf.read(temp_file)
                                     actual_duration = len(audio_data) / sample_rate
-                                    
-                                    # If we have only one reference and it's too short, try to get more
-                                    if len(valid_references) == 1 and actual_duration < min_reference_length:
-                                        continue
-                                    else:
-                                        # If we have enough duration or we've tried enough times, break
-                                        if actual_duration >= min_reference_length or len(valid_references) >= 2:
-                                            break
                                 except Exception as e:
-                                    # If we can't read the file, rely on the stored duration
-                                    if total_duration >= min_reference_length:
-                                        break
+                                    # If we can't read the file, use the stored duration
+                                    actual_duration = ref_duration
+                                
+                                valid_references.append(temp_file)
+                                combined_transcript += " " + transcript if combined_transcript else transcript
+                                
+                                # Add to total duration using actual duration
+                                total_duration += actual_duration
+                                
+                                # Check if we have enough duration
+                                if total_duration >= min_reference_length:
+                                    break
 
             # If we have valid references, process them
             if valid_references:
