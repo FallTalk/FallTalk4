@@ -278,107 +278,123 @@ class tts_engine(ABC):
         max_text_size = cfg.get(cfg.max_text_size)
         min_chunk_size = cfg.get(cfg.min_chunk_size)
 
-        if text and len(text) > max_text_size:
-            # Split text into chunks
-            chunks = split_text(text, max_text_size, min_chunk_size)
+        try:
+            if text and len(text) > max_text_size:
+                # Split text into chunks
+                chunks = split_text(text, max_text_size, min_chunk_size)
 
-            # Process each chunk and combine the audio
-            combined_audio = None
-            combined_sample_rate = None
+                # Process each chunk and combine the audio
+                combined_audio = None
+                combined_sample_rate = None
 
-            for chunk in chunks:
-                # Apply preprocessing to each chunk
-                processed_chunk = preprocess_text(chunk)
+                for chunk in chunks:
+                    # Apply preprocessing to each chunk
+                    processed_chunk = preprocess_text(chunk)
 
-                # Get audio data and sample rate from inference for this chunk
-                chunk_audio, chunk_sample_rate = self.inference(processed_chunk, transcript, voice, language, None, streaming, speaker, start_time, end_time)
+                    # Get audio data and sample rate from inference for this chunk
+                    chunk_audio, chunk_sample_rate = self.inference(processed_chunk, transcript, voice, language, None, streaming, speaker, start_time, end_time)
 
-                # If this is the first chunk, initialize combined audio
-                if combined_audio is None:
-                    combined_audio = chunk_audio
-                    combined_sample_rate = chunk_sample_rate
-                else:
-                    # Append this chunk's audio to the combined audio
-                    combined_audio = np.concatenate((combined_audio, chunk_audio))
+                    # If this is the first chunk, initialize combined audio
+                    if combined_audio is None:
+                        combined_audio = chunk_audio
+                        combined_sample_rate = chunk_sample_rate
+                    else:
+                        # Append this chunk's audio to the combined audio
+                        combined_audio = np.concatenate((combined_audio, chunk_audio))
 
-            # Process the combined audio
-            self.process_audio(combined_audio, combined_sample_rate, output_file)
-        else:
-            # For short text, proceed with the original logic
-            # If text is short and pad_short_phrases is enabled, duplicate it
-            if text and cfg.get(cfg.pad_short_phrases) and len(text) < min_chunk_size:
-                while len(text) < min_chunk_size:
-                    filler = random.choice(FALLOUT_FILLER_PHRASES)
-                    text = filler + " " + text
+                # Process the combined audio
+                self.process_audio(combined_audio, combined_sample_rate, output_file)
+                return  # Successfully processed long text
+            else:
+                # For short text, proceed with the original logic
+                # If text is short and pad_short_phrases is enabled, duplicate it
+                if text and cfg.get(cfg.pad_short_phrases) and len(text) < min_chunk_size:
+                    while len(text) < min_chunk_size:
+                        filler = random.choice(FALLOUT_FILLER_PHRASES)
+                        text = filler + " " + text
 
-            # Get audio data and sample rate from inference
-            audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
+                # Get audio data and sample rate from inference
+                audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
 
-            # If we padded the text, we need to extract just the first instance using whisperx
-            if original_text != text and cfg.get(cfg.pad_short_phrases) and self.whisper_engine and output_file:
-                # Transcribe the audio directly
-                transcription = self.whisper_engine.transcribe(audio_data, sample_rate)
+                # If we padded the text, we need to extract just the first instance using whisperx
+                if original_text != text and cfg.get(cfg.pad_short_phrases) and self.whisper_engine and output_file:
+                    try:
+                        # Transcribe the audio directly
+                        transcription = self.whisper_engine.transcribe(audio_data, sample_rate)
 
-                if transcription and 'words_info' in transcription:
-                    words_info = transcription['words_info']
-                    # Normalize each word from whisperx
-                    normalized_words = []
-                    for word_info in words_info:
-                        normalized_word = normalize_text(word_info['word'])
-                        if normalized_word:  # skip punctuation-only words
-                            normalized_words.append({
-                                'word': normalized_word,
-                                'start': word_info['start'],
-                                'end': word_info['end']
-                            })
+                        if transcription and 'words_info' in transcription:
+                            words_info = transcription['words_info']
+                            # Normalize each word from whisperx
+                            normalized_words = []
+                            for word_info in words_info:
+                                normalized_word = normalize_text(word_info['word'])
+                                if normalized_word:  # skip punctuation-only words
+                                    normalized_words.append({
+                                        'word': normalized_word,
+                                        'start': word_info['start'],
+                                        'end': word_info['end']
+                                    })
 
-                    normalized_original = normalize_text(original_text)
+                            normalized_original = normalize_text(original_text)
 
-                    # Create list of just normalized words
-                    word_strings = [w['word'] for w in normalized_words]
+                            # Create list of just normalized words
+                            word_strings = [w['word'] for w in normalized_words]
 
-                    best_match = None
-                    best_ratio = 0.0
+                            best_match = None
+                            best_ratio = 0.0
 
-                    # Try all possible windows (up to len(words))
-                    for window_size in range(1, min(15, len(word_strings)) + 1):  # 15-word max window
-                        for i in range(len(word_strings) - window_size + 1):
-                            window_words = word_strings[i:i + window_size]
-                            window_text = " ".join(window_words)
+                            # Try all possible windows (up to len(words))
+                            for window_size in range(1, min(15, len(word_strings)) + 1):  # 15-word max window
+                                for i in range(len(word_strings) - window_size + 1):
+                                    window_words = word_strings[i:i + window_size]
+                                    window_text = " ".join(window_words)
 
-                            ratio = SequenceMatcher(None, window_text, normalized_original).ratio()
+                                    ratio = SequenceMatcher(None, window_text, normalized_original).ratio()
 
-                            if ratio > best_ratio:
-                                best_ratio = ratio
-                                best_match = normalized_words[i:i + window_size]
+                                    if ratio > best_ratio:
+                                        best_ratio = ratio
+                                        best_match = normalized_words[i:i + window_size]
 
-                    # Cut audio if a good match is found
-                    if best_match and best_ratio > 0.8:
-                        start_time = best_match[0]['start']
-                        end_time = best_match[-1]['end']
+                            # Cut audio if a good match is found
+                            if best_match and best_ratio > 0.8:
+                                start_time = best_match[0]['start']
+                                end_time = best_match[-1]['end']
 
-                        # Optional padding (e.g., for smoother cuts)
-                        pad = 0.001
-                        end_pad = 0.5
+                                # Optional padding (e.g., for smoother cuts)
+                                pad = 0.001
+                                end_pad = 0.5
 
-                        start_time_padded = max(0.0, start_time - pad)
-                        end_time_padded = end_time + end_pad
+                                start_time_padded = max(0.0, start_time - pad)
+                                end_time_padded = end_time + end_pad
 
-                        start_sample = max(0, int(start_time_padded * sample_rate))
-                        end_sample = min(len(audio_data), int(end_time_padded * sample_rate))
+                                start_sample = max(0, int(start_time_padded * sample_rate))
+                                end_sample = min(len(audio_data), int(end_time_padded * sample_rate))
 
-                        print(f"Sample rate: {sample_rate} Hz")
-                        print(f"Audio duration: {len(audio_data) / sample_rate:.3f} sec")
-                        print(f"Word: ({start_time:.3f}s to {end_time:.3f}s)")
-                        print(f"Padded range: {start_time_padded:.3f}s to {end_time_padded:.3f}s")
-                        print(f"Computed samples: start={start_sample}, end={end_sample}")
-                        print(f"Audio data length: {len(audio_data)}")
+                                print(f"Sample rate: {sample_rate} Hz")
+                                print(f"Audio duration: {len(audio_data) / sample_rate:.3f} sec")
+                                print(f"Word: ({start_time:.3f}s to {end_time:.3f}s)")
+                                print(f"Padded range: {start_time_padded:.3f}s to {end_time_padded:.3f}s")
+                                print(f"Computed samples: start={start_sample}, end={end_sample}")
+                                print(f"Audio data length: {len(audio_data)}")
 
-                        if end_sample > start_sample:
-                            audio_data = audio_data[start_sample:end_sample]
+                                if end_sample > start_sample:
+                                    audio_data = audio_data[start_sample:end_sample]
+                    except Exception as e:
+                        print(f"Error during transcription processing: {e}")
+                        # Continue with full audio if transcription fails
 
-            # Save or process final audio
-            self.process_audio(audio_data, sample_rate, output_file)
+                # Save or process final audio
+                self.process_audio(audio_data, sample_rate, output_file)
+        except Exception as e:
+            print(f"Error during audio generation: {e}")
+            # Try to generate audio with minimal processing
+            try:
+                if text:
+                    audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
+                    self.process_audio(audio_data, sample_rate, output_file)
+            except Exception as fallback_error:
+                print(f"Fallback audio generation also failed: {fallback_error}")
+                raise  # Re-raise if even fallback fails
 
     def preload_rvc_params(self):
         self.rvc_preload = True
