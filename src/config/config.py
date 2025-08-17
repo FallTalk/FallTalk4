@@ -178,7 +178,7 @@ class Config(QConfig):
     keep_only_fuz = ConfigItem("App", "keep_only_fuz", False, BoolValidator())
     use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
     huggingface_cache_dir = ConfigItem("App", "huggingface_cache_dir", None, CustomFolderValidator(), restart=True)
-    huggingface_key = ConfigItem("APP", "huggingface_key", None, ConfigValidator())
+    huggingface_key = ConfigItem("APP", "huggingface_key", None, ConfigValidator(), restart=True)
     disableSSLVerify= ConfigItem("App", "disable_ssl_verify", False, BoolValidator(), restart=True)
 
 
@@ -469,7 +469,7 @@ class Config(QConfig):
 
 YEAR = 2025
 AUTHOR = "Bryant21"
-VERSION = '2.0.1'
+VERSION = '2.0.2'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"

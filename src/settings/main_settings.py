@@ -9,7 +9,7 @@ from qfluentwidgets import ScrollArea, ExpandLayout
 
 from src.config.config import cfg, HELP_URL, YEAR, AUTHOR, VERSION, NEXUS_URL, KOFI_URL, DISCORD_URL, HUGGING_FACE
 from src.enums.engine_type import EngineType
-from src.ui.cards import SpinSettingCard
+from src.ui.cards import SpinSettingCard, TextSettingCard
 from src.utils.icons import FallTalkIcons
 
 
@@ -21,6 +21,7 @@ class FallTalkSettings(ScrollArea):
         self.scroll_widget = QWidget()
         self.expand_layout = ExpandLayout(self.scroll_widget)
         self.settings_group = SettingCardGroup(self.tr('General'), self.scroll_widget)
+        self.hf_group = SettingCardGroup(self.tr('Hugging Face'), self.scroll_widget)
 
         self.tts_engine_card = OptionsSettingCard(
             cfg.engine,
@@ -72,9 +73,17 @@ class FallTalkSettings(ScrollArea):
         self.hugging_face_cache = PushSettingCard(
             self.tr('Huggingface Cache Directory'),
             FallTalkIcons.HUGGING_FACE.icon(),
-            self.tr("Where the huggingface model cache is stored. (music gen, transcription, system files)"),
+            self.tr("Where the huggingface model cache is stored. (required files)"),
             cfg.get(cfg.huggingface_cache_dir),
-            self.settings_group
+            self.hf_group
+        )
+
+        self.hugging_face_key = TextSettingCard(
+            cfg.huggingface_key,
+            FallTalkIcons.HUGGING_FACE.icon(),
+            self.tr('Huggingface API Access Token'),
+            self.tr('Optional, https://huggingface.co/docs/hub/security-tokens if you are getting 401 Errors'),
+            placeholder="Paste Code Here and Restart"
         )
 
         self.load_engine_art_start = SwitchSettingCard(
@@ -90,7 +99,7 @@ class FallTalkSettings(ScrollArea):
             self.tr('Disable SSL Verification'),
             self.tr('If you are unable to download models, try disabling SSL here.'),
             configItem=cfg.disableSSLVerify,
-            parent=self.settings_group
+            parent=self.hf_group
         )
 
         self.seed = SpinSettingCard(
@@ -205,7 +214,7 @@ class FallTalkSettings(ScrollArea):
             FallTalkIcons.HUGGING_FACE.icon(),
             self.tr('Huggingface!'),
             'Huggingface model repository',
-            self.aboutGroup
+            self.hf_group
         )
 
         self.resetGroup = SettingCardGroup(self.tr('Reset'), self.scroll_widget)
@@ -249,9 +258,12 @@ class FallTalkSettings(ScrollArea):
         self.settings_group.addSettingCard(self.fallout_4_directory)
         self.settings_group.addSettingCard(self.load_engine_art_start)
         self.settings_group.addSettingCard(self.output_dir)
-        self.settings_group.addSettingCard(self.hugging_face_cache)
         self.settings_group.addSettingCard(self.seed)
-        self.settings_group.addSettingCard(self.disable_ssl)
+
+        self.hf_group.addSettingCard(self.hugging_face_cache)
+        self.hf_group.addSettingCard(self.hugging_face_key)
+        self.hf_group.addSettingCard(self.disable_ssl)
+        self.hf_group.addSettingCard(self.hugging_face)
 
         self.personalGroup.addSettingCard(self.themeCard)
         self.personalGroup.addSettingCard(self.themeColorCard)
@@ -264,7 +276,6 @@ class FallTalkSettings(ScrollArea):
         self.aboutGroup.addSettingCard(self.supportCard)
         self.aboutGroup.addSettingCard(self.aboutCard)
         self.aboutGroup.addSettingCard(self.discord)
-        self.aboutGroup.addSettingCard(self.hugging_face)
 
 
 
@@ -274,6 +285,7 @@ class FallTalkSettings(ScrollArea):
         self.expand_layout.setContentsMargins(15, 0, 15, 0)
 
         self.expand_layout.addWidget(self.settings_group)
+        self.expand_layout.addWidget(self.hf_group)
         self.expand_layout.addWidget(self.personalGroup)
         self.expand_layout.addWidget(self.updateSoftwareGroup)
         self.expand_layout.addWidget(self.aboutGroup)
