@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
             configure_http_backend(backend_factory=backend_factory)
 
-        if cfg.get(cfg.huggingface_key) is not None and cfg.get(cfg.huggingface_key != ""):
+        if cfg.get(cfg.huggingface_key) is not None and cfg.get(cfg.huggingface_key) != "":
             os.environ['HF_TOKEN'] = cfg.huggingface_key
 
         os.environ['WANDB_DISABLED'] = 'True'
