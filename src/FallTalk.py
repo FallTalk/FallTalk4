@@ -138,7 +138,6 @@ class FallTalkApp(FallTalkFluentWindow):
             self.onEngineChange(cfg.engine)
 
         if cfg.get(cfg.first_start):
-            # self.downloadModels()
             cfg.set(cfg.first_start, False)
 
         if cfg.get(cfg.api_only_mode):
@@ -258,17 +257,6 @@ class FallTalkApp(FallTalkFluentWindow):
             cfg.set(cfg.accepted_disclaimer, True)
         else:
             sys.exit()
-
-    def downloadModels(self):
-        title = 'Download Engines'
-        content = """Would you like to download all the engines? This will be about 10 GBs and take a few minutes. They will be downloaded on demand as needed otherwise."""
-        w = MessageBox(title, content, self)
-        w.yesButton.setText(self.tr('Download'))
-        w.cancelButton.setText(self.tr('No'))
-        if w.exec():
-            self.showLoaderPopup("Downloading", "Please Wait")
-            tr = (threading.Thread(target=downloadBaseModels, args={self}, daemon=True))
-            tr.start()
 
     def download_models_config(self):
         try:
@@ -621,7 +609,7 @@ class FallTalkApp(FallTalkFluentWindow):
                 if cfg.get(cfg.engine) in self.models[character_name]:
                     model = self.models[character_name][cfg.get(cfg.engine)]
                     engine_type = EngineType(cfg.get(cfg.engine))
-                    version = model.get('engine_version', 1)
+                    version = model.get('engine_version', '1')
 
                     # Validate version compatibility
                     if engine_type.is_version_supported(version):

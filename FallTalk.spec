@@ -35,6 +35,7 @@ loralib_hiddenimports = collect_submodules('loralib')
 natsort_hiddenimports = collect_submodules('natsort')
 rich_hiddenimports = collect_submodules('rich')
 budoux_hiddenimports = collect_submodules('budoux')
+jieba_fast = collect_submodules('jieba_fast')
 
 transformers_datas = collect_data_files('transformers', include_py_files=True)
 scipy_datas = collect_data_files('scipy')
@@ -69,6 +70,7 @@ rich_datas = collect_data_files('rich', include_py_files=True)
 audiotools_data = collect_data_files('audiotools', include_py_files=True)
 dac_datas = collect_data_files('dac', include_py_files=True)
 budoux_datas = collect_data_files('budoux', include_py_files=True)
+jieba_datas = collect_data_files('jieba_fast', include_py_files=True)
 
 def collect_module_data(module_path):
     data_files = []
@@ -160,6 +162,7 @@ a = Analysis(
     +audiotools_data
     +natsort_datas
     +budoux_datas
+    +jieba_datas
     +rich_datas
     +tts_engines_datas_modules,
     hiddenimports=scipy_hiddenimports
@@ -189,6 +192,7 @@ a = Analysis(
     +loralib_hiddenimports
     +natsort_hiddenimports
     +rich_hiddenimports
+    +jieba_fast
     +budoux_hiddenimports
     +triton_hiddenimports,
     hookspath=[],

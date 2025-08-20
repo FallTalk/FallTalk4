@@ -104,9 +104,22 @@ if __name__ == '__main__':
         falltak_app = FallTalkApp()
         api_server = falltalkapi.FallTalkAPI(falltak_app)
         hide_console()
-        application.exec()
-        logger.debug(f"Shutting down")
-        api_server.shutdown()
+        
+        # Ensure we always log errors, even during execution
+        try:
+            exit_code = application.exec()
+            logger.debug(f"Application exited with code: {exit_code}")
+        except Exception as e:
+            logger.error(f"Application crashed with error: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
+        finally:
+            logger.debug(f"Shutting down")
+            try:
+                api_server.shutdown()
+            except Exception as e:
+                logger.error(f"Error during API server shutdown: {e}")
+                
         sys.exit()
     except Exception as e:
         traceback.print_exc()
