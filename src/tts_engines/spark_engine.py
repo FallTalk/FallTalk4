@@ -25,8 +25,8 @@ from third_party.spark.sparktts.models.audio_tokenizer import BiCodecTokenizer
 class SparkEngine(tts_engine):
     def __init__(self):
         super().__init__()
-        self.engin_type = EngineType.SPARK
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.SPARK
+        self.engine_name = self.engine_type.value
         self.model_type = "pth"
         self.model = None
         self.device = cfg.get(cfg.device)

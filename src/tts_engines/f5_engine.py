@@ -31,8 +31,8 @@ class F5Engine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up F5 Engine")
-        self.engin_type = EngineType.F5
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.F5
+        self.engine_name = self.engine_type.value
         self.device = cfg.get(cfg.device)
         self.vocoder = None
         self.cfm_model = None
@@ -135,7 +135,7 @@ class F5Engine(tts_engine):
         sf.write(voice, new_audio, sr)
 
         if self.mode == 'tts':
-            return self._inference(text, transcript['transcript'] if isinstance(transcript, dict) else transcript, voice, language, output_file, streaming)
+            return self._inference(text, transcript['transcript'] if isinstance(transcript, dict) else transcript, voice, language, output_file, streaming, speed=cfg.get(cfg.f5_speed) / 10, nfe_step=cfg.get(cfg.f5_nfe), cross_fade_duration=cfg.get(cfg.f5_crossfade) / 100)
         else:
             return self._edit_inference(text, transcript, voice, language, output_file, streaming, start_time=start_time, end_time=end_time)
 
@@ -182,12 +182,21 @@ class F5Engine(tts_engine):
         padding = 0
         previous_word = None
 
+        # Check if we're replacing the first word
+        first_word = transcript["words_info"][0] if transcript["words_info"] else None
+        if first_word and first_word["start"] >= start_time:
+            start_time = 0
+
+        # Check if we're replacing the last word
+        last_word = transcript["words_info"][-1] if transcript["words_info"] else None
+        is_last_word = last_word and last_word["end"] <= end_time
+
         for word in transcript["words_info"]:
             if word["start"] < start_time:
                 target_transcript += word["word"] + (" " if word["word"][-1] != " " else "")
                 previous_word = word
             else:
-                if previous_word is not None:
+                if previous_word is not None and not is_last_word:
                     padding = (previous_word["end"] - word["start"]) / 2
                 break
         target_transcript += f"{target_text}"
@@ -218,6 +227,7 @@ class F5Engine(tts_engine):
 
         if start_time > 0.05:
             start_time = start_time - 0.05
+
 
         # Audio editing logic
         parts_to_edit = [[start_time, end_time]]

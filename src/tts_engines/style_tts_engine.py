@@ -26,8 +26,8 @@ class StyleTTS2_Engine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up StyleTTS2 Engine")
-        self.engin_type = EngineType.DIA
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.DIA
+        self.engine_name = self.engine_type.value
         print(f"setting up TextCleaner")
         self.textclenaer = TextCleaner()
         print(f"setting up MelSpectrogram")

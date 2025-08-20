@@ -21,8 +21,8 @@ class OrpheusEngine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up Orpheus Engine")
-        self.engin_type = EngineType.ORPHEUS
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.ORPHEUS
+        self.engine_name = self.engine_type.value
         self.device = cfg.get(cfg.device)
         self.snac_model = None
         self.tokenizer = None

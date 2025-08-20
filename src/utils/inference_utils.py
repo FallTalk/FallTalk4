@@ -5,7 +5,6 @@ import os
 import random
 from typing import TYPE_CHECKING
 
-from enums.engine_type import EngineType
 
 if TYPE_CHECKING:
     from src.FallTalk import FallTalkApp
@@ -20,6 +19,7 @@ import PySide6
 from src.config.config import cfg
 from src.utils.audio_utils import create_lip_and_fuz, extra_audio_from_bsa, combine_wav_files
 from src.utils.filesystem_utils import get_app_root
+from src.enums.engine_type import EngineType
 
 from num2words import num2words
 
@@ -40,7 +40,7 @@ def get_default_reference(parent, character_name):
 """
 
 
-    currentEgine = parent.tts_engine.engin_type
+    currentEgine = parent.tts_engine.engine_type
     max_reference_length = currentEgine.max_reference_length
     min_reference_length = currentEgine.min_reference_length
 

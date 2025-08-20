@@ -24,8 +24,8 @@ from dataclasses import asdict
 class HiggsTtsEngine(tts_engine):
     def __init__(self):
         super().__init__()
-        self.engin_type = EngineType.HIGGS
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.HIGGS
+        self.engine_name = self.engine_type.value
         self.model = None
         self.device = cfg.get(cfg.device)
         self.tokenizer = None

@@ -63,7 +63,7 @@ wordsegment
 munch
 uvicorn
 einops_exts
-edge-tts
+edge-tts==7.2.1
 elevenlabs
 pip-system-certs
 ctranslate2
@@ -87,7 +87,7 @@ safetensors
 datasets
 transformers_stream_generator
 ema_pytorch>=0.5.2
-triton-windows>=3.3
+triton-windows<3.4
 pywin32==308
 deepspeed==0.16.5
 descript-audio-codec

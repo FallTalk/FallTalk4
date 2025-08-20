@@ -74,7 +74,7 @@ class tts_engine(ABC):
         self.model = None
         self.model_name = None
         self.shared_model_name = None
-        self.engin_type: Optional[EngineType] = None
+        self.engine_type: Optional[EngineType] = None
         self.model_path = None
         self.model_engine_version = None
         self.model_type = 'safetensors'
@@ -92,7 +92,7 @@ class tts_engine(ABC):
         self.characters = []
         self.whisper_engine: Optional['Whisper_Engine'] = None
 
-    def get_model(self, engin_type: EngineType, model_type=None, model_engine_version=None, shared_model_name=None):
+    def get_model(self, engine_type: EngineType, model_type=None, model_engine_version=None, shared_model_name=None):
         if(model_type is None):
             model_type = self.model_type
         if(model_engine_version is None):
@@ -100,11 +100,11 @@ class tts_engine(ABC):
 
         # If this is a shared model, use the shared model name for the path
         if self.is_shared and shared_model_name:
-            directory = os.path.join(get_app_root(), "models", "shared", engin_type.get_model_path(self.shared_model_name, model_engine_version))
+            directory = os.path.join(get_app_root(), "models", "shared", engine_type.get_model_path(self.shared_model_name, model_engine_version))
         else:
-            directory = os.path.join(get_app_root(), "models", engin_type.get_model_path(self.model_name, model_engine_version))
+            directory = os.path.join(get_app_root(), "models", engine_type.get_model_path(self.model_name, model_engine_version))
 
-        if engin_type.loads_from_dir:
+        if engine_type.loads_from_dir:
             return directory
         else:
             model_files = glob.glob(os.path.join(directory, '*.' + model_type))
@@ -147,7 +147,7 @@ class tts_engine(ABC):
                 self.model_name = selected_model
                 self.model_engine_version = model_version
 
-                self.model_path = self.get_model(self.engin_type, self.model_type)
+                self.model_path = self.get_model(self.engine_type, self.model_type)
                 self.load_model()
         elif is_shared:
             if self.model and self.shared_model_name == shared_model_name and self.model_engine_version == model_version and selected_model in self.characters:
@@ -160,7 +160,7 @@ class tts_engine(ABC):
                 self.model_name = selected_model
                 self.shared_model_name = shared_model_name
                 self.model_engine_version = model_version
-                self.model_path = self.get_model(self.engin_type, self.model_type, shared_model_name=shared_model_name)
+                self.model_path = self.get_model(self.engine_type, self.model_type, shared_model_name=shared_model_name)
                 self.load_model()
 
 
@@ -268,8 +268,10 @@ class tts_engine(ABC):
         from src.utils.inference_utils import split_text, preprocess_text
         import numpy as np
 
+        is_f5_edit_mode = self.engine_type == EngineType.F5 and cfg.get(cfg.f5_mode) == "edit"
+
         # Apply text preprocessing
-        if text:
+        if text and not is_f5_edit_mode:
             text = preprocess_text(text)
 
         original_text = text
@@ -279,7 +281,7 @@ class tts_engine(ABC):
         min_chunk_size = cfg.get(cfg.min_chunk_size)
 
         try:
-            if text and len(text) > max_text_size:
+            if text and len(text) > max_text_size and not is_f5_edit_mode:
                 # Split text into chunks
                 chunks = split_text(text, max_text_size, min_chunk_size)
 
@@ -305,7 +307,7 @@ class tts_engine(ABC):
                 # Process the combined audio
                 self.process_audio(combined_audio, combined_sample_rate, output_file)
                 return  # Successfully processed long text
-            else:
+            elif not is_f5_edit_mode:
                 # For short text, proceed with the original logic
                 # If text is short and pad_short_phrases is enabled, duplicate it
                 if text and cfg.get(cfg.pad_short_phrases) and len(text) < min_chunk_size:
@@ -384,6 +386,9 @@ class tts_engine(ABC):
                         # Continue with full audio if transcription fails
 
                 # Save or process final audio
+                self.process_audio(audio_data, sample_rate, output_file)
+            else:
+                audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
                 self.process_audio(audio_data, sample_rate, output_file)
         except Exception as e:
             print(f"Error during audio generation: {e}")

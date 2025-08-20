@@ -22,8 +22,8 @@ class DIA_Engine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up DIA Engine")
-        self.engin_type = EngineType.DIA
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.DIA
+        self.engine_name = self.engine_type.value
         self.device = cfg.get(cfg.device)
         self.processor: Optional['DiaProcessor'] = None
 

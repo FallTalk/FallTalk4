@@ -335,7 +335,7 @@ class GenericMultiGenerationWidget(GenerationWidget):
 
                 # Create output file path
                 file_name = f"multi_gen_{i}_{formatted_time_stamp_uuid()}"
-                output_file = get_output_file_name(file_name, cfg.get(cfg.output_dir), self.parent.tts_engine.model_name, self.parent.tts_engine.engin_type.value )
+                output_file = get_output_file_name(file_name, cfg.get(cfg.output_dir), self.parent.tts_engine.model_name, self.parent.tts_engine.engine_type.value )
                 # Generate audio
                 generic_inference(
                     self.parent,

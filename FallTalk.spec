@@ -34,6 +34,7 @@ torchdiffeq_hiddenimports = collect_submodules('torchdiffeq')
 loralib_hiddenimports = collect_submodules('loralib')
 natsort_hiddenimports = collect_submodules('natsort')
 rich_hiddenimports = collect_submodules('rich')
+budoux_hiddenimports = collect_submodules('budoux')
 
 transformers_datas = collect_data_files('transformers', include_py_files=True)
 scipy_datas = collect_data_files('scipy')
@@ -67,6 +68,7 @@ natsort_datas = collect_data_files('natsort', include_py_files=True)
 rich_datas = collect_data_files('rich', include_py_files=True)
 audiotools_data = collect_data_files('audiotools', include_py_files=True)
 dac_datas = collect_data_files('dac', include_py_files=True)
+budoux_datas = collect_data_files('budoux', include_py_files=True)
 
 def collect_module_data(module_path):
     data_files = []
@@ -157,6 +159,7 @@ a = Analysis(
     +torchdiffeq_datas
     +audiotools_data
     +natsort_datas
+    +budoux_datas
     +rich_datas
     +tts_engines_datas_modules,
     hiddenimports=scipy_hiddenimports
@@ -186,6 +189,7 @@ a = Analysis(
     +loralib_hiddenimports
     +natsort_hiddenimports
     +rich_hiddenimports
+    +budoux_hiddenimports
     +triton_hiddenimports,
     hookspath=[],
     hooksconfig={},

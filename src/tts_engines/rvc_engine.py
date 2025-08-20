@@ -10,8 +10,8 @@ class RVC_Engine(tts_engine):
 
     def __init__(self):
         super().__init__()
-        self.engin_type = EngineType.RVC
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.RVC
+        self.engine_name = self.engine_type.value
         self.model_type = 'pth'
 
     def load_model(self):

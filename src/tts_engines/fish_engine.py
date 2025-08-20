@@ -26,8 +26,8 @@ class FishSpeechEngine(tts_engine):
         super().__init__()
         torch_utils.disable_dynamo()
         print("Setting Up FishSpeech Engine")
-        self.engin_type = EngineType.FISH_SPEECH
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.FISH_SPEECH
+        self.engine_name = self.engine_type.value
         self.device = cfg.get(cfg.device)
         self.fish = None
         self.decode_one_token = None

@@ -72,8 +72,8 @@ class DMSpeech2Engine(tts_engine):
 
     def __init__(self):
         super().__init__()
-        self.engin_type = EngineType.DMOSPEECH2
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.DMOSPEECH2
+        self.engine_name = self.engine_type.value
         self.device = cfg.get(cfg.device)
         self.model_type = "pt"
 

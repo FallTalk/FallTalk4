@@ -111,8 +111,8 @@ class GPT_SoVITS_Engine(tts_engine):
 
     def __init__(self):
         super().__init__()
-        self.engin_type = EngineType.GPT_SOVITS
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.GPT_SOVITS
+        self.engine_name = self.engine_type.value
         self.device = cfg.get(cfg.device)
         self.is_half = cfg.get(cfg.low_vram_gpt_sovits)
         self.model_type = 'pth'
@@ -154,7 +154,7 @@ class GPT_SoVITS_Engine(tts_engine):
                     "device": self.device,
                     "is_half": self.is_half,
                     "version": "v2",
-                    "t2s_weights_path": self.get_model(self.engin_type, "ckpt", shared_model_name=self.shared_model_name),
+                    "t2s_weights_path": self.get_model(self.engine_type, "ckpt", shared_model_name=self.shared_model_name),
                     "vits_weights_path": os.path.abspath(self.model_path),
                     "cnhuhbert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-hubert-base"),
                     "bert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
@@ -168,7 +168,7 @@ class GPT_SoVITS_Engine(tts_engine):
                     "device": self.device,
                     "is_half": self.is_half,
                     "version": "v2ProPlus",
-                    "t2s_weights_path": self.get_model(self.engin_type, "ckpt",  shared_model_name=self.shared_model_name),
+                    "t2s_weights_path": self.get_model(self.engine_type, "ckpt",  shared_model_name=self.shared_model_name),
                     "vits_weights_path": os.path.abspath(self.model_path),
                     "cnhuhbert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-hubert-base"),
                     "bert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),

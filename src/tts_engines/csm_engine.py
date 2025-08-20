@@ -22,8 +22,8 @@ class CSMEngine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up CSM Engine")
-        self.engin_type = EngineType.CSM
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.CSM
+        self.engine_name = self.engine_type.value
         self.device = cfg.get(cfg.device)
         self.processor = None
         self.tokenize = None

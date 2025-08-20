@@ -19,8 +19,8 @@ class ChatterboxEngine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up Chatterbox Engine")
-        self.engin_type = EngineType.CHATTERBOX
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.CHATTERBOX
+        self.engine_name = self.engine_type.value
         self.device = cfg.get(cfg.device)
 
     def clean(self):

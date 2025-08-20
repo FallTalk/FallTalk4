@@ -51,7 +51,7 @@ def load_model(parent: 'FallTalkApp', character=None, rvc=None, display_name=Non
             characters = None
 
             if not base_model and character in parent.models:
-                engine_name = parent.tts_engine.engin_type.value
+                engine_name = parent.tts_engine.engine_type.value
                 if engine_name in parent.models[character]:
                     model_info = parent.models[character][engine_name]
                     is_shared = model_info.get('is_shared', False)

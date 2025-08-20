@@ -737,7 +737,7 @@ class FallTalkApp(FallTalkFluentWindow):
         return path
 
     def get_output_file(self, widget):
-        return get_output_file_name(widget.output_name.value, cfg.get(cfg.output_dir), self.tts_engine.model_name, self.tts_engine.engin_type.value)
+        return get_output_file_name(widget.output_name.value, cfg.get(cfg.output_dir), self.tts_engine.model_name, self.tts_engine.engine_type.value)
 
 
     @Slot(PySide6.QtCore.QObject)

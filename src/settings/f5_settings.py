@@ -1,5 +1,5 @@
 from qfluentwidgets import (
-    FluentIcon as FIF
+    FluentIcon as FIF, RangeSettingCard
 )
 
 from src.config.config import cfg
@@ -16,8 +16,28 @@ class F5Settings(GenericSettings):
             FIF.SPEED_OFF,
             self.tr('Speed Factor'),
             self.tr('Adjust the speed of generated audio'),
+            parent=self.settings_group,
+            scale=10,
+            step=10
+        )
+
+        self.nfe_card = RangeSettingCardScaled(
+            cfg.f5_nfe,
+            FIF.SPEED_OFF,
+            self.tr('NFE Steps'),
+            self.tr('Generation steps to take, higher takes more time'),
+            parent=self.settings_group,
+            scale=1,
+        )
+
+        self.crossfade_card = RangeSettingCardScaled(
+            cfg.f5_crossfade,
+            FIF.SPEED_OFF,
+            self.tr('Crossfade'),
+            self.tr('Any crossfade for the audio'),
             parent=self.settings_group
         )
+
 
         self.__initWidget()
 
@@ -25,6 +45,8 @@ class F5Settings(GenericSettings):
         # add cards to group
         # self.settings_group.addSettingCard(self.mode_card)
         self.settings_group.addSettingCard(self.speed_card)
+        self.settings_group.addSettingCard(self.nfe_card)
+        self.settings_group.addSettingCard(self.crossfade_card)
 
         self.setupLayout()
 

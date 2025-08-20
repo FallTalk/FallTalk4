@@ -239,7 +239,9 @@ class Config(QConfig):
 
     #F5
     f5_mode = OptionsConfigItem("F5", "mode", "tts", OptionsValidator(["edit", "tts"]))
-    f5_speed = RangeConfigItem("F5", "speed_factor", 10, RangeValidator(-100, 100))
+    f5_speed = RangeConfigItem("F5", "speed_factor", 10, RangeValidator(1, 20))
+    f5_nfe = RangeConfigItem("F5", "nfe_step", 32, RangeValidator(16, 64))
+    f5_crossfade = RangeConfigItem("F5", "speed_factor", 15, RangeValidator(1, 100))
 
     #LASA
     llasa_temperature = RangeConfigItem("Llasa", "model_temperature", 80, RangeValidator(1, 100))
@@ -406,6 +408,8 @@ class Config(QConfig):
     def resetF5(self):
         self.set(self.f5_mode, self.f5_mode.defaultValue)
         self.set(self.f5_speed, self.f5_speed.defaultValue)
+        self.set(self.f5_nfe, self.f5_nfe.defaultValue)
+        self.set(self.f5_crossfade, self.f5_crossfade.defaultValue)
 
     def resetFishSpeech(self):
         self.set(self.fish_use_torch_compile, self.fish_use_torch_compile.defaultValue)

@@ -27,8 +27,8 @@ class LlasaEngine(tts_engine):
 
     def __init__(self):
         super().__init__()
-        self.engin_type = EngineType.LLASA
-        self.engine_name = self.engin_type.value
+        self.engine_type = EngineType.LLASA
+        self.engine_name = self.engine_type.value
         print(f"Setting Up {self.engine_name} Engine")
         self.device = cfg.get(cfg.device)
         self.codec_model = None

@@ -194,14 +194,14 @@ class RangeSettingCardScaled(SettingCard):
 
     valueChanged = Signal(int)
 
-    def __init__(self, configItem, icon: Union[str, QIcon, FluentIconBase], title, content=None, scale=100.0, parent=None):
+    def __init__(self, configItem, icon: Union[str, QIcon, FluentIconBase], title, content=None, scale=100.0, parent=None, step=1):
         super().__init__(icon, title, content, parent)
         self.configItem = configItem
         self.slider = Slider(Qt.Orientation.Horizontal, self)
         self.valueLabel = QLabel(self)
         self.slider.setMinimumWidth(268)
         self.scale = scale
-        self.slider.setSingleStep(1)
+        self.slider.setSingleStep(step)
         self.slider.setRange(*configItem.range)
         self.slider.setValue(configItem.value)
         self.valueLabel.setNum(configItem.value / self.scale)
