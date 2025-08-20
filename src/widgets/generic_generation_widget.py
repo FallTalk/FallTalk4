@@ -177,6 +177,8 @@ class GenericGenerationWidget(GenerationWidget):
         if self.engine_type != EngineType.F5:
             return
 
+        if self.start_and_end:
+            self.start_and_end.setVisible(change.value == "edit")
         if self.start_dropdown_card:
             self.start_dropdown_card.setVisible(change.value == "edit")
         if self.end_dropdown_card:

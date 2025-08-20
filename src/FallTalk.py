@@ -967,6 +967,12 @@ class FallTalkApp(FallTalkFluentWindow):
             isClosable=True
         )
 
+    def load_custom_model(self, character, model, rvc):
+        if cfg.get(cfg.engine) in model:
+            self.load_trained_model(character, model, rvc)
+        else:
+            self.load_base_model(character, model, rvc)
+
     def load_base_model(self, character, rvc, base_model=True):
         if character:
             if cfg.get(cfg.fallout_4_directory) == "fallout4.exe not found":

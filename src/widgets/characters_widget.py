@@ -338,7 +338,7 @@ class CharactersWidget(FallTalkWidget):
                 index = table_model.index(row, 0)
                 self.trained_table.setIndexWidget(index, widget)
 
-    def loadCustom(self, parent, custom_characters):
+    def loadCustom(self, parent: 'FallTalkApp', custom_characters):
         data = []
         for row, cm in custom_characters.items():
             # Check if the model's engine version is supported

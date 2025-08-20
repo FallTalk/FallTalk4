@@ -551,7 +551,7 @@ def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=N
 
         # Add optional parameters if they exist
         if transcribe_state is not None:
-            if isinstance(transcribe_state, dict) and parent.tts_engine.engin_type != EngineType.F5:
+            if isinstance(transcribe_state, dict) and parent.tts_engine.engine_type != EngineType.F5:
                 kwargs['transcript'] = transcribe_state['transcript']
             else:
                 kwargs['transcript'] = transcribe_state
