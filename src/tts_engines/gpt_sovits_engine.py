@@ -147,7 +147,7 @@ class GPT_SoVITS_Engine(tts_engine):
 
     def get_config(self):
         configs: dict = {}
-        if not self.is_base and (self.model_engine_version == '1' or self.model_engine_version == '2'):
+        if not self.is_base and (self.model_engine_version == '1' or self.model_engine_version == '2'  or self.model_engine_version == 'v1'):
             configs: dict = {
                 "version": "v2",
                 "v2": {
@@ -278,7 +278,7 @@ class GPT_SoVITS_Engine(tts_engine):
             self.config = TTS_Config(self.get_config())
             self.pipeline = TTSOverride(self.config)
 
-    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         with patch_gpt_sovits_imports():
             logging_utils.logger.debug("Generating Audio...")
 
