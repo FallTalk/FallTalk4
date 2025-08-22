@@ -228,6 +228,19 @@ class RVCPipeline:
                 print(f"Using provided audio data with sample rate {sample_rate}") if self.debug_rvc else None
                 audio = audio_data
 
+                # Ensure audio is floating-point for librosa
+                if audio.dtype != np.float32 and audio.dtype != np.float64:
+                    # Convert integer audio to floating-point
+                    if audio.dtype == np.int16:
+                        audio = audio.astype(np.float32) / 32768.0
+                    elif audio.dtype == np.int32:
+                        audio = audio.astype(np.float32) / 2147483648.0
+                    else:
+                        # For other integer types, convert to float32 and normalize
+                        audio = audio.astype(np.float32)
+                        if np.abs(audio).max() != 0:
+                            audio = audio / np.abs(audio).max()
+
                 # Resample to 16kHz if needed for processing
                 if sample_rate != 16000:
                     print(f"Resampling input from {sample_rate} to 16000 Hz for processing") if self.debug_rvc else None
