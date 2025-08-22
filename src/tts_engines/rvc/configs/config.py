@@ -66,7 +66,7 @@ class Config:
             ):
                 self.is_half = False
         elif self.has_mps():
-            print("No supported Nvidia GPU found")
+            print("MPS GPU found")
             self.device = self.instead = "mps"
             self.is_half = False
         else:
