@@ -429,7 +429,7 @@ class tts_engine(ABC):
             audio_data = audio_data.squeeze(0)  # from (1, N) to (N,)
 
         apbwe_enabled = cfg.get(cfg.apbwe_enabled)
-        if apbwe_enabled and self.apbwe_engine and sample_rate == 24000 or sample_rate == 16000:
+        if apbwe_enabled and self.apbwe_engine and (sample_rate == 24000 or sample_rate == 16000):
             audio_data, sample_rate = self.apbwe_engine.upscale(audio_data, sample_rate)
 
         rvc_enabled = cfg.get(cfg.rvc_enabled)
