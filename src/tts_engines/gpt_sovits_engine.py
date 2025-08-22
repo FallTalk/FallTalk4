@@ -25,7 +25,7 @@ import numpy as np
 
 from src.enums.engine_type import EngineType
 from src.utils import logging_utils
-from src.utils.filesystem_utils import get_app_code_root
+from src.utils.filesystem_utils import get_app_code_root, get_app_root
 
 from typing import TYPE_CHECKING
 
@@ -156,8 +156,8 @@ class GPT_SoVITS_Engine(tts_engine):
                     "version": "v2",
                     "t2s_weights_path": self.get_model(self.engine_type, "ckpt", shared_model_name=self.shared_model_name),
                     "vits_weights_path": os.path.abspath(self.model_path),
-                    "cnhuhbert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-hubert-base"),
-                    "bert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
+                    "cnhuhbert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-hubert-base"),
+                    "bert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
                     "languages": ["auto", "auto_yue", "en", "zh", "ja", "yue", "ko", "all_zh", "all_ja", "all_yue", "all_ko"]
                 }
             }
@@ -170,8 +170,8 @@ class GPT_SoVITS_Engine(tts_engine):
                     "version": "v2ProPlus",
                     "t2s_weights_path": self.get_model(self.engine_type, "ckpt",  shared_model_name=self.shared_model_name),
                     "vits_weights_path": os.path.abspath(self.model_path),
-                    "cnhuhbert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-hubert-base"),
-                    "bert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
+                    "cnhuhbert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-hubert-base"),
+                    "bert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
                     "languages": ["auto", "auto_yue", "en", "zh", "ja", "yue", "ko", "all_zh", "all_ja", "all_yue", "all_ko"]
                 }
             }
@@ -182,10 +182,10 @@ class GPT_SoVITS_Engine(tts_engine):
                     "device": self.device,
                     "is_half": self.is_half,
                     "version": "v2ProPlus",
-                    "t2s_weights_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/v3/s1v3.ckpt"),
-                    "vits_weights_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/v2Pro/s2Gv2ProPlus.pth"),
-                    "cnhuhbert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-hubert-base"),
-                    "bert_base_path": os.path.join(get_app_code_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
+                    "t2s_weights_path": os.path.join(get_app_root(), "models/GPT_SoVITS/v3/s1v3.ckpt"),
+                    "vits_weights_path": os.path.join(get_app_root(), "models/GPT_SoVITS/v2Pro/s2Gv2ProPlus.pth"),
+                    "cnhuhbert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-hubert-base"),
+                    "bert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
                     "languages": ["auto", "auto_yue", "en", "zh", "ja", "yue", "ko", "all_zh", "all_ja", "all_yue", "all_ko"]
                 }
             }
