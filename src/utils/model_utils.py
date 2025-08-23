@@ -190,8 +190,8 @@ def load_whisper(parent: 'FallTalkApp', attempt=0):
         if parent.transcription_engine is None:
             from src.tts_engines.whisper_engine import Whisper_Engine
             parent.transcription_engine = Whisper_Engine()
-            if parent.tts_engine is not None:
-                parent.tts_engine.whisper_engine = parent.transcription_engine
+        if parent.tts_engine is not None and parent.transcription_engine is not None:
+            parent.tts_engine.whisper_engine = parent.transcription_engine
             print("WhisperX Loaded")
     except Exception as e:
         logger.exception(f"Error: {e}")
@@ -276,8 +276,8 @@ def load_apbwe(parent: 'FallTalkApp'):
     if parent.apbwe_engine is None:
         from src.tts_engines.apbwe_engine import APBWE_SR
         parent.apbwe_engine = APBWE_SR()
-        if parent.tts_engine is not None:
-            parent.tts_engine.apbwe_engine = parent.apbwe_engine
+    if parent.tts_engine is not None and parent.apbwe_engine is not None:
+        parent.tts_engine.apbwe_engine = parent.apbwe_engine
         print("apbwe Loaded")
 
 
