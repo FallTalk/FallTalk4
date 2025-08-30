@@ -157,6 +157,5 @@ If this gets enough traction and support here are some of the future features I 
 ## Credits
 - [AllTalk for XTTSv2, Deepspeed, Fairseq and starter code ](https://github.com/erew123/alltalk_tts)
 - [Applio for RVC training](https://github.com/IAHispano/Applio)
-- [VoiceCraft](https://github.com/jasonppy/VoiceCraft)
-- [GPT So-VITS](https://github.com/RVC-Boss/GPT-SoVITS)
-- [StyleTTS2](https://github.com/yl4579/StyleTTS2)
+- [BSA Browser](https://github.com/AlexxEG/BSA_Browser)
+- [FaceFXWrapper](https://github.com/Nukem9/FaceFXWrapper)
