@@ -318,6 +318,15 @@ class Config(QConfig):
     higgs_ras_win_len = RangeConfigItem("Higgs", "ras_win_len", 7, RangeValidator(0, 20))
     higgs_ras_win_max_num_repeat = RangeConfigItem("Higgs", "ras_win_max_num_repeat", 2, RangeValidator(1, 10))
 
+    #Vibe
+    vibe_mode = OptionsConfigItem("Vibe", "mode", "1.5B", OptionsValidator(["1.5B", "7B"]))
+    vibe_cfg_scale = RangeConfigItem("Vibe", "cfg_scale", 13, RangeValidator(0, 100))
+    vibe_inference_steps = RangeConfigItem("Vibe", "inference_steps", 10, RangeValidator(0, 50))
+    vibe_temperature = RangeConfigItem("Vibe", "model_temperature", 95, RangeValidator(1, 200))
+    vibe_dosmaple = RangeConfigItem("Vibe", "do_sample", False, BoolValidator())
+    vibe_top_p = RangeConfigItem("Vibe", "top_p", 95, RangeValidator(0.0, 100))
+    vibe_top_k = RangeConfigItem("Vibe", "top_k", 50, RangeValidator(0, 100))
+
     # theme
     themeColor = ColorConfigItem("QFluentWidgets", "ThemeColor", '#FFB642', restart=True)
     dpiScale = OptionsConfigItem(
@@ -348,6 +357,7 @@ class Config(QConfig):
         self.resetChatterbox()
         self.resetHiggs()
         self.resetDMSpeech2()
+        self.resetVibe()
 
     def resetMainSettings(self):
         self.set(self.download_configs, self.download_configs.defaultValue)
@@ -471,9 +481,18 @@ class Config(QConfig):
         self.set(self.dmo_speech2_teacher_stopping_time, self.dmo_speech2_teacher_stopping_time.defaultValue)
         self.set(self.dmo_speech2_student_start_step, self.dmo_speech2_student_start_step.defaultValue)
 
+    def resetVibe(self):
+        self.set(self.vibe_temperature, self.vibe_temperature.defaultValue)
+        self.set(self.vibe_top_p, self.vibe_top_p.defaultValue)
+        self.set(self.vibe_inference_steps, self.vibe_inference_steps.defaultValue)
+        self.set(self.vibe_top_k, self.vibe_top_k.defaultValue)
+        self.set(self.vibe_cfg_scale, self.vibe_cfg_scale.defaultValue)
+        self.set(self.vibe_dosmaple, self.vibe_dosmaple.defaultValue)
+
+
 YEAR = 2025
 AUTHOR = "Bryant21"
-VERSION = '2.0.9'
+VERSION = '2.1.0'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"

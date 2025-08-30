@@ -280,6 +280,19 @@ def downloadDMSpeech2(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
+def downloadVibe(parent: 'FallTalkApp'):
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
+
+    os.makedirs(os.path.join(get_app_root(),"models/Vibe"), exist_ok=True)
+
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"models/Vibe/{cfg.get(cfg.vibe_mode)}/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
 
 def downloadStyleTTS2(parent: 'FallTalkApp'):
     # Set the parent for the tqdm class

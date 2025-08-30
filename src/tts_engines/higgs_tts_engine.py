@@ -140,7 +140,7 @@ class HiggsTtsEngine(tts_engine):
         return messages, audio_ids
 
     @torch.inference_mode()
-    def inference(self, text, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         """Generate audio using Higgs TTS model."""
         try:
             # Prepare generation context

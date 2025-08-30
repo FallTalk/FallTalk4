@@ -318,6 +318,9 @@ class tts_engine(ABC):
                 # Get audio data and sample rate from inference
                 audio_data, sample_rate = self.inference(text, transcript, voice, language, output_file, streaming, speaker, start_time, end_time)
 
+                if audio_data.ndim > 1 and audio_data.shape[0] == 1:
+                    audio_data = audio_data.flatten()
+
                 # If we padded the text, we need to extract just the first instance using whisperx
                 if original_text != text and cfg.get(cfg.pad_short_phrases) and self.whisper_engine and output_file:
                     try:

@@ -41,7 +41,7 @@ from src.utils.logging_utils import logger
 from src.utils.model_utils import (
     load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc, load_spark,
     load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler, load_csm,
-    load_higgs, load_chatterbox, load_dmo_speech2
+    load_higgs, load_chatterbox, load_dmo_speech2, load_vibe
 )
 # Import widgets here to avoid circular imports
 from src.widgets import (
@@ -110,7 +110,8 @@ class FallTalkApp(FallTalkFluentWindow):
             EngineType.CSM: load_csm,
             EngineType.HIGGS: load_higgs,
             EngineType.CHATTERBOX: load_chatterbox,
-            EngineType.DMOSPEECH2: load_dmo_speech2
+            EngineType.DMOSPEECH2: load_dmo_speech2,
+            EngineType.VIBE: load_vibe,
         }
 
         clean_folder("temp/")
@@ -362,6 +363,7 @@ class FallTalkApp(FallTalkFluentWindow):
         self.engine_actions[EngineType.HIGGS] = self.higgs_action
         self.engine_actions[EngineType.CHATTERBOX] = self.chatterbox_action
         self.engine_actions[EngineType.DMOSPEECH2] = self.dmo_speech2_action
+        self.engine_actions[EngineType.VIBE] = self.vibe_action
 
         # Connect action signals
         for engine_type, action in self.engine_actions.items():

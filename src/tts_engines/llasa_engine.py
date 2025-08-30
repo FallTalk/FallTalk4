@@ -81,7 +81,7 @@ class LlasaEngine(tts_engine):
         return speech_ids
 
     @torch.no_grad()
-    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None):
+    def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         text = f"{speaker}: " + text if speaker else text
         prompt_wav = None
         speech_ids_prefix = None
