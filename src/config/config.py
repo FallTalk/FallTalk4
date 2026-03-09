@@ -326,6 +326,10 @@ class Config(QConfig):
     vibe_dosmaple = RangeConfigItem("Vibe", "do_sample", False, BoolValidator())
     vibe_top_p = RangeConfigItem("Vibe", "top_p", 95, RangeValidator(0.0, 100))
     vibe_top_k = RangeConfigItem("Vibe", "top_k", 50, RangeValidator(0, 100))
+    # Qwen3TTS
+    qwen_instruct = ConfigItem("Qwen3TTS", "instruct", "", ConfigValidator())
+    qwen_language = OptionsConfigItem("Qwen3TTS", "language", "Auto", OptionsValidator(["Auto", "Chinese", "English", "Japanese", "Korean"]))
+    qwen_model_version = OptionsConfigItem("Qwen3TTS", "model_version", "1.7B-Base", OptionsValidator(["1.7B-Base", "0.6B-Base"]))
 
     # theme
     themeColor = ColorConfigItem("QFluentWidgets", "ThemeColor", '#FFB642', restart=True)
@@ -358,6 +362,7 @@ class Config(QConfig):
         self.resetHiggs()
         self.resetDMSpeech2()
         self.resetVibe()
+        self.resetQwen()
 
     def resetMainSettings(self):
         self.set(self.download_configs, self.download_configs.defaultValue)
@@ -489,10 +494,15 @@ class Config(QConfig):
         self.set(self.vibe_cfg_scale, self.vibe_cfg_scale.defaultValue)
         self.set(self.vibe_dosmaple, self.vibe_dosmaple.defaultValue)
 
+    def resetQwen(self):
+        self.set(self.qwen_instruct, self.qwen_instruct.defaultValue)
+        self.set(self.qwen_language, self.qwen_language.defaultValue)
+        self.set(self.qwen_model_version, self.qwen_model_version.defaultValue)
+
 
 YEAR = 2025
 AUTHOR = "Bryant21"
-VERSION = '2.1.0'
+VERSION = '2.2.0'
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"

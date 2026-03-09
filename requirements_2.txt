@@ -110,3 +110,5 @@ resemble-perth
 s3tokenizer
 conformer
 llama-cpp-python
+qwen-tts
+sox

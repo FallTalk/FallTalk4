@@ -132,12 +132,19 @@ class F5Engine(tts_engine):
         silence_duration = 1  # seconds
         silence = np.zeros(int(silence_duration * sr))
         new_audio = np.concatenate([audio, silence])
-        sf.write(voice, new_audio, sr)
 
+        # FIX: Create a temporary reference file instead of overwriting the original
+        temp_voice = os.path.join(get_app_root(), "output", "temp_f5_ref.wav")
+        sf.write(temp_voice, new_audio, sr)
         if self.mode == 'tts':
-            return self._inference(text, transcript['transcript'] if isinstance(transcript, dict) else transcript, voice, language, output_file, streaming, speed=cfg.get(cfg.f5_speed) / 10, nfe_step=cfg.get(cfg.f5_nfe), cross_fade_duration=cfg.get(cfg.f5_crossfade) / 100)
+            # Use temp_voice here instead of voice
+            return self._inference(text, transcript['transcript'] if isinstance(transcript, dict) else transcript,
+                                   temp_voice, language, output_file, streaming, speed=cfg.get(cfg.f5_speed) / 10,
+                                   nfe_step=cfg.get(cfg.f5_nfe), cross_fade_duration=cfg.get(cfg.f5_crossfade) / 100)
         else:
-            return self._edit_inference(text, transcript, voice, language, output_file, streaming, start_time=start_time, end_time=end_time)
+            # Use temp_voice here instead of voice
+            return self._edit_inference(text, transcript, temp_voice, language, output_file, streaming,
+                                        start_time=start_time, end_time=end_time)
 
     @torch.no_grad()
     def _inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, cross_fade_duration=0.15, nfe_step=32, speed=1, remove_silence=False):

@@ -19,6 +19,7 @@ class EngineType(Enum):
     HIGGS = ("Higgs", True, True, ["v2"], "v2", 15, 3, True, False)
     DMOSPEECH2 = ("DMO Speech 2", True, True, ["v2"], "v2", 15, 3, True, True)
     VIBE = ("Vibe", True, True, ["1.5B", "7B"], "1.5B", 60, 10, True, True)
+    QWEN3_TTS = ("Qwen3TTS", True, True, ["1.7B-Base", "0.6B-Base"], "1.7B-Base", 15, 3, True, True)
 
     def __new__(cls, value, needs_reference_when_trained, needs_transcription, supported_versions, version, max_reference_length, min_reference_length, loads_from_dir, enabled):
         obj = object.__new__(cls)

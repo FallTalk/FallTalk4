@@ -294,6 +294,21 @@ def downloadVibe(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
+def downloadQwen(parent: 'FallTalkApp'):
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
+
+    selected_version = cfg.get(cfg.qwen_model_version)
+    os.makedirs(os.path.join(get_app_root(), "models/Qwen3TTS", selected_version), exist_ok=True)
+
+    snapshot_download(
+        repo_id=REPO,
+        allow_patterns=[f"models/Qwen3TTS/Qwen3-TTS-12Hz-{selected_version}/*"],
+        local_dir=get_app_root(),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
+
 def downloadStyleTTS2(parent: 'FallTalkApp'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)

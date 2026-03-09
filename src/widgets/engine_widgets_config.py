@@ -13,6 +13,7 @@ from src.help.gpt_sovits_help import GPTSoVITSHelp
 from src.help.higgs_help import HiggsHelp
 from src.help.llasa_help import LlasaHelp
 from src.help.orpheus_help import OrpheusHelp
+from src.help.qwen_help import QwenHelp
 from src.help.spark_help import SparkHelp
 from src.help.styletts2_help import StyleTTS2Help
 from src.help.vibe_help import VibeHelp
@@ -27,6 +28,7 @@ from src.settings.gpt_sovits_settings import GPTSoVITSSettings
 from src.settings.higgs_settings import HiggsSettings
 from src.settings.llasa_settings import LlasaSettings
 from src.settings.orpheus_settings import OrpheusSettings
+from src.settings.qwen_settings import QwenSettings
 from src.settings.spark_settings import SparkSettings
 from src.settings.styletts2_settings import StyleTTS2Settings
 from src.settings.vibe_settings import VibeSettings
@@ -40,6 +42,7 @@ SETTINGS_WIDGETS: Dict[EngineType, Type] = {
     EngineType.HIGGS: HiggsSettings,
     EngineType.SPARK: SparkSettings,
     EngineType.ORPHEUS: OrpheusSettings,
+    EngineType.QWEN3_TTS: QwenSettings,
     EngineType.DIA: DIASettings,
     EngineType.CSM: CSMSettings,
     EngineType.CHATTERBOX: ChatterboxSettings,
@@ -58,6 +61,7 @@ HELP_WIDGETS: Dict[EngineType, Type] = {
     EngineType.HIGGS: HiggsHelp,
     EngineType.SPARK: SparkHelp,
     EngineType.ORPHEUS: OrpheusHelp,
+    EngineType.QWEN3_TTS: QwenHelp,
     EngineType.DIA: DIAHelp,
     EngineType.CSM: CSMHelp,
     EngineType.CHATTERBOX: ChatterboxHelp,

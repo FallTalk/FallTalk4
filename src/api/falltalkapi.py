@@ -22,7 +22,7 @@ from src.utils.logging_utils import logger
 from src.utils.model_utils import (
     load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc, load_spark,
     load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_csm,
-    load_higgs, load_chatterbox, load_dmo_speech2, load_vibe
+    load_higgs, load_chatterbox, load_dmo_speech2, load_vibe, load_qwen
 )
 from tts_engines.whisper_engine import Whisper_Engine
 
@@ -61,6 +61,7 @@ class FastAPIServer(threading.Thread):
             EngineType.CHATTERBOX: load_chatterbox,
             EngineType.DMOSPEECH2: load_dmo_speech2,
             EngineType.VIBE: load_vibe,
+            EngineType.QWEN3_TTS: load_qwen,
         }
 
         # Load static JSON data

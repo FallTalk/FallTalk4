@@ -55,7 +55,7 @@ class FallTalkIcons(FluentIconBase, Enum):
     MULTI = "multi"
     BETHESDA = "bethesda"
     MICROSOFT = "microsoft"
-
+    QWEN = "qwen"
     # Stroke-only icons
     ALPHA = "alpha"
     BETA = "beta"

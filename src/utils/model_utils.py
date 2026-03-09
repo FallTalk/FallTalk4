@@ -17,7 +17,7 @@ from src.enums.engine_type import EngineType
 from src.utils.huggingface_utils import (
     downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA, downloadSpark,
     downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models, downloadAPBWE, downloadCSM,
-    downloadHiggs, downloadChatterbox, downloadDMSpeech2, downloadVibe
+    downloadHiggs, downloadChatterbox, downloadDMSpeech2, downloadVibe, downloadQwen
 )
 
 logger = logging.getLogger('falltalk')
@@ -275,6 +275,10 @@ def load_dmo_speech2(parent: 'FallTalkApp'):
 def load_vibe(parent: 'FallTalkApp'):
     from src.tts_engines.vibe_engine import VibeEngine
     generic_engine_loader(parent, VibeEngine, downloadVibe, EngineType.VIBE.value)
+
+def load_qwen(parent: 'FallTalkApp'):
+    from src.tts_engines.qwen_engine import QwenEngine
+    generic_engine_loader(parent, QwenEngine, downloadQwen, EngineType.QWEN3_TTS.value)
 
 def load_apbwe(parent: 'FallTalkApp'):
     if parent.apbwe_engine is None:

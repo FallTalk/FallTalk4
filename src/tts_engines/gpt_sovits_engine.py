@@ -201,7 +201,7 @@ class GPT_SoVITS_Engine(tts_engine):
             from third_party.GPT_SoVITS.GPT_SoVITS.eres2net import kaldi as Kaldi
 
             import os, torch
-            sv_path = os.path.join(get_app_code_root(), "models/GPT_SoVITS/sv/pretrained_eres2netv2w24s4ep4.ckpt")
+            sv_path = os.path.join(get_app_root(), "models/GPT_SoVITS/sv/pretrained_eres2netv2w24s4ep4.ckpt")
 
             class SV_Overide:
                 def __init__(self, device, is_half):

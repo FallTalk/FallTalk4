@@ -77,6 +77,7 @@ class FallTalkFluentWindow(FluentWindowBase):
         self.chatterbox_action = Action(FallTalkIcons.CHATTERBOX.icon(stroke=True), self.tr('Chatterbox\t\t6.5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.CHATTERBOX.value)
         self.dmo_speech2_action = Action(FallTalkIcons.DMO2.icon(stroke=True), self.tr('DMO\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.DMOSPEECH2.value)
         self.vibe_action = Action(FallTalkIcons.MICROSOFT.icon(stroke=True), self.tr('MS Vibe\t\t7 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.VIBE.value)
+        self.qwen_action = Action(FallTalkIcons.QWEN.icon(stroke=True), self.tr('Qwen3\t\t8 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.QWEN3_TTS.value)
 
         self.cpu_action = Action(FallTalkIcons.CPU.icon(), self.tr('CPU'), checkable=True, checked=cfg.get(cfg.device) == 'cpu')
         self.gpu_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU'), checkable=True, checked=cfg.get(cfg.device) == 'cuda')
@@ -153,6 +154,10 @@ class FallTalkFluentWindow(FluentWindowBase):
             actions_to_add.append(self.chatterbox_action)
         if EngineType.VIBE.enabled:
             actions_to_add.append(self.vibe_action)
+        if EngineType.QWEN3_TTS.enabled:
+            actions_to_add.append(self.qwen_action)
+        if EngineType.HIGGS.enabled:
+            actions_to_add.append(self.higgs_action)
         if EngineType.GPT_SOVITS.enabled:
             actions_to_add.append(self.gpt_sovits_action)
         if EngineType.F5.enabled:
@@ -169,8 +174,6 @@ class FallTalkFluentWindow(FluentWindowBase):
             actions_to_add.append(self.spark_action)
         if EngineType.CSM.enabled:
             actions_to_add.append(self.csm_action)
-        if EngineType.HIGGS.enabled:
-            actions_to_add.append(self.higgs_action)
         if EngineType.FISH_SPEECH.enabled:
             actions_to_add.append(self.fish_action)
         if EngineType.DMOSPEECH2.enabled:
@@ -246,6 +249,8 @@ class FallTalkFluentWindow(FluentWindowBase):
             cfg.resetDMSpeech2()
         elif cfg.get(cfg.engine) == EngineType.VIBE.value:
             cfg.resetVibe()
+        elif cfg.get(cfg.engine) == EngineType.QWEN3_TTS.value:
+            cfg.resetQwen()
 
         cfg.resetRvc()
 

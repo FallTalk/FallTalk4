@@ -36,6 +36,7 @@ natsort_hiddenimports = collect_submodules('natsort')
 rich_hiddenimports = collect_submodules('rich')
 budoux_hiddenimports = collect_submodules('budoux')
 jieba_fast = collect_submodules('jieba_fast')
+vibevoice_imports = collect_submodules('vibevoice')
 
 transformers_datas = collect_data_files('transformers', include_py_files=True)
 scipy_datas = collect_data_files('scipy')
@@ -193,6 +194,7 @@ a = Analysis(
     +natsort_hiddenimports
     +rich_hiddenimports
     +jieba_fast
+    +vibevoice_imports
     +budoux_hiddenimports
     +triton_hiddenimports,
     hookspath=[],
