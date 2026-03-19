@@ -199,8 +199,8 @@ def load_whisper(parent: 'FallTalkApp', attempt=0):
             from huggingface_hub.constants import HF_HUB_CACHE
             cache_dir = HF_HUB_CACHE
             if os.path.exists(HF_HUB_CACHE):
-                shutil.rmtree(cache_dir)
-                print(f"Attempting to delete HuggingFace cache directory: {cache_dir}")
+                # shutil.rmtree(cache_dir)
+                print(f"Attempting to reload Whisper")
             load_whisper(parent, 1)
         else:
             QMetaObject.invokeMethod(parent, "onWarn", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Load Whispper Engine"),

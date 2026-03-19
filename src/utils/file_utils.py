@@ -18,6 +18,7 @@ def clean_tmp_folder():
 
 def clean_folder(folder_path):
     os.makedirs(folder_path, exist_ok=True)
+    logger.debug(f"Cleaning folder: {folder_path}")
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
         try:
@@ -25,8 +26,9 @@ def clean_folder(folder_path):
                 os.unlink(file_path)
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
+            logger.debug(f"Deleted: {file_path}")
         except Exception as e:
-            logger.exception("Failed to clean folder")
+            logger.exception(f"Failed to clean folder: {file_path}")
 
 
 def clean_path(path_str):

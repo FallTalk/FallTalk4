@@ -257,7 +257,8 @@ def process_inference_data(parent, data, output_file, character, model, is_train
 
     try:
         if last_character is None or last_character != character:
-            clean_tmp_folder()
+            if character != "Orpheus" and character != "orpheus":
+                clean_tmp_folder()
             if is_trained and not os.path.exists(os.path.join('models', character, parent.tts_engine.engine_name)):
                 download_models(parent, character, model[parent.tts_engine.engine_name], model['RVC'] if has_rvc else None, True)
             elif has_rvc and not os.path.exists(os.path.join('models', character, 'RVC')):
