@@ -27,7 +27,6 @@ class SettingsWidget(FallTalkWidget):
 
         # Add TabItems to the TabView
         self.rvc_settings = RVCSettings(parent)
-        # self.xtts_settings = XTTSSettings(parent)
         # self.gpt_sovits_settings = GPTSoVITSSettings(parent)
         # self.styletts2_settings = StyleTTS2Settings(parent)
         # self.f5_settings = F5Settings(parent)
@@ -40,7 +39,6 @@ class SettingsWidget(FallTalkWidget):
         # add items to pivot
         self.addSubInterface(self.engine_settings, 'main_settings', 'Main Settings')
         self.addSubInterface(self.rvc_settings, 'rvc_settings', EngineType.RVC.value)
-        # self.addSubInterface(self.xtts_settings, 'xtts_settings', EngineType.XTTS_V2.value)
         # self.addSubInterface(self.styletts2_settings, 'styletts2_settings', EngineType.STYLE_TTS2.value)
         # self.addSubInterface(self.gpt_sovits_settings, 'gpt_sovits_settings', EngineType.GPT_SOVITS.value)
         # self.addSubInterface(self.f5_settings, 'f5_settings', EngineType.F5.value)

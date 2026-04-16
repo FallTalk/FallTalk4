@@ -182,3 +182,5 @@ sweight.txt
 Fallout4_DialogueExport.csv
 GPT_SoVITS/configs/tts_infer.yaml
 resource/apps/xedit/FO4Script_log.txt
+uv.lock
+*.ini

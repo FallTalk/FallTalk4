@@ -1,38 +1,13 @@
-# coding:utf-8
+# coding: utf-8
+import configparser
+import json
 import os
-from enum import Enum
+import tempfile
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Optional
 
-import torch
-from PySide6.QtCore import QLocale, QObject, Signal
-from qfluentwidgets import (QConfig, ConfigItem, OptionsConfigItem, BoolValidator,
-                            ColorConfigItem, OptionsValidator, RangeConfigItem, RangeValidator,
-                            EnumSerializer, FolderValidator, ConfigSerializer, ConfigValidator, qconfig)
-
-from src.enums.engine_type import EngineType
 from src.utils.filesystem_utils import get_app_root
-
-
-class Language(Enum):
-    """ Language enumeration """
-
-    CHINESE_SIMPLIFIED = QLocale(QLocale.Language.Chinese, QLocale.Country.China)
-    CHINESE_TRADITIONAL = QLocale(QLocale.Language.Chinese, QLocale.Country.HongKong)
-    ENGLISH = QLocale(QLocale.Language.English)
-    SPANISH = QLocale(QLocale.Language.Spanish)
-    AUTO = QLocale()
-
-
-class LanguageSerializer(ConfigSerializer):
-    """ Language serializer """
-
-    def serialize(self, language):
-        return language.value.name() if language != Language.AUTO else "Auto"
-
-    def deserialize(self, value: str):
-        return Language(QLocale(value)) if value != "Auto" else Language.AUTO
-
-
 
 
 def find_fallout4_exe():
@@ -43,461 +18,460 @@ def find_fallout4_exe():
         '\\Program Files (x86)\\Fallout 4\\',
         '\\Program Files\\Fallout 4\\',
         '\\Steam\\steamapps\\common\\Fallout 4\\',
-        '\\Steam Games\\steamapps\\common\\Fallout 4\\'
-
+        '\\Steam Games\\steamapps\\common\\Fallout 4\\',
     ]
-
-    found_paths = []
-
     for drive in drives:
         if not os.path.exists(drive):
             continue
-
         for common_path in common_paths:
-            full_path = os.path.join(drive, common_path.lstrip('\\'))
-            exe_path = os.path.join(full_path, 'Fallout4.exe')
-            if os.path.isfile(exe_path):
-                found_paths.append(full_path)
-
-    if found_paths:
-        return found_paths[0]
-    else:
-        return "fallout4.exe not found"
+            exe = os.path.join(drive, common_path.lstrip('\\'), 'Fallout4.exe')
+            if os.path.isfile(exe):
+                return os.path.dirname(exe)
+    return "fallout4.exe not found"
 
 
-class CustomFolderValidator(ConfigValidator):
-    """ Folder validator """
-
-    def validate(self, value):
-        return value is not None and os.path.exists(value)
-
-    def correct(self, value):
-        if value is not None and value != "Please Select a Valid Folder":
-            path = Path(value)
-            path.mkdir(exist_ok=True, parents=True)
-            return str(path.absolute()).replace("\\", "/")
-        return "Please Select a Valid Folder"
+class ConfigKey:
+    def __init__(self, key: str, default: Any, type_=None):
+        self.key = key
+        self.default = default
+        self.type_ = type_
 
 
-class FileValidator(ConfigValidator):
+class Config:
+    # --- General ---
+    engine = ConfigKey("engine", "F5", str)
+    load_engine_art_start = ConfigKey("load_engine_art_start", False, bool)
+    auto_update_models = ConfigKey("auto_update_models", False, bool)
+    device = ConfigKey("device", "cuda", str)
+    seed = ConfigKey("seed", -1, int)
+    check_for_updates = ConfigKey("check_for_updates", True, bool)
+    download_configs = ConfigKey("download_configs", True, bool)
+    auto_play = ConfigKey("auto_play", True, bool)
+    disableSSLVerify = ConfigKey("disableSSLVerify", False, bool)
+    api_only_mode = ConfigKey("api_only_mode", False, bool)
+    accepted_disclaimer = ConfigKey("accepted_disclaimer", False, bool)
+    accepts_custom_disclaimer = ConfigKey("accepts_custom_disclaimer", False, bool)
+    first_start = ConfigKey("first_start", True, bool)
 
-    def __init__(self, allowed_file_types=None):
-        if allowed_file_types is None:
-            allowed_file_types = ['csv', 'txt']
-        self.allowed_file_types = allowed_file_types
+    # --- Paths ---
+    fallout_4_directory = ConfigKey("fallout_4_directory", "fallout4.exe not found", str)
+    fallout_4_directory_check = ConfigKey("fallout_4_directory_check", True, bool)
+    custom_references = ConfigKey("custom_references", os.path.join(get_app_root(), "references"), str)
+    output_dir = ConfigKey("output_dir", "output", str)
+    huggingface_cache_dir = ConfigKey("huggingface_cache_dir", None)
+    huggingface_key = ConfigKey("huggingface_key", "", str)
 
-    """ File validator """
+    # --- Audio ---
+    audio_output_device = ConfigKey("audio_output_device", -1, int)
+    audio_input_device = ConfigKey("audio_input_device", -1, int)
 
-    def validate(self, value):
-        if os.path.exists(value) and os.path.isfile(value):
-            _, file_extension = os.path.splitext(value)
-            return file_extension in self.allowed_file_types
+    # --- Text processing ---
+    max_text_size = ConfigKey("max_text_size", 200, int)
+    min_chunk_size = ConfigKey("min_chunk_size", 50, int)
+    lowercase_conversion = ConfigKey("lowercase_conversion", False, bool)
+    whitespace_normalization = ConfigKey("whitespace_normalization", True, bool)
+    dot_letter_fix = ConfigKey("dot_letter_fix", True, bool)
+    inline_reference_removal = ConfigKey("inline_reference_removal", True, bool)
+    pad_short_phrases = ConfigKey("pad_short_phrases", True, bool)
 
-        return False
+    # --- Bulk ---
+    replace_existing = ConfigKey("replace_existing", False, bool)
+    include_subdir = ConfigKey("include_subdir", True, bool)
+    threads = ConfigKey("threads", 1, int)
+    multigen_total = ConfigKey("multigen_total", 3, int)
+    ez_total = ConfigKey("ez_total", 1, int)
 
+    # --- Features ---
+    rvc_enabled = ConfigKey("rvc_enabled", False, bool)
+    apbwe_enabled = ConfigKey("apbwe_enabled", True, bool)
+    xwm_enabled = ConfigKey("xwm_enabled", False, bool)
+    keep_only_fuz = ConfigKey("keep_only_fuz", False, bool)
+    use_existing_lip = ConfigKey("use_existing_lip", True, bool)
 
-class PitchExtractionAlgorithm(Enum):
-    """ Online song quality enumeration class """
-    crepe = "crepe"
-    crepe_tiny = "crepe-tiny"
-    dio = "dio"
-    fcpe = "fcpe"
-    harvest = "harvest"
-    hybrid = "hybird[rmcpe+fcpe]"
-    rmvpe = "rmvpe"
+    # --- UI (imgui) ---
+    font_global_scale = ConfigKey("font_global_scale", 1.0, float)
+    theme_color = ConfigKey("theme_color", "#ffb642", str)
+    nav_collapsed = ConfigKey("nav_collapsed", False, bool)
 
+    # --- RVC ---
+    rvc_pitch = ConfigKey("rvc_pitch", 0, int)
+    rvc_hop_length = ConfigKey("rvc_hop_length", 128, int)
+    rvc_training_data_size = ConfigKey("rvc_training_data_size", 0, int)
+    rvc_index_influence = ConfigKey("rvc_index_influence", 75, int)
+    rvc_volume_envelope = ConfigKey("rvc_volume_envelope", 100, int)
+    rvc_protect = ConfigKey("rvc_protect", 33, int)
+    rvc_filter_radius = ConfigKey("rvc_filter_radius", 3, int)
+    rvc_autotune = ConfigKey("rvc_autotune", False, bool)
+    rvc_split_audio = ConfigKey("rvc_split_audio", False, bool)
+    rvc_pitch_extraction = ConfigKey("rvc_pitch_extraction", "rmvpe", str)
+    rvc_mode = ConfigKey("rvc_mode", "Microphone", str)
+    rvc_eleven_labs_key = ConfigKey("rvc_eleven_labs_key", "", str)
+    rvc_embedder_model = ConfigKey("rvc_embedder_model", "contentvec", str)
 
-class OnEngineChange(QObject):
-    engine_signal = Signal(str)
+    # --- F5 ---
+    f5_mode = ConfigKey("f5_mode", "tts", str)
+    f5_speed = ConfigKey("f5_speed", 1.0, float)
+    f5_nfe_step = ConfigKey("f5_nfe_step", 32, int)
+    f5_crossfade = ConfigKey("f5_crossfade", 0.15, float)
+    f5_nfe = f5_nfe_step
 
+    # --- GPT-SoVITS ---
+    gpt_sovits_slice_mode = ConfigKey("gpt_sovits_slice_mode", "No slice", str)
+    gpt_sovits_low_vram = ConfigKey("gpt_sovits_low_vram", False, bool)
+    gpt_sovits_top_p = ConfigKey("gpt_sovits_top_p", 100, int)
+    gpt_sovits_top_k = ConfigKey("gpt_sovits_top_k", 5, int)
+    gpt_sovits_temperature = ConfigKey("gpt_sovits_temperature", 100, int)
+    gpt_sovits_speed = ConfigKey("gpt_sovits_speed", 100, int)
+    slice_mode = gpt_sovits_slice_mode
+    low_vram_gpt_sovits = gpt_sovits_low_vram
+    top_p_gpt_sovits = gpt_sovits_top_p
+    top_k_gpt_sovits = gpt_sovits_top_k
+    temperature_gpt_sovits = gpt_sovits_temperature
+    speed_gpt_sovits = gpt_sovits_speed
 
-class Fallout4FolderValidator(ConfigValidator):
+    # --- StyleTTS2 ---
+    styletts2_alpha = ConfigKey("styletts2_alpha", 20, int)
+    styletts2_beta = ConfigKey("styletts2_beta", 20, int)
+    styletts2_embedding_scale = ConfigKey("styletts2_embedding_scale", 1, int)
+    styletts2_diffusion_steps = ConfigKey("styletts2_diffusion_steps", 100, int)
+    style_alpha = styletts2_alpha
+    style_beta = styletts2_beta
+    style_embedding_scale = styletts2_embedding_scale
+    style_diffusion_steps = styletts2_diffusion_steps
 
-    def validate(self, value):
-        return os.path.exists(value) and os.path.isfile(os.path.join(value, "Fallout4.exe"))
+    # --- FishSpeech ---
+    fish_use_torch_compile = ConfigKey("fish_use_torch_compile", False, bool)
+    fish_temperature = ConfigKey("fish_temperature", 70, int)
+    fish_repetition = ConfigKey("fish_repetition", 12, int)
+    fish_top_p = ConfigKey("fish_top_p", 70, int)
+    fish_max_length = ConfigKey("fish_max_length", 2048, int)
+    fish_use_cache = ConfigKey("fish_use_cache", False, bool)
+    fish_iterative_prompt = ConfigKey("fish_iterative_prompt", True, bool)
 
+    # --- DIA ---
+    dia_use_torch_compile = ConfigKey("dia_use_torch_compile", False, bool)
+    dia_temperature = ConfigKey("dia_temperature", 135, int)
+    dia_top_k = ConfigKey("dia_top_k", 45, int)
+    dia_top_p = ConfigKey("dia_top_p", 95, int)
 
-class DeviceValidator(OptionsValidator):
-    """ Options validator """
+    # --- Llasa ---
+    llasa_temperature = ConfigKey("llasa_temperature", 80, int)
+    llasa_top_p = ConfigKey("llasa_top_p", 90, int)
+    llasa_max_length = ConfigKey("llasa_max_length", 2048, int)
+    llasa_mode = ConfigKey("llasa_mode", "1b", str)
+
+    # --- Orpheus ---
+    orpheus_temperature = ConfigKey("orpheus_temperature", 85, int)
+    orpheus_top_p = ConfigKey("orpheus_top_p", 95, int)
+    orpheus_repetition = ConfigKey("orpheus_repetition", 115, int)
+    orpheus_top_k = ConfigKey("orpheus_top_k", 50, int)
+    orpheus_max_new_tokens = ConfigKey("orpheus_max_new_tokens", 1200, int)
+    orpehus_temperature = orpheus_temperature
+    orpehus_top_p = orpheus_top_p
+    orpehus_repetition = orpheus_repetition
+    orpehus_top_k = orpheus_top_k
+    orpehus_max_new_tokens = orpheus_max_new_tokens
+
+    # --- Spark ---
+    spark_top_p = ConfigKey("spark_top_p", 90, int)
+    spark_temperature = ConfigKey("spark_temperature", 90, int)
+    spark_top_k = ConfigKey("spark_top_k", 50, int)
+    spark_max_new_tokens = ConfigKey("spark_max_new_tokens", 3000, int)
+
+    # --- Chatterbox ---
+    chatterbox_top_p = ConfigKey("chatterbox_top_p", 80, int)
+    chatterbox_temperature = ConfigKey("chatterbox_temperature", 80, int)
+    chatterbox_min_p = ConfigKey("chatterbox_min_p", 5, int)
+    chatterbox_max_new_tokens = ConfigKey("chatterbox_max_new_tokens", 4096, int)
+    chatterbox_exaggeration = ConfigKey("chatterbox_exaggeration", 50, int)
+    chatterbox_repetition_penalty = ConfigKey("chatterbox_repetition_penalty", 100, int)
+    chatterbox_cfg_weight = ConfigKey("chatterbox_cfg_weight", 50, int)
+
+    # --- Higgs ---
+    higgs_top_p = ConfigKey("higgs_top_p", 90, int)
+    higgs_temperature = ConfigKey("higgs_temperature", 90, int)
+    higgs_top_k = ConfigKey("higgs_top_k", 50, int)
+    higgs_max_new_tokens = ConfigKey("higgs_max_new_tokens", 3000, int)
+    higgs_ras_win_len = ConfigKey("higgs_ras_win_len", 15, int)
+    higgs_ras_win_max_num_repeat = ConfigKey("higgs_ras_win_max_num_repeat", 4, int)
+
+    # --- Vibe ---
+    vibe_mode = ConfigKey("vibe_mode", "1.5B", str)
+    vibe_cfg_scale = ConfigKey("vibe_cfg_scale", 10, int)
+    vibe_inference_steps = ConfigKey("vibe_inference_steps", 50, int)
+    vibe_temperature = ConfigKey("vibe_temperature", 100, int)
+    vibe_do_sample = ConfigKey("vibe_do_sample", True, bool)
+    vibe_top_p = ConfigKey("vibe_top_p", 90, int)
+    vibe_top_k = ConfigKey("vibe_top_k", 50, int)
+    vibe_dosmaple = vibe_do_sample
+
+    # --- Qwen3TTS ---
+    qwen_instruct = ConfigKey("qwen_instruct", "", str)
+    qwen_language = ConfigKey("qwen_language", "English", str)
+    qwen_model_version = ConfigKey("qwen_model_version", "1.7B-Base", str)
+
+    # --- CSM ---
+    csm_temperature = ConfigKey("csm_temperature", 80, int)
+    csm_top_k = ConfigKey("csm_top_k", 50, int)
+
+    # --- DMO Speech 2 ---
+    dmo_temperature = ConfigKey("dmo_temperature", 80, int)
+    dmo_teacher_steps = ConfigKey("dmo_teacher_steps", 16, int)
+    dmo_teacher_stopping_time = ConfigKey("dmo_teacher_stopping_time", 7, int)
+    dmo_student_start_step = ConfigKey("dmo_student_start_step", 1, int)
+    dmo_top_k = ConfigKey("dmo_top_k", 50, int)
+    dmo_speech2_temperature = dmo_temperature
+    dmo_speech2_teacher_steps = dmo_teacher_steps
+    dmo_speech2_teacher_stopping_time = dmo_teacher_stopping_time
+    dmo_speech2_student_start_step = dmo_student_start_step
+
+    # --- Chat ---
+    chat_model = ConfigKey("chat_model", "Qwen/Qwen3-1.7B", str)
 
     def __init__(self):
-        if torch.cuda.is_available():
-            num_gpus = torch.cuda.device_count()
-            if num_gpus > 1:
-                super().__init__(["cpu", "cuda", "cuda:1"])
-            else:
-                super().__init__(["cpu", "cuda"])
+        self._defaults: dict = {}
+        self._data: dict = {}
+        self._path = os.path.join(get_app_root(), "config", "settings.json")
+        self._collect_defaults()
+        self.load()
+
+    def _collect_defaults(self):
+        """Collect default values from all ConfigKey class attributes."""
+        for attr_name in dir(self.__class__):
+            attr = getattr(self.__class__, attr_name)
+            if isinstance(attr, ConfigKey):
+                self._defaults[attr.key] = attr.default
+
+    def get(self, key: ConfigKey):
+        val = self._data.get(key.key, key.default)
+        if key.key == "f5_mode" and val == "generate":
+            val = "tts"
+        elif key.key == "f5_speed" and isinstance(val, (int, float)) and val > 3:
+            val = float(val) / 10.0
+        elif key.key == "f5_crossfade" and isinstance(val, (int, float)) and val > 1:
+            val = float(val) / 100.0
+        elif key.key == "vibe_mode" and val == "generate":
+            val = "1.5B"
+        if key.type_ is not None and val is not None:
+            try:
+                return key.type_(val)
+            except (ValueError, TypeError):
+                return key.default
+        return val
+
+    def set(self, key: ConfigKey, value):
+        self._data[key.key] = value
+        self.save()
+
+    def reset(self):
+        """Reset all settings to defaults."""
+        self._data = dict(self._defaults)
+        self.save()
+
+    def load(self):
+        if os.path.exists(self._path):
+            try:
+                with open(self._path, 'r', encoding='utf-8') as f:
+                    self._data = json.load(f)
+                # Migrate nested sections from old Qt config if present
+                if self._migrate_nested_sections():
+                    self.save()
+                return
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        # Attempt migration from old QSettings INI format
+        old_path = os.path.join(os.path.dirname(self._path), "configv2.json")
+        if os.path.exists(old_path):
+            self._migrate_from_ini(old_path)
         else:
-            super().__init__(["cpu"])
+            self._data = dict(self._defaults)
+        self.save()
+
+    # Map from old nested (section, key) → new flat key
+    _NESTED_KEY_MAP = {
+        ("App", "accepts_disclaimer"): "accepted_disclaimer",
+        ("App", "accepts_custom_disclaimer"): "accepts_custom_disclaimer",
+        ("App", "fallout_4_directory"): "fallout_4_directory",
+        ("App", "fallout_4_directory_check"): "fallout_4_directory_check",
+        ("App", "first_start"): "first_start",
+        ("App", "auto_play"): "auto_play",
+        ("App", "check_for_updates"): "check_for_updates",
+        ("App", "download_configs"): "download_configs",
+        ("App", "output_dir"): "output_dir",
+        ("App", "custom_references"): "custom_references",
+        ("App", "huggingface_cache_dir"): "huggingface_cache_dir",
+        ("App", "disable_ssl_verify"): "disableSSLVerify",
+        ("App", "apbwe_enabled"): "apbwe_enabled",
+        ("App", "rvc_enabled"): "rvc_enabled",
+        ("App", "xwm_enabled"): "xwm_enabled",
+        ("App", "keep_only_fuz"): "keep_only_fuz",
+        ("App", "use_existing_lip"): "use_existing_lip",
+        ("App", "themeColor"): "theme_color",
+        ("App", "inline_reference_removal"): "inline_reference_removal",
+        ("App", "dot_letter_fix"): "dot_letter_fix",
+        ("App", "whitespace_normalization"): "whitespace_normalization",
+        ("App", "lowercase_conversion"): "lowercase_conversion",
+        ("App", "pad_short_phrases"): "pad_short_phrases",
+        ("App", "max_text_size"): "max_text_size",
+        ("App", "min_text_size"): "min_chunk_size",
+        ("App", "api_only_mode"): "api_only_mode",
+        ("APP", "huggingface_key"): "huggingface_key",
+        ("TTS", "engine"): "engine",
+        ("TTS", "device"): "device",
+        ("TTS", "seed"): "seed",
+        ("TTS", "auto_update_models"): "auto_update_models",
+        ("TTS", "load_at_start"): "load_engine_art_start",
+        ("Chat", "model"): "chat_model",
+        ("Personalization", "themeColor"): "theme_color",
+        ("bulk", "include_subdir"): "include_subdir",
+        ("bulk", "replace_existing"): "replace_existing",
+        ("bulk", "threads"): "threads",
+        ("multigen", "total"): "multigen_total",
+        ("ez", "total"): "ez_total",
+        ("F5", "speed_factor"): "f5_speed",
+        ("F5", "mode"): "f5_mode",
+        ("F5", "nfe_step"): "f5_nfe_step",
+        ("GPT_SoVITS", "slice_mode"): "gpt_sovits_slice_mode",
+        ("GPT_SoVITS", "low_vram"): "gpt_sovits_low_vram",
+        ("GPT_SoVITS", "model_temperature"): "gpt_sovits_temperature",
+        ("GPT_SoVITS", "top_p"): "gpt_sovits_top_p",
+        ("GPT_SoVITS", "top_k"): "gpt_sovits_top_k",
+        ("GPT_SoVITS", "speed"): "gpt_sovits_speed",
+        ("StyleTTS2", "alpha"): "styletts2_alpha",
+        ("StyleTTS2", "beta"): "styletts2_beta",
+        ("StyleTTS2", "embedding_scale"): "styletts2_embedding_scale",
+        ("StyleTTS2", "diffusion_steps"): "styletts2_diffusion_steps",
+        ("FishSpeech", "use_torch_compile"): "fish_use_torch_compile",
+        ("FishSpeech", "model_temperature"): "fish_temperature",
+        ("FishSpeech", "model_repetition"): "fish_repetition",
+        ("FishSpeech", "top_p"): "fish_top_p",
+        ("FishSpeech", "max_length"): "fish_max_length",
+        ("FishSpeech", "use_memory_cache"): "fish_use_cache",
+        ("FishSpeech", "iterative_prompt"): "fish_iterative_prompt",
+        ("DIA", "model_temperature"): "dia_temperature",
+        ("DIA", "top_k"): "dia_top_k",
+        ("DIA", "top_p"): "dia_top_p",
+        ("DIA", "use_torch_compile"): "dia_use_torch_compile",
+        ("Llasa", "model_temperature"): "llasa_temperature",
+        ("Llasa", "top_p"): "llasa_top_p",
+        ("Llasa", "max_length"): "llasa_max_length",
+        ("Llasa", "mode"): "llasa_mode",
+        ("Orpehus", "model_temperature"): "orpheus_temperature",
+        ("Orpehus", "top_p"): "orpheus_top_p",
+        ("Orpehus", "model_repetition"): "orpheus_repetition",
+        ("Orpehus", "top_k"): "orpheus_top_k",
+        ("Orpehus", "max_new_tokens"): "orpheus_max_new_tokens",
+        ("Spark", "model_temperature"): "spark_temperature",
+        ("Spark", "top_p"): "spark_top_p",
+        ("Spark", "top_k"): "spark_top_k",
+        ("Spark", "max_new_tokens"): "spark_max_new_tokens",
+        ("Chatterbox", "model_temperature"): "chatterbox_temperature",
+        ("Chatterbox", "top_p"): "chatterbox_top_p",
+        ("Chatterbox", "min_p"): "chatterbox_min_p",
+        ("Chatterbox", "max_new_tokens"): "chatterbox_max_new_tokens",
+        ("Chatterbox", "exaggeration"): "chatterbox_exaggeration",
+        ("Chatterbox", "repetition_penalty"): "chatterbox_repetition_penalty",
+        ("Chatterbox", "cfg_weight"): "chatterbox_cfg_weight",
+        ("Higgs", "model_temperature"): "higgs_temperature",
+        ("Higgs", "top_p"): "higgs_top_p",
+        ("Higgs", "top_k"): "higgs_top_k",
+        ("Higgs", "max_new_tokens"): "higgs_max_new_tokens",
+        ("Higgs", "ras_win_len"): "higgs_ras_win_len",
+        ("Higgs", "ras_win_max_num_repeat"): "higgs_ras_win_max_num_repeat",
+        ("Vibe", "mode"): "vibe_mode",
+        ("Vibe", "cfg_scale"): "vibe_cfg_scale",
+        ("Vibe", "inference_steps"): "vibe_inference_steps",
+        ("Vibe", "model_temperature"): "vibe_temperature",
+        ("Vibe", "do_sample"): "vibe_do_sample",
+        ("Vibe", "top_p"): "vibe_top_p",
+        ("Vibe", "top_k"): "vibe_top_k",
+        ("Qwen3TTS", "instruct"): "qwen_instruct",
+        ("Qwen3TTS", "language"): "qwen_language",
+        ("Qwen3TTS", "model_version"): "qwen_model_version",
+        ("DMSpeech2", "model_temperature"): "dmo_temperature",
+        ("DMSpeech2", "teacher_steps"): "dmo_teacher_steps",
+        ("DMSpeech2", "teacher_stopping_time"): "dmo_teacher_stopping_time",
+        ("DMSpeech2", "student_start_step"): "dmo_student_start_step",
+        ("RVC", "rvc_pitch"): "rvc_pitch",
+        ("RVC", "rvc_hop_length"): "rvc_hop_length",
+        ("RVC", "rvc_training_data_size"): "rvc_training_data_size",
+        ("RVC", "rvc_index_influence"): "rvc_index_influence",
+        ("RVC", "rvc_volume_envelope_Rslider"): "rvc_volume_envelope",
+        ("RVC", "rvc_protect"): "rvc_protect",
+        ("RVC", "rvc_filter_radius"): "rvc_filter_radius",
+        ("RVC", "rvc_autotune_checkbox"): "rvc_autotune",
+        ("RVC", "rvc_split_audio"): "rvc_split_audio",
+        ("RVC", "rvc_pitch_extraction"): "rvc_pitch_extraction",
+        ("RVC", "rvc_mode"): "rvc_mode",
+        ("RVC", "rvc_eleven_labs_key"): "rvc_eleven_labs_key",
+        ("RVC", "rvc_embedding_model"): "rvc_embedder_model",
+    }
+
+    def _migrate_nested_sections(self) -> bool:
+        """Flatten old Qt nested config sections into flat keys. Returns True if any migration happened."""
+        # Detect nested sections (dicts that aren't list/None values)
+        nested_sections = {k: v for k, v in self._data.items() if isinstance(v, dict)}
+        if not nested_sections:
+            return False
+
+        migrated = False
+        for (section, old_key), flat_key in self._NESTED_KEY_MAP.items():
+            if section in nested_sections and old_key in nested_sections[section]:
+                old_val = nested_sections[section][old_key]
+                # Only migrate if the flat key still has its default value
+                if flat_key in self._defaults and self._data.get(flat_key) == self._defaults[flat_key]:
+                    self._data[flat_key] = old_val
+                    migrated = True
+
+        # Remove nested sections after migration
+        if migrated:
+            for section in nested_sections:
+                del self._data[section]
+
+        return migrated
+
+    def _migrate_from_ini(self, ini_path: str):
+        """Parse old qfluentwidgets QSettings INI config into self._data."""
+        # The old file may already be JSON (from a previous migration).
+        try:
+            with open(ini_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            self._data = {**self._defaults, **data}
+            return
+        except (json.JSONDecodeError, OSError, ValueError):
+            pass
+        parser = configparser.ConfigParser()
+        parser.read(ini_path, encoding='utf-8')
+        self._data = dict(self._defaults)
+        section = 'General'
+        if parser.has_section(section):
+            for key, value in parser.items(section):
+                # Coerce bool strings
+                if value.lower() == 'true':
+                    self._data[key] = True
+                elif value.lower() == 'false':
+                    self._data[key] = False
+                else:
+                    # Try numeric, fall back to string
+                    try:
+                        self._data[key] = int(value)
+                    except ValueError:
+                        try:
+                            self._data[key] = float(value)
+                        except ValueError:
+                            self._data[key] = value
+
+    def save(self):
+        """Atomic write to settings.json."""
+        os.makedirs(os.path.dirname(self._path), exist_ok=True)
+        tmp = self._path + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(self._data, f, indent=2, default=str)
+        os.replace(tmp, self._path)
 
 
-class Config(QConfig):
-    ALERT = "FallTalk is Loading.."
-    # RVC
-    rvc_pitch = RangeConfigItem("RVC", "rvc_pitch", 0, RangeValidator(-24, 24))
-    rvc_hop_length = RangeConfigItem("RVC", "rvc_hop_length", 1, RangeValidator(1, 512))
-    rvc_training_data_size = RangeConfigItem("RVC", "rvc_training_data_size", 10000, RangeValidator(0, 50000))
-    rvc_index_influence = RangeConfigItem("RVC", "rvc_index_influence", 75, RangeValidator(0, 100))
-    rvc_volume_envelope = RangeConfigItem("RVC", "rvc_volume_envelope_Rslider", 100, RangeValidator(1, 100))
-    rvc_protect = RangeConfigItem("RVC", "rvc_protect", 50, RangeValidator(0, 50))
-    rvc_filter_radius = RangeConfigItem("RVC", "rvc_filter_radius", 3, RangeValidator(0, 7))
-    rvc_autotune = ConfigItem("RVC", "rvc_autotune_checkbox", False, BoolValidator())
-    rvc_split_audio = ConfigItem("RVC", "rvc_split_audio", False, BoolValidator())
-    rvc_pitch_extraction = OptionsConfigItem("RVC", "rvc_pitch_extraction", default=PitchExtractionAlgorithm.rmvpe,
-                                             validator=OptionsValidator(PitchExtractionAlgorithm),
-                                             serializer=EnumSerializer(PitchExtractionAlgorithm))
-    rvc_mode = OptionsConfigItem("RVC", "rvc_mode", "Microphone", OptionsValidator(["Microphone", "File", "EdgeTTS", "Eleven-Labs"]))
-    rvc_eleven_labs_key = ConfigItem("RVC", "rvc_eleven_labs_key", None, ConfigValidator())
-
-    rvc_embedder_model = OptionsConfigItem("RVC", "rvc_embedding_model", "contentvec", OptionsValidator(["contentvec", "hubert"]))
-
-    # General Model
-    engine = OptionsConfigItem("TTS", "engine", EngineType.CHATTERBOX.value, OptionsValidator([e.value for e in EngineType if e.enabled]))
-    load_engine_art_start = ConfigItem("TTS", "load_at_start", False, BoolValidator())
-    auto_update_models = ConfigItem("TTS", "auto_update_models", False, BoolValidator())
-    device = OptionsConfigItem("TTS", "device", "cuda" if torch.cuda.is_available() else "cpu", DeviceValidator())
-    seed = RangeConfigItem("TTS", "seed", 123456, RangeValidator(-1, 2 ** 30 - 1))
-    fallout_4_directory = ConfigItem(
-        "App", "fallout_4_directory", find_fallout4_exe(), Fallout4FolderValidator())
-    fallout_4_directory_check = ConfigItem("App", "fallout_4_directory_check", True, BoolValidator())
-    custom_references = ConfigItem(
-        "App", "custom_references", os.path.join(get_app_root(), "references"), FolderValidator())
-    output_dir = ConfigItem("App", "output_dir", os.path.join(get_app_root(), "output"), FolderValidator())
-    rvc_enabled = ConfigItem("App", "rvc_enabled", False, BoolValidator())
-    apbwe_enabled = ConfigItem("App", "apbwe_enabled", True, BoolValidator())
-    pad_short_phrases = ConfigItem("App", "pad_short_phrases", True, BoolValidator())
-
-    # Text processing settings
-    max_text_size = RangeConfigItem("App", "max_text_size", 300, RangeValidator(50, 1000))
-    min_chunk_size = RangeConfigItem("App", "min_text_size", 30, RangeValidator(10, 100))
-    lowercase_conversion = ConfigItem("App", "lowercase_conversion", False, BoolValidator())
-    whitespace_normalization = ConfigItem("App", "whitespace_normalization", True, BoolValidator())
-    dot_letter_fix = ConfigItem("App", "dot_letter_fix", True, BoolValidator())
-    inline_reference_removal = ConfigItem("App", "inline_reference_removal", True, BoolValidator())
-
-    keep_only_fuz = ConfigItem("App", "keep_only_fuz", False, BoolValidator())
-    use_existing_lip = ConfigItem("App", "use_existing_lip", True, BoolValidator())
-    huggingface_cache_dir = ConfigItem("App", "huggingface_cache_dir", None, CustomFolderValidator(), restart=True)
-    huggingface_key = ConfigItem("APP", "huggingface_key", None, ConfigValidator(), restart=True)
-    disableSSLVerify= ConfigItem("App", "disable_ssl_verify", False, BoolValidator(), restart=True)
-
-
-
-    xwm_enabled = ConfigItem("App", "xwm_enabled", False, BoolValidator())
-    download_configs = ConfigItem(
-        "App", "download_configs", True, BoolValidator())
-    check_for_updates = ConfigItem(
-        "App", "check_for_updates", True, BoolValidator())
-    auto_play = ConfigItem("App", "auto_play", True, BoolValidator())
-    first_start = ConfigItem('App', 'first_start', True, BoolValidator())
-    api_only_mode = ConfigItem('App', 'api_only_mode', False, BoolValidator(), restart=True)
-    accepted_disclaimer = ConfigItem('App', 'accepts_disclaimer', False, BoolValidator())
-    accepts_custom_disclaimer = ConfigItem('App', 'accepts_custom_disclaimer', False, BoolValidator())
-
-    steps = RangeConfigItem("Image", "steps", 50, RangeValidator(1, 200))
-
-    #Bulk
-    replace_existing = ConfigItem("bulk", "replace_existing", False, BoolValidator())
-    include_subdir = ConfigItem("bulk", "include_subdir", True, BoolValidator())
-    threads = RangeConfigItem("bulk", "threads", 1, RangeValidator(1, 2))
-
-    multigen_total = RangeConfigItem("multigen", "total", 3, RangeValidator(1, 10))
-    ez_total = RangeConfigItem("ez", "total", 1, RangeValidator(1, 10))
-
-    #Audio
-    # fx_duration = RangeConfigItem("fx", "duration", 10, RangeValidator(5, 120))
-    # audio_mode = OptionsConfigItem("music", "mode", "stereo", OptionsValidator(["mono", "stereo", "songstarter"]))
-    # music_duration = RangeConfigItem("music", "duration", 30, RangeValidator(5, 300))
-    # parse_mode = OptionsConfigItem("music", "parse_mode", "single", OptionsValidator(["split", "single"]))
-    # extend_stride = RangeConfigItem("music", "extend_stride", 18, RangeValidator(1, 30))
-    # music_temperature = RangeConfigItem("music", "music_temperature", 100, RangeValidator(1, 100))
-
-    # XTTS
-    speed = RangeConfigItem("XTTS", "speed", 100, RangeValidator(1, 200))
-    model_temperature = RangeConfigItem("XTTS", "model_temperature", 75, RangeValidator(1, 100))
-    model_repetition = RangeConfigItem("XTTS", "model_repetition", 10, RangeValidator(1, 15))
-    low_vram = ConfigItem("XTTS", "low_vram", False, BoolValidator())
-    deepspeed_enabled = ConfigItem("XTTS", "deepspeed_enabled", False, BoolValidator())
-
-    # VoiceCraft
-    # mode = OptionsConfigItem("VoiceCraft", "mode", "edit", OptionsValidator(["edit", "tts", "long_tts"]))
-    # stop_repetition = RangeConfigItem("VoiceCraft", "stop_repetition", 3, RangeValidator(-1, 4))
-    # sample_batch_size = RangeConfigItem("VoiceCraft", "sample_batch_size", 2, RangeValidator(1, 10))
-    # seed = RangeConfigItem("VoiceCraft", "seed", -1, RangeValidator(-1, 2 ** 30 - 1))
-    # kvcache = RangeConfigItem("VoiceCraft", "kvcache", 1, RangeValidator(0, 1))
-    # left_margin = RangeConfigItem("VoiceCraft", "left_margin", 80, RangeValidator(0, 100))
-    # right_margin = RangeConfigItem("VoiceCraft", "right_margin", 80, RangeValidator(0, 100))
-    # top_p = RangeConfigItem("VoiceCraft", "top_p", 90, RangeValidator(0.0, 100))
-    # top_k = RangeConfigItem("VoiceCraft", "top_k", 0, RangeValidator(0, 100))
-    # codec_audio_sr = RangeConfigItem("VoiceCraft", "codec_audio_sr", 16000, RangeValidator(1, 48000))
-    # codec_sr = RangeConfigItem("VoiceCraft", "codec_sr", 50, RangeValidator(1, 100))
-    # silence_tokens = OptionsConfigItem("VoiceCraft", "silence_tokens", '[1388, 1898, 131]', OptionsValidator(['[1388, 1898, 131]']))
-    # split_text = OptionsConfigItem("VoiceCraft", "split_text", "Newline", OptionsValidator(["Newline", "Sentence"]))
-    # smart_transcript = ConfigItem("VoiceCraft", "smart_transcript", True, BoolValidator())
-    # voicecraft_temperature = RangeConfigItem("VoiceCraft", "model_temperature", 100, RangeValidator(1, 100))
-    # edit_mode = OptionsConfigItem("VoiceCraft", "edit_mode", "replace all", OptionsValidator(["replace half", "replace all"]))
-
-    #F5
-    f5_mode = OptionsConfigItem("F5", "mode", "tts", OptionsValidator(["edit", "tts"]))
-    f5_speed = RangeConfigItem("F5", "speed_factor", 10, RangeValidator(1, 20))
-    f5_nfe = RangeConfigItem("F5", "nfe_step", 32, RangeValidator(16, 64))
-    f5_crossfade = RangeConfigItem("F5", "speed_factor", 15, RangeValidator(1, 100))
-
-    #LASA
-    llasa_temperature = RangeConfigItem("Llasa", "model_temperature", 80, RangeValidator(1, 100))
-    llasa_top_p = RangeConfigItem("Llasa", "top_p", 100, RangeValidator(0.0, 100))
-    llasa_max_length = RangeConfigItem("Llasa", "max_length", 2048, RangeValidator(1, 2048))
-    llasa_mode = OptionsConfigItem("Llasa", "mode", "1B", OptionsValidator(["3B", "1B", "8B"]))
-
-    #Orpehus
-    orpehus_temperature = RangeConfigItem("Orpehus", "model_temperature", 60, RangeValidator(1, 100))
-    orpehus_top_p = RangeConfigItem("Orpehus", "top_p", 90, RangeValidator(0.0, 100))
-    orpehus_repetition = RangeConfigItem("Orpehus", "model_repetition", 13, RangeValidator(11, 20))
-    orpehus_top_k = RangeConfigItem("Orpehus", "top_k", 90, RangeValidator(0.0, 100))
-    orpehus_max_new_tokens = RangeConfigItem("Orpehus", "max_new_tokens", 990, RangeValidator(0.0, 2048))
-
-    #FishSpeech
-    fish_use_torch_compile = ConfigItem("FishSpeech", "use_torch_compile", False, BoolValidator())
-    fish_repetition = RangeConfigItem("FishSpeech", "model_repetition", 15, RangeValidator(1, 20))
-    fish_top_p = RangeConfigItem("FishSpeech", "top_p", 70, RangeValidator(0.0, 100))
-    fish_max_length = RangeConfigItem("FishSpeech", "max_length", 2048, RangeValidator(0, 2048))
-    fish_use_cache = ConfigItem("FishSpeech", "use_memory_cache", True, BoolValidator())
-    fish_iterative_prompt = ConfigItem("FishSpeech", "iterative_prompt", True, BoolValidator())
-    fish_temperature = RangeConfigItem("FishSpeech", "model_temperature", 80, RangeValidator(1, 100))
-
-    #DIA
-    dia_use_torch_compile = ConfigItem("DIA", "use_torch_compile", False, BoolValidator())
-    dia_top_p = RangeConfigItem("DIA", "top_p", 95, RangeValidator(0.0, 100))
-    dia_temperature = RangeConfigItem("DIA", "model_temperature", 130, RangeValidator(1, 200))
-    dia_top_k = RangeConfigItem("DIA", "top_k", 45, RangeValidator(0, 100))
-
-    # GPT_SoVITS
-    slice_mode = OptionsConfigItem("GPT_SoVITS", "slice_mode", "No Slice", OptionsValidator(["No Slice", "Slice by English punct", "Slice by every punct", "Slice once every 4 sentences", "Slice once every 2 sentences"]))
-    low_vram_gpt_sovits = ConfigItem("GPT_SoVITS", "low_vram", False, BoolValidator())
-    top_p_gpt_sovits = RangeConfigItem("GPT_SoVITS", "top_p", 100, RangeValidator(0.0, 100))
-    top_k_gpt_sovits = RangeConfigItem("GPT_SoVITS", "top_k", 15, RangeValidator(0, 100))
-    temperature_gpt_sovits = RangeConfigItem("GPT_SoVITS", "model_temperature", 75, RangeValidator(1, 100))
-    speed_gpt_sovits = RangeConfigItem("GPT_SoVITS", "speed", 100, RangeValidator(1, 200))
-
-    # StyleTTS2
-    style_beta = RangeConfigItem("StyleTTS2", "beta", 20, RangeValidator(0, 100))
-    style_alpha = RangeConfigItem("StyleTTS2", "alpha", 20, RangeValidator(0, 100))
-    style_embedding_scale = RangeConfigItem("StyleTTS2", "embedding_scale", 1, RangeValidator(1, 3))
-    style_diffusion_steps = RangeConfigItem("StyleTTS2", "diffusion_steps", 100, RangeValidator(1, 500))
-
-    # Spark
-    spark_top_p = RangeConfigItem("Spark", "top_p", 95, RangeValidator(0.0, 100))
-    spark_temperature = RangeConfigItem("Spark", "model_temperature", 80, RangeValidator(1, 200))
-    spark_top_k = RangeConfigItem("Spark", "top_k", 50, RangeValidator(0, 100))
-    spark_max_new_tokens = RangeConfigItem("Spark", "max_new_tokens", 2048, RangeValidator(800, 2048))
-
-    # Chatterbox settings
-    chatterbox_top_p = RangeConfigItem("Chatterbox", "top_p", 100, RangeValidator(0.0, 100))
-    chatterbox_temperature = RangeConfigItem("Chatterbox", "model_temperature", 80, RangeValidator(1, 200))
-    chatterbox_min_p = RangeConfigItem("Chatterbox", "min_p", 50, RangeValidator(0, 100))
-    chatterbox_max_new_tokens = RangeConfigItem("Chatterbox", "max_new_tokens", 2048, RangeValidator(800, 2048))
-    chatterbox_exaggeration = RangeConfigItem("Chatterbox", "exaggeration", 50, RangeValidator(0, 100))
-    chatterbox_repetition_penalty = RangeConfigItem("Chatterbox", "repetition_penalty", 12, RangeValidator(9, 15))
-    chatterbox_cfg_weight = RangeConfigItem("Chatterbox", "cfg_weight", 50, RangeValidator(0, 100))
-
-    # Chat model settings
-    chat_model = OptionsConfigItem("Chat", "model", "Qwen/Qwen3-1.7B",
-                                  OptionsValidator(["Qwen/Qwen3-1.7B", "Qwen/Qwen3-4B-Instruct-2507",  "Qwen/Qwen3-0.6B"]))
-
-    # DMSpeech2 settings
-    dmo_speech2_temperature = RangeConfigItem("DMSpeech2", "model_temperature", 80, RangeValidator(1, 200))
-    dmo_speech2_teacher_steps = RangeConfigItem("DMSpeech2", "teacher_steps", 16, RangeValidator(1, 50))
-    dmo_speech2_teacher_stopping_time = RangeConfigItem("DMSpeech2", "teacher_stopping_time", 7, RangeValidator(1, 20))
-    dmo_speech2_student_start_step = RangeConfigItem("DMSpeech2", "student_start_step", 1, RangeValidator(1, 10))
-
-    # Higgs
-    higgs_top_p = RangeConfigItem("Higgs", "top_p", 95, RangeValidator(0.0, 100))
-    higgs_temperature = RangeConfigItem("Higgs", "model_temperature", 100, RangeValidator(1, 200))
-    higgs_top_k = RangeConfigItem("Higgs", "top_k", 50, RangeValidator(0, 100))
-    higgs_max_new_tokens = RangeConfigItem("Higgs", "max_new_tokens", 2048, RangeValidator(800, 2048))
-    higgs_ras_win_len = RangeConfigItem("Higgs", "ras_win_len", 7, RangeValidator(0, 20))
-    higgs_ras_win_max_num_repeat = RangeConfigItem("Higgs", "ras_win_max_num_repeat", 2, RangeValidator(1, 10))
-
-    #Vibe
-    vibe_mode = OptionsConfigItem("Vibe", "mode", "1.5B", OptionsValidator(["1.5B", "7B"]))
-    vibe_cfg_scale = RangeConfigItem("Vibe", "cfg_scale", 13, RangeValidator(0, 100))
-    vibe_inference_steps = RangeConfigItem("Vibe", "inference_steps", 10, RangeValidator(0, 50))
-    vibe_temperature = RangeConfigItem("Vibe", "model_temperature", 95, RangeValidator(1, 200))
-    vibe_dosmaple = RangeConfigItem("Vibe", "do_sample", False, BoolValidator())
-    vibe_top_p = RangeConfigItem("Vibe", "top_p", 95, RangeValidator(0.0, 100))
-    vibe_top_k = RangeConfigItem("Vibe", "top_k", 50, RangeValidator(0, 100))
-    # Qwen3TTS
-    qwen_instruct = ConfigItem("Qwen3TTS", "instruct", "", ConfigValidator())
-    qwen_language = OptionsConfigItem("Qwen3TTS", "language", "Auto", OptionsValidator(["Auto", "Chinese", "English", "Japanese", "Korean"]))
-    qwen_model_version = OptionsConfigItem("Qwen3TTS", "model_version", "1.7B-Base", OptionsValidator(["1.7B-Base", "0.6B-Base"]))
-
-    # theme
-    themeColor = ColorConfigItem("QFluentWidgets", "ThemeColor", '#FFB642', restart=True)
-    dpiScale = OptionsConfigItem(
-        "MainWindow", "DpiScale", 1, OptionsValidator([0.75, 0.95, 1, 1.1, 1.25, 1.5, 1.75, 2, "Auto"]), restart=True)
-    # main window
-    enableAcrylicBackground = ConfigItem(
-        "MainWindow", "EnableAcrylicBackground", False, BoolValidator())
-    minimizeToTray = ConfigItem(
-        "MainWindow", "MinimizeToTray", False, BoolValidator())
-    playBarColor = ColorConfigItem("MainWindow", "PlayBarColor", "#225C7F")
-    language = OptionsConfigItem(
-        "MainWindow", "Language", Language.AUTO, OptionsValidator(Language), LanguageSerializer(), restart=True)
-
-    def resetToDefault(self):
-        self.resetXtts()
-        self.resetGPT()
-        self.resetStyleTTS()
-        self.resetRvc()
-        self.resetF5()
-        self.resetFishSpeech()
-        self.resetDIA()
-        self.resetOrpheus()
-        self.resetMainSettings()
-        self.resetSpark()
-        self.resetCSM()
-        self.resetLlasa()
-        self.resetDIA()
-        self.resetChatterbox()
-        self.resetHiggs()
-        self.resetDMSpeech2()
-        self.resetVibe()
-        self.resetQwen()
-
-    def resetMainSettings(self):
-        self.set(self.download_configs, self.download_configs.defaultValue)
-        self.set(self.check_for_updates, self.check_for_updates.defaultValue)
-        self.set(self.api_only_mode, self.api_only_mode.defaultValue)
-        self.set(self.disableSSLVerify, self.disableSSLVerify.defaultValue)
-        self.set(self.load_engine_art_start, self.load_engine_art_start.defaultValue)
-        self.set(self.apbwe_enabled, self.apbwe_enabled.defaultValue)
-        self.set(self.keep_only_fuz, self.keep_only_fuz.defaultValue)
-        self.set(self.rvc_enabled, self.rvc_enabled.defaultValue)
-        self.set(self.seed, self.seed.defaultValue)
-        self.set(self.replace_existing, self.replace_existing.defaultValue)
-
-        # Reset text processing settings
-        self.set(self.max_text_size, self.max_text_size.defaultValue)
-        self.set(self.min_chunk_size, self.min_chunk_size.defaultValue)
-        self.set(self.lowercase_conversion, self.lowercase_conversion.defaultValue)
-        self.set(self.whitespace_normalization, self.whitespace_normalization.defaultValue)
-        self.set(self.dot_letter_fix, self.dot_letter_fix.defaultValue)
-        self.set(self.inline_reference_removal, self.inline_reference_removal.defaultValue)
-        self.set(self.pad_short_phrases, self.pad_short_phrases.defaultValue)
-
-    def resetXtts(self):
-        self.set(self.speed, self.speed.defaultValue)
-        self.set(self.model_temperature, self.model_temperature.defaultValue)
-        self.set(self.model_repetition, self.model_repetition.defaultValue)
-        self.set(self.deepspeed_enabled, self.deepspeed_enabled.defaultValue)
-        self.set(self.low_vram, self.low_vram.defaultValue)
-
-
-    def resetRvc(self):
-        self.set(self.rvc_pitch, self.rvc_pitch.defaultValue)
-        self.set(self.rvc_hop_length, self.rvc_hop_length.defaultValue)
-        self.set(self.rvc_training_data_size, self.rvc_training_data_size.defaultValue)
-        self.set(self.rvc_index_influence, self.rvc_index_influence.defaultValue)
-        self.set(self.rvc_volume_envelope, self.rvc_volume_envelope.defaultValue)
-        self.set(self.rvc_protect, self.rvc_protect.defaultValue)
-        self.set(self.rvc_filter_radius, self.rvc_filter_radius.defaultValue)
-        self.set(self.rvc_autotune, self.rvc_autotune.defaultValue)
-        self.set(self.rvc_split_audio, self.rvc_split_audio.defaultValue)
-        self.set(self.rvc_pitch_extraction, self.rvc_pitch_extraction.defaultValue)
-        self.set(self.rvc_embedder_model, self.rvc_embedder_model.defaultValue)
-
-    def resetGPT(self):
-        self.set(self.slice_mode, self.slice_mode.defaultValue)
-        self.set(self.low_vram_gpt_sovits, self.low_vram_gpt_sovits.defaultValue)
-        self.set(self.top_p_gpt_sovits, self.top_p_gpt_sovits.defaultValue)
-        self.set(self.top_k_gpt_sovits, self.top_k_gpt_sovits.defaultValue)
-        self.set(self.temperature_gpt_sovits, self.temperature_gpt_sovits.defaultValue)
-        self.set(self.speed_gpt_sovits, self.speed_gpt_sovits.defaultValue)
-
-    def resetStyleTTS(self):
-        self.set(self.style_beta, self.style_beta.defaultValue)
-        self.set(self.style_alpha, self.style_alpha.defaultValue)
-        self.set(self.style_embedding_scale, self.style_embedding_scale.defaultValue)
-        self.set(self.style_diffusion_steps, self.style_diffusion_steps.defaultValue)
-
-    def resetF5(self):
-        self.set(self.f5_mode, self.f5_mode.defaultValue)
-        self.set(self.f5_speed, self.f5_speed.defaultValue)
-        self.set(self.f5_nfe, self.f5_nfe.defaultValue)
-        self.set(self.f5_crossfade, self.f5_crossfade.defaultValue)
-
-    def resetFishSpeech(self):
-        self.set(self.fish_use_torch_compile, self.fish_use_torch_compile.defaultValue)
-        self.set(self.fish_repetition, self.fish_repetition.defaultValue)
-        self.set(self.fish_top_p, self.fish_top_p.defaultValue)
-        self.set(self.fish_max_length, self.fish_max_length.defaultValue)
-        self.set(self.fish_use_cache, self.fish_use_cache.defaultValue)
-        self.set(self.fish_iterative_prompt, self.fish_iterative_prompt.defaultValue)
-        self.set(self.fish_temperature, self.fish_temperature.defaultValue)
-
-    def resetDIA(self):
-        self.set(self.dia_use_torch_compile, self.dia_use_torch_compile.defaultValue)
-        self.set(self.dia_temperature, self.dia_temperature.defaultValue)
-        self.set(self.dia_top_k, self.dia_top_k.defaultValue)
-        self.set(self.dia_top_p, self.dia_top_p.defaultValue)
-
-    def resetLlasa(self):
-        self.set(self.llasa_temperature, self.llasa_temperature.defaultValue)
-        self.set(self.llasa_top_p, self.llasa_top_p.defaultValue)
-        self.set(self.llasa_max_length, self.llasa_max_length.defaultValue)
-        self.set(self.llasa_mode, self.llasa_mode.defaultValue)
-
-    def resetOrpheus(self):
-        self.set(self.orpehus_temperature, self.orpehus_temperature.defaultValue)
-        self.set(self.orpehus_top_p, self.orpehus_top_p.defaultValue)
-        self.set(self.orpehus_repetition, self.orpehus_repetition.defaultValue)
-        self.set(self.orpehus_top_k, self.orpehus_top_k.defaultValue)
-        self.set(self.orpehus_max_new_tokens, self.orpehus_max_new_tokens.defaultValue)
-
-    def resetSpark(self):
-        self.set(self.spark_top_p, self.spark_top_p.defaultValue)
-        self.set(self.spark_temperature, self.spark_temperature.defaultValue)
-        self.set(self.spark_top_k, self.spark_top_k.defaultValue)
-        self.set(self.spark_max_new_tokens, self.spark_max_new_tokens.defaultValue)
-
-    def resetHiggs(self):
-        self.set(self.higgs_top_p, self.higgs_top_p.defaultValue)
-        self.set(self.higgs_temperature, self.higgs_temperature.defaultValue)
-        self.set(self.higgs_top_k, self.higgs_top_k.defaultValue)
-        self.set(self.higgs_max_new_tokens, self.higgs_max_new_tokens.defaultValue)
-        self.set(self.higgs_ras_win_len, self.higgs_ras_win_len.defaultValue)
-        self.set(self.higgs_ras_win_max_num_repeat, self.higgs_ras_win_max_num_repeat.defaultValue)
-
-    def resetCSM(self):
-        self.set(self.spark_temperature, self.spark_temperature.defaultValue)
-
-    def resetChatterbox(self):
-        self.set(self.chatterbox_top_p, self.chatterbox_top_p.defaultValue)
-        self.set(self.chatterbox_temperature, self.chatterbox_temperature.defaultValue)
-        self.set(self.chatterbox_min_p, self.chatterbox_min_p.defaultValue)
-        self.set(self.chatterbox_max_new_tokens, self.chatterbox_max_new_tokens.defaultValue)
-        self.set(self.chatterbox_cfg_weight, self.chatterbox_cfg_weight.defaultValue)
-        self.set(self.chatterbox_exaggeration, self.chatterbox_exaggeration.defaultValue)
-        self.set(self.chatterbox_repetition_penalty, self.chatterbox_repetition_penalty.defaultValue)
-
-    def resetDMSpeech2(self):
-        self.set(self.dmo_speech2_temperature, self.dmo_speech2_temperature.defaultValue)
-        self.set(self.dmo_speech2_teacher_steps, self.dmo_speech2_teacher_steps.defaultValue)
-        self.set(self.dmo_speech2_teacher_stopping_time, self.dmo_speech2_teacher_stopping_time.defaultValue)
-        self.set(self.dmo_speech2_student_start_step, self.dmo_speech2_student_start_step.defaultValue)
-
-    def resetVibe(self):
-        self.set(self.vibe_temperature, self.vibe_temperature.defaultValue)
-        self.set(self.vibe_top_p, self.vibe_top_p.defaultValue)
-        self.set(self.vibe_inference_steps, self.vibe_inference_steps.defaultValue)
-        self.set(self.vibe_top_k, self.vibe_top_k.defaultValue)
-        self.set(self.vibe_cfg_scale, self.vibe_cfg_scale.defaultValue)
-        self.set(self.vibe_dosmaple, self.vibe_dosmaple.defaultValue)
-
-    def resetQwen(self):
-        self.set(self.qwen_instruct, self.qwen_instruct.defaultValue)
-        self.set(self.qwen_language, self.qwen_language.defaultValue)
-        self.set(self.qwen_model_version, self.qwen_model_version.defaultValue)
+cfg = Config()
 
 
 YEAR = 2025
@@ -511,9 +485,6 @@ KOFI_URL = "https://ko-fi.com/bryant21"
 DISCORD_URL = "https://discord.gg/FgKrxdnQdG"
 HUGGING_FACE = "https://huggingface.co/falltalk/falltalk4"
 REPO = "falltalk/falltalk4"
-
-cfg = Config()
-qconfig.load(os.path.join(get_app_root(),'config', 'configv2.json'), cfg)
 
 DISCLAIMER = """
 This code and the accompanying FallTalk AI models are provided subject to the terms and conditions of the End User License Agreement (EULA) of Zenimax Media, Inc., the original rights holder of the Fallout franchise. By using this code or the FallTalk AI models, you agree to comply with the following permitted and prohibited uses, as well as all terms outlined in the Zenimax Media EULA.

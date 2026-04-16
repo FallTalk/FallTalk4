@@ -29,7 +29,6 @@ def patch_gpt_sovits_imports():
 
         # Clean module cache aggressively
         modules_to_clear = [
-            'third_party.f5.src.f5_tts.model.backbones.dit',
             'f5_tts.model.backbones.dit',
             'f5_tts.model.backbones',
             'f5_tts.model',
@@ -110,9 +109,9 @@ class DMSpeech2Engine(tts_engine):
             gen_text=text,
             audio_path=voice,
             prompt_text=transcript,
-            teacher_steps=cfg.get(cfg.dmo_speech2_teacher_steps),
-            teacher_stopping_time=cfg.get(cfg.dmo_speech2_teacher_stopping_time) / 100.0,
-            student_start_step=cfg.get(cfg.dmo_speech2_student_start_step),
-            temperature=cfg.get(cfg.dmo_speech2_temperature) / 100.0,
+            teacher_steps=cfg.get(cfg.dmo_teacher_steps),
+            teacher_stopping_time=cfg.get(cfg.dmo_teacher_stopping_time) / 100.0,
+            student_start_step=cfg.get(cfg.dmo_student_start_step),
+            temperature=cfg.get(cfg.dmo_temperature) / 100.0,
             verbose=True
         ), 24000

@@ -8,7 +8,6 @@ import faiss
 import librosa
 import numpy as np
 import parselmouth
-import pyworld
 import torch
 import torch.nn.functional as F
 import torchcrepe
@@ -27,18 +26,35 @@ input_audio_path2wav = {}
 
 
 
+def _parselmouth_f0(audio, fs, f0min, f0max, frame_period, method="ac"):
+    """Extract f0 using parselmouth (Praat) as a drop-in replacement for pyworld."""
+    snd = parselmouth.Sound(audio, sampling_frequency=fs)
+    time_step = frame_period / 1000.0
+    pitch = snd.to_pitch_ac(
+        time_step=time_step,
+        pitch_floor=f0min,
+        pitch_ceiling=f0max,
+        voicing_threshold=0.5,
+    ) if method == "ac" else snd.to_pitch_cc(
+        time_step=time_step,
+        pitch_floor=f0min,
+        pitch_ceiling=f0max,
+        voicing_threshold=0.5,
+    )
+    f0 = pitch.selected_array["frequency"]
+    # Match expected length: pyworld returns one frame per frame_period ms
+    expected_len = int(len(audio) / fs / time_step) + 1
+    if len(f0) < expected_len:
+        f0 = np.pad(f0, (0, expected_len - len(f0)), mode="constant")
+    elif len(f0) > expected_len:
+        f0 = f0[:expected_len]
+    return f0
+
+
 @lru_cache
 def cache_harvest_f0(input_audio_path, fs, f0max, f0min, frame_period):
     audio = input_audio_path2wav[input_audio_path]
-    f0, t = pyworld.harvest(
-        audio,
-        fs=fs,
-        f0_ceil=f0max,
-        f0_floor=f0min,
-        frame_period=frame_period,
-    )
-    f0 = pyworld.stonemask(audio, f0, t, fs)
-    return f0
+    return _parselmouth_f0(audio, fs, f0min, f0max, frame_period, method="ac")
 
 
 def change_rms(data1, sr1, data2, sr2, rate):
@@ -345,14 +361,7 @@ class VC(object):
             if int(filter_radius) > 2:
                 f0 = signal.medfilt(f0, 3)
         elif f0_method == "dio":
-            f0, t = pyworld.dio(
-                x.astype(np.double),
-                fs=self.sr,
-                f0_ceil=f0_max,
-                f0_floor=f0_min,
-                frame_period=10,
-            )
-            f0 = pyworld.stonemask(x.astype(np.double), f0, t, self.sr)
+            f0 = _parselmouth_f0(x.astype(np.double), self.sr, f0_min, f0_max, 10, method="cc")
             f0 = signal.medfilt(f0, 3)
         elif f0_method == "crepe":
             f0 = self.get_f0_crepe_computation(

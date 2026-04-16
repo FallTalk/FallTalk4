@@ -60,7 +60,6 @@ def patch_gpt_sovits_imports():
 
         # Clean module cache aggressively
         modules_to_clear = [
-            'third_party.f5.src.f5_tts.model.backbones.dit',
             'f5_tts.model.backbones.dit',
             'f5_tts.model.backbones',
             'f5_tts.model',
@@ -114,13 +113,16 @@ class GPT_SoVITS_Engine(tts_engine):
         self.engine_type = EngineType.GPT_SOVITS
         self.engine_name = self.engine_type.value
         self.device = cfg.get(cfg.device)
-        self.is_half = cfg.get(cfg.low_vram_gpt_sovits)
+        self.is_half = cfg.get(cfg.gpt_sovits_low_vram)
         self.model_type = 'pth'
         self.pipeline: Optional['TTS'] = None
         self.config: Optional['TTS_Config'] = None
         self.cut_method = {
             "No Slice": "cut0",
+            "No slice": "cut0",
             "Slice every 4 sentences": "cut1",
+            "Slice once every 4 sentences": "cut1",
+            "Slice once every 2 sentences": "cut1",
             "Slice per 50 characters": "cut2",
             "Slice by Chinese punct": "cut3",
             "Slice by English punct": "cut4",
@@ -288,13 +290,13 @@ class GPT_SoVITS_Engine(tts_engine):
                 "ref_audio_path": voice,
                 "prompt_text": transcript,
                 "prompt_lang": language,
-                "top_k": cfg.get(cfg.top_k_gpt_sovits),
-                "top_p": (cfg.get(cfg.top_p_gpt_sovits) / 100.0),
-                "temperature": (cfg.get(cfg.temperature_gpt_sovits) / 100.0),
+                "top_k": cfg.get(cfg.gpt_sovits_top_k),
+                "top_p": (cfg.get(cfg.gpt_sovits_top_p) / 100.0),
+                "temperature": (cfg.get(cfg.gpt_sovits_temperature) / 100.0),
                 "sample_steps": 32,
                 "seed": -1,
-                "speed_factor": (cfg.get(cfg.speed_gpt_sovits) / 100.0),
-                "text_split_method": self.cut_method.get(cfg.get(cfg.slice_mode), "cut0")
+                "speed_factor": (cfg.get(cfg.gpt_sovits_speed) / 100.0),
+                "text_split_method": self.cut_method.get(cfg.get(cfg.gpt_sovits_slice_mode), "cut0")
             }
 
             gen = self.pipeline.run(inputs)

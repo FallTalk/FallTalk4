@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+"""FallTalk — imgui_bundle entry point."""
 import ctypes
 import logging
 import os
@@ -30,7 +32,9 @@ if __name__ == '__main__':
 
     try:
         from src.utils.model_utils import seed_everything
-        seed_everything(cfg.get(cfg.seed))
+        _seed = cfg.get(cfg.seed)
+        if _seed is not None and _seed >= 0:
+            seed_everything(_seed)
 
 
     except Exception as e:
@@ -39,8 +43,9 @@ if __name__ == '__main__':
 
 
     try:
-        if cfg.get(cfg.huggingface_cache_dir) != "Please Select a Valid Folder":
-            os.environ["HF_HUB_CACHE"] = cfg.get(cfg.huggingface_cache_dir)
+        _hf_cache = cfg.get(cfg.huggingface_cache_dir)
+        if _hf_cache is not None and _hf_cache != "Please Select a Valid Folder":
+            os.environ["HF_HUB_CACHE"] = _hf_cache
 
         if cfg.get(cfg.disableSSLVerify) == True:
             import requests
@@ -76,51 +81,58 @@ if __name__ == '__main__':
         os.environ['FFMPEG_BINARY'] = os.path.abspath(os.path.join("ffmpeg.exe"))
         os.environ['NLTK_DATA'] = os.path.abspath(os.path.join("resource", "apps", "nltk_data"))
 
+        # Add nvidia cudnn bin dir to DLL search path (needed by ctranslate2 for cuDNN 8)
+        _cudnn_bin = os.path.join(sys.prefix, "Lib", "site-packages", "nvidia", "cudnn", "bin")
+        if os.path.isdir(_cudnn_bin):
+            os.add_dll_directory(_cudnn_bin)
+            os.environ['PATH'] = _cudnn_bin + os.pathsep + os.environ.get('PATH', '')
+
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         logger.debug('Unable to find espeak', e)
 
+    # Register safe globals for torch.load (needed by Pyannote/whisperx/speechbrain)
     try:
-        from PySide6.QtWidgets import QApplication
-        from PySide6.QtCore import Qt
+        import torch
+        import omegaconf
+        import omegaconf.base
+        import omegaconf.nodes
+        import omegaconf.listconfig
+        import omegaconf.dictconfig
+        import collections
+        import typing
+        import enum
 
-        import src.api.falltalkapi as falltalkapi
-        from src.FallTalk import FallTalkApp
+        _safe = set()
+        for mod in (omegaconf, omegaconf.base, omegaconf.nodes,
+                     omegaconf.listconfig, omegaconf.dictconfig):
+            for name in dir(mod):
+                if name.startswith('_'):
+                    continue
+                obj = getattr(mod, name, None)
+                if isinstance(obj, type) or isinstance(obj, enum.EnumMeta):
+                    _safe.add(obj)
+        _safe.update([typing.Any, set, list, collections.defaultdict, dict, int,
+                      torch.torch_version.TorchVersion])
 
-        if cfg.get(cfg.dpiScale) != "Auto":
-            os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
-            os.environ["QT_SCALE_FACTOR"] = str(cfg.get(cfg.dpiScale))
+        # Pyannote types needed for whisperx VAD model loading
+        from pyannote.audio.core.model import Introspection
+        from pyannote.audio.core.task import Specifications, Problem, Resolution
+        _safe.update([Introspection, Specifications, Problem, Resolution])
 
-        application = QApplication(sys.argv)
+        torch.serialization.add_safe_globals(list(_safe))
+    except Exception:
+        pass
 
-        QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.Ceil)
-
+    try:
         app_id = 'falltalk'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
 
-        if cfg.get(cfg.first_start):
-            from qfluentwidgets import Theme
-            cfg.set(cfg.themeMode, Theme.DARK)
-
-        falltak_app = FallTalkApp()
-        api_server = falltalkapi.FallTalkAPI(falltak_app)
         hide_console()
-        
-        # Ensure we always log errors, even during execution
-        try:
-            exit_code = application.exec()
-            logger.debug(f"Application exited with code: {exit_code}")
-        except Exception as e:
-            logger.error(f"Application crashed with error: {e}")
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            raise
-        finally:
-            logger.debug(f"Shutting down")
-            try:
-                api_server.shutdown()
-            except Exception as e:
-                logger.error(f"Error during API server shutdown: {e}")
-                
-        sys.exit()
+
+        # Launch the imgui-based UI
+        from src.ui_imgui.app import run
+        run()
+
     except Exception as e:
         traceback.print_exc()
         logger.debug("Unable to Start FallTalk", e)

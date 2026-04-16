@@ -36,7 +36,6 @@ class ReferencesHelp(ScrollArea):
             <ul>
                 <li>GPT SoVITs: 5-10 seconds. More than 10 seconds can lead to hallucinations.</li>
                 <li>F5: 3-12 seconds.</li>
-                <li>XTTSv2: 10-15 seconds. Can give back hallucinations with less than 10 seconds, but does sometimes work</li>
                 <li>StyleTTS2: 5-10 seconds.</li>
                 <li>Orpheus: 3-15 seconds.</li>
                 <li>FishSpeech: 5-30 seconds.</li>

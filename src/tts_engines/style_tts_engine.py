@@ -26,7 +26,7 @@ class StyleTTS2_Engine(tts_engine):
     def __init__(self):
         super().__init__()
         print("Setting Up StyleTTS2 Engine")
-        self.engine_type = EngineType.DIA
+        self.engine_type = EngineType.STYLE_TTS2
         self.engine_name = self.engine_type.value
         print(f"setting up TextCleaner")
         self.textclenaer = TextCleaner()
@@ -135,10 +135,10 @@ class StyleTTS2_Engine(tts_engine):
 
 
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
-        alpha = cfg.get(cfg.style_alpha) / 100.0
-        beta = cfg.get(cfg.style_beta) / 100.0
-        diffusion_steps = cfg.get(cfg.style_diffusion_steps)
-        embedding_scale = cfg.get(cfg.style_embedding_scale)
+        alpha = cfg.get(cfg.styletts2_alpha) / 100.0
+        beta = cfg.get(cfg.styletts2_beta) / 100.0
+        diffusion_steps = cfg.get(cfg.styletts2_diffusion_steps)
+        embedding_scale = cfg.get(cfg.styletts2_embedding_scale)
         ref_s = self.compute_style(voice)
         text = text.strip()
         ps = self.global_phonemizer.phonemize([text])
@@ -206,5 +206,5 @@ class StyleTTS2_Engine(tts_engine):
         wav_tensor = out.squeeze().cpu().numpy()[..., :-100]  # weird pulse at the end of the model, need to be fixed later
         #wav_tensor = out.squeeze().cpu().numpy()[..., :-50]  # weird pulse at the end of the model, need to be fixed later
 
-        return wav_tensor.cpu().numpy(), 24000
+        return wav_tensor, 24000
         # sf.write(output_file, wav_tensor, 24000)

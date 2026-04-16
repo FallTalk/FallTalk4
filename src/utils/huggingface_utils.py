@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.FallTalk import FallTalkApp
+    from src.ui_imgui.state import AppCallbacks
 
 from huggingface_hub import snapshot_download
 
@@ -11,9 +11,7 @@ import logging
 import os
 import shutil
 from tqdm.auto import tqdm
-import PySide6
 import requests
-from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 import huggingface_hub
 
 
@@ -24,7 +22,7 @@ class FallTalkTqdm(tqdm):
 
     @classmethod
     def set_parent(cls, parent):
-        """Set the parent FallTalkApp instance for all instances of this class."""
+        """Set the parent AppCallbacks instance for all instances of this class."""
         cls._parent = parent
 
     def update(self, n=1):
@@ -37,13 +35,8 @@ class FallTalkTqdm(tqdm):
             else:
                 msg = f"{self.desc}: {self.n} items"
 
-            # Update the UI using QMetaObject to safely call from a background thread
-            QMetaObject.invokeMethod(
-                self._parent, 
-                "update_loader", 
-                Qt.QueuedConnection, 
-                Q_ARG(str, msg)
-            )
+            # Update the UI via AppCallbacks
+            self._parent.on_progress(msg)
 
     @property
     def percentage(self):
@@ -58,7 +51,7 @@ logger = logging.getLogger('falltalk')
 logger.setLevel(logging.DEBUG)
 
 
-def download_model_from_hub(parent: 'FallTalkApp', character, model) -> None:
+def download_model_from_hub(parent: 'AppCallbacks', character, model) -> None:
     if model is not None:
         # Set the parent for the tqdm class
         FallTalkTqdm.set_parent(parent)
@@ -90,7 +83,7 @@ def download_model_from_hub(parent: 'FallTalkApp', character, model) -> None:
         )
 
 
-def downloadXTTS(parent: 'FallTalkApp') -> None:
+def downloadXTTS(parent: 'AppCallbacks') -> None:
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -103,7 +96,7 @@ def downloadXTTS(parent: 'FallTalkApp') -> None:
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadRVC(parent: 'FallTalkApp') -> None:
+def downloadRVC(parent: 'AppCallbacks') -> None:
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -116,7 +109,7 @@ def downloadRVC(parent: 'FallTalkApp') -> None:
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadFish(parent: 'FallTalkApp') -> None:
+def downloadFish(parent: 'AppCallbacks') -> None:
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -129,7 +122,7 @@ def downloadFish(parent: 'FallTalkApp') -> None:
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadGPTSoVITS(parent: 'FallTalkApp') -> None:
+def downloadGPTSoVITS(parent: 'AppCallbacks') -> None:
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -142,7 +135,7 @@ def downloadGPTSoVITS(parent: 'FallTalkApp') -> None:
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadOrpheus(parent: 'FallTalkApp'):
+def downloadOrpheus(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -155,7 +148,7 @@ def downloadOrpheus(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadF5(parent: 'FallTalkApp'):
+def downloadF5(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -170,7 +163,7 @@ def downloadF5(parent: 'FallTalkApp'):
     huggingface_hub.hf_hub_download("charactr/vocos-mel-24khz", "config.yaml", local_dir=os.path.abspath(f"models/F5/vocos"))
     huggingface_hub.hf_hub_download("charactr/vocos-mel-24khz", "pytorch_model.bin", local_dir=os.path.abspath(f"models/F5/vocos"))
 
-def downloadLlasa(parent: 'FallTalkApp'):
+def downloadLlasa(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -186,7 +179,7 @@ def downloadLlasa(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadAPBWE(parent: 'FallTalkApp'):
+def downloadAPBWE(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -199,7 +192,7 @@ def downloadAPBWE(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadDIA(parent: 'FallTalkApp'):
+def downloadDIA(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -212,7 +205,7 @@ def downloadDIA(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadCSM(parent: 'FallTalkApp'):
+def downloadCSM(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -224,7 +217,7 @@ def downloadCSM(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadSpark(parent: 'FallTalkApp'):
+def downloadSpark(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -238,7 +231,7 @@ def downloadSpark(parent: 'FallTalkApp'):
     )
 
 
-def downloadHiggs(parent: 'FallTalkApp'):
+def downloadHiggs(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -252,7 +245,7 @@ def downloadHiggs(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadChatterbox(parent: 'FallTalkApp'):
+def downloadChatterbox(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -266,7 +259,7 @@ def downloadChatterbox(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadDMSpeech2(parent: 'FallTalkApp'):
+def downloadDMSpeech2(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -280,7 +273,7 @@ def downloadDMSpeech2(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadVibe(parent: 'FallTalkApp'):
+def downloadVibe(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -294,7 +287,7 @@ def downloadVibe(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadQwen(parent: 'FallTalkApp'):
+def downloadQwen(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -309,7 +302,7 @@ def downloadQwen(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def downloadStyleTTS2(parent: 'FallTalkApp'):
+def downloadStyleTTS2(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
 
@@ -322,11 +315,11 @@ def downloadStyleTTS2(parent: 'FallTalkApp'):
         tqdm_class=FallTalkTqdm,
     )
 
-def download_rvc_models(parent: 'FallTalkApp', character, rvc):
+def download_rvc_models(parent: 'AppCallbacks', character, rvc):
     if rvc:
         download_model_from_hub(parent, character, rvc)
 
-def download_models(parent, character, model, rvc, api=False):
+def download_models(parent: 'AppCallbacks', character, model, rvc, api=False):
     try:
         # Validate engine version before downloading
         engine_type = EngineType(model['engine'])
@@ -339,10 +332,10 @@ def download_models(parent, character, model, rvc, api=False):
         download_rvc_models(parent, character, rvc)
 
         if not api:
-            QMetaObject.invokeMethod(parent, "afterModelDownload", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+            parent.on_done()
     except Exception as e:
         logger.exception("Unable to download model")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Download Model"), Q_ARG(str, "An Error Occured while downloading the model from huggingface. Please check your logs and report the issue if needed"))
+        parent.on_error("Unable to Download Model", "An Error Occured while downloading the model from huggingface. Please check your logs and report the issue if needed")
 
 # Additional functions that might be needed for backward compatibility
 def get_latest_release():

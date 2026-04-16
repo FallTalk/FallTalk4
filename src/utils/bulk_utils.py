@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass
+    from src.ui_imgui.state import AppCallbacks
 
 import logging
 
@@ -14,8 +14,6 @@ import shutil
 import soundfile as sf
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from PySide6.QtCore import QMetaObject, Qt, Q_ARG
-import PySide6
 
 from src.config.config import cfg
 from src.utils.audio_utils import create_lip_and_fuz, extract_fuz, create_xwm
@@ -39,11 +37,11 @@ def update_progress(parent, total, time_total, count):
     td = timedelta(seconds=estimated_duration)
     hours, remainder = divmod(td.seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
-    QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Completed: {count}/{total}. Estimated Duration: {hours:02}:{minutes:02}:{seconds:02}"))
+    parent.on_progress(f"Completed: {count}/{total}. Estimated Duration: {hours:02}:{minutes:02}:{seconds:02}")
 
 
 def get_reference(parent, character, reference):
-    character_model = parent.characters_data[character] if character in parent.characters_data else None
+    character_model = parent.state_ref.characters_data[character] if character in parent.state_ref.characters_data else None
     if character_model is not None:
         for voice_file in character_model['voicefiles']:
             if reference in voice_file['filename']:
@@ -122,7 +120,7 @@ def process_rvc_file(tts_engine, wav_file, replace, output_folder, parent, direc
     return (end - start).total_seconds()
 
 
-def bulk_fuz(parent, directory, include_subdir, threads=1, use_existing_lip=True):
+def bulk_fuz(parent: 'AppCallbacks', directory, include_subdir=True, threads=1, use_existing_lip=True):
     wav_files = find_files('wav', include_subdir, directory)
     xwm_files = find_files('xwm', include_subdir, directory)
     count = 0
@@ -159,10 +157,10 @@ def bulk_fuz(parent, directory, include_subdir, threads=1, use_existing_lip=True
             count += 1
             update_progress(parent, total, time_total, count)
 
-    QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+    parent.on_done()
 
 
-def bulk_rvc_inference(parent, directory, model, include_subdir, replace, threads=1, use_existing_lip=True):
+def bulk_rvc_inference(parent: 'AppCallbacks', directory, model, include_subdir=True, replace=True, threads=1, use_existing_lip=True):
     start_time = time.time()
 
     wav_files = find_files('wav', include_subdir, directory)
@@ -172,7 +170,6 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
     count = 0
     time_total = 0
     output_folder = None
-    # model = get_character_model(character, parent.models, parent.custom_models)
     is_trained, has_rvc = get_trained_character(model, 'RVC')
     engine_changed = False
 
@@ -190,10 +187,6 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
         os.makedirs(output_folder, exist_ok=True)
 
     if is_trained and has_rvc:
-        # if parent.tts_engine.engine_name != 'RVC':
-        #     engine_changed = True
-        #     load_rvc(parent, True)
-
         if not os.path.exists(os.path.join('models', model['name'], 'RVC')):
             download_rvc_models(parent, model['name'], model['RVC'])
 
@@ -211,7 +204,7 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
 
         total = len(files)
 
-        QMetaObject.invokeMethod(parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Setting Up RVC Engines: {threads}"))
+        parent.on_progress(f"Setting Up RVC Engines: {threads}")
         for i in range(threads):
             from src.tts_engines.rvc_engine import RVC_Engine
             tts_engine = RVC_Engine()
@@ -243,15 +236,10 @@ def bulk_rvc_inference(parent, directory, model, include_subdir, replace, thread
         engine.clean()
         del engine
 
-    if engine_changed:
-        QMetaObject.invokeMethod(parent, "afterRVC", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
-    else:
-        QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+    parent.on_done()
 
 
-
-
-def process_inference_data(parent, data, output_file, character, model, is_trained, has_rvc, reference_voice, text_or_file, api=True, last_character=None):
+def process_inference_data(parent: 'AppCallbacks', data, output_file, character, model, is_trained, has_rvc, reference_voice, text_or_file, api=True, last_character=None):
     """Helper function to process inference data for both bulk and ez voice creator"""
     import os
 
@@ -259,23 +247,23 @@ def process_inference_data(parent, data, output_file, character, model, is_train
         if last_character is None or last_character != character:
             if character != "Orpheus" and character != "orpheus":
                 clean_tmp_folder()
-            if is_trained and not os.path.exists(os.path.join('models', character, parent.tts_engine.engine_name)):
-                download_models(parent, character, model[parent.tts_engine.engine_name], model['RVC'] if has_rvc else None, True)
+            if is_trained and not os.path.exists(os.path.join('models', character, parent.state_ref.tts_engine.engine_name)):
+                download_models(parent, character, model[parent.state_ref.tts_engine.engine_name], model['RVC'] if has_rvc else None, True)
             elif has_rvc and not os.path.exists(os.path.join('models', character, 'RVC')):
                 download_rvc_models(parent, character, model['RVC'])
 
-            if parent.tts_engine.is_shared:
-                if character not in parent.tts_engine.characters:
-                    if is_trained and character != parent.tts_engine.model_name:
-                        engine_model = model[parent.tts_engine.engine_name]
-                        parent.tts_engine.setup(character, has_rvc, False, engine_model.get('engine_version', "1"), engine_model.get('is_shared', False), engine_model.get('shared_model_name', None),  engine_model.get('characters', None))
-                    elif not is_trained and character != parent.tts_engine.model_name:
-                        parent.tts_engine.setup(character, has_rvc, True)
-            elif is_trained and character != parent.tts_engine.model_name:
-                engine_model = model[parent.tts_engine.engine_name]
-                parent.tts_engine.setup(character, has_rvc, False, engine_model.get('engine_version', "1"), engine_model.get('is_shared', False), engine_model.get('shared_model_name', None),  engine_model.get('characters', None))
-            elif not is_trained and character != parent.tts_engine.model_name:
-                parent.tts_engine.setup(character, has_rvc, True)
+            if parent.state_ref.tts_engine.is_shared:
+                if character not in parent.state_ref.tts_engine.characters:
+                    if is_trained and character != parent.state_ref.tts_engine.model_name:
+                        engine_model = model[parent.state_ref.tts_engine.engine_name]
+                        parent.state_ref.tts_engine.setup(character, has_rvc, False, engine_model.get('engine_version', "1"), engine_model.get('is_shared', False), engine_model.get('shared_model_name', None),  engine_model.get('characters', None))
+                    elif not is_trained and character != parent.state_ref.tts_engine.model_name:
+                        parent.state_ref.tts_engine.setup(character, has_rvc, True)
+            elif is_trained and character != parent.state_ref.tts_engine.model_name:
+                engine_model = model[parent.state_ref.tts_engine.engine_name]
+                parent.state_ref.tts_engine.setup(character, has_rvc, False, engine_model.get('engine_version', "1"), engine_model.get('is_shared', False), engine_model.get('shared_model_name', None),  engine_model.get('characters', None))
+            elif not is_trained and character != parent.state_ref.tts_engine.model_name:
+                parent.state_ref.tts_engine.setup(character, has_rvc, True)
 
         is_wav = os.path.exists(text_or_file)
 
@@ -290,7 +278,7 @@ def process_inference_data(parent, data, output_file, character, model, is_train
             reference_path = get_reference(parent, character, reference_voice)
         else:
             # If no reference file specified or it doesn't exist, and model is not trained
-            engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
+            engine_type = next((e for e in EngineType if e.value == parent.state_ref.tts_engine.engine_name), None)
             if not is_trained or engine_type.needs_reference_when_trained:
                 # Get default reference and transcript
                 reference_path, transcribe_state = get_default_reference_and_transcript(parent, character)
@@ -308,9 +296,9 @@ def process_inference_data(parent, data, output_file, character, model, is_train
             # Apply text preprocessing (ensure punctuation and replace numbers with words)
             text_or_file = preprocess_text(text_or_file)
 
-            engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
+            engine_type = next((e for e in EngineType if e.value == parent.state_ref.tts_engine.engine_name), None)
             if engine_type is None:
-                raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")
+                raise ValueError(f"Invalid engine type: {parent.state_ref.tts_engine.engine_name}")
 
             # Only transcribe if we don't already have a transcript from default references
             if not transcript or not transcribe_state:
@@ -340,35 +328,49 @@ def process_inference_data(parent, data, output_file, character, model, is_train
         raise
 
 
-def bulk_inference(parent):
-    if parent.tts_engine.engine_name != EngineType.RVC.value:
-        model = parent.bulk_generate_widget.bulk_csv_widget.bulk_table.model()
-        datas = model.getData()
+def bulk_inference(parent: 'AppCallbacks', rows=None, headers=None):
+    """Run bulk inference from CSV data.
 
-        # Sort data by character (index 1) to process all entries for the same character together
-        datas.sort(key=lambda x: x[1] if x[1] is not None else "")
+    Args:
+        parent: AppCallbacks instance
+        rows: list of row data (list of lists)
+        headers: list of column header names
+    """
+    if parent.state_ref.tts_engine.engine_name != EngineType.RVC.value:
+        datas = rows if rows is not None else []
+
+        # Sort data by character to process all entries for the same character together
+        # Find the character column index
+        char_col = 1  # default
+        if headers:
+            for i, h in enumerate(headers):
+                if h.upper() == 'VOICE_TYPE':
+                    char_col = i
+                    break
+
+        datas.sort(key=lambda x: x[char_col] if len(x) > char_col and x[char_col] is not None else "")
 
         count = 0
         total = len(datas)
         time_total = 0
 
-        generic_output_folder = get_bulk_folder(parent.tts_engine.engine_name)
+        generic_output_folder = get_bulk_folder(parent.state_ref.tts_engine.engine_name)
         last_character = None
 
         for data in datas:
             start = datetime.now()
             try:
-                file_name = data[0]
-                character = data[1]
-                text_or_file = data[2]
-                reference_voice = data[3]
-                output_folder = data[4]
+                file_name = data[0] if len(data) > 0 else ""
+                character = data[1] if len(data) > 1 else ""
+                text_or_file = data[2] if len(data) > 2 else ""
+                reference_voice = data[3] if len(data) > 3 else ""
+                output_folder = data[4] if len(data) > 4 else ""
 
-                model = get_character_model(character, parent.models, parent.custom_models)
-                is_trained, has_rvc = get_trained_character(model, parent.tts_engine.engine_name)
-                engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
+                model = get_character_model(character, parent.state_ref.models, parent.state_ref.custom_models)
+                is_trained, has_rvc = get_trained_character(model, parent.state_ref.tts_engine.engine_name)
+                engine_type = next((e for e in EngineType if e.value == parent.state_ref.tts_engine.engine_name), None)
                 if engine_type is None:
-                    raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")
+                    raise ValueError(f"Invalid engine type: {parent.state_ref.tts_engine.engine_name}")
 
                 if file_name is not None and file_name != "":
                     if ".wav" not in file_name:
@@ -399,24 +401,32 @@ def bulk_inference(parent):
             time_total += (end - start).total_seconds()
             update_progress(parent, total, time_total, count)
 
-    QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+    parent.on_done()
 
 
 
-def ez_voice_creator_inference(parent, runs=1):
-    if parent.tts_engine.engine_name != EngineType.RVC.value:
-        model = parent.ez_voice_creator_widget.dialogue_table.model()
-        table = parent.ez_voice_creator_widget.dialogue_table
+def ez_voice_generation(parent: 'AppCallbacks', rows=None, headers=None, runs=1):
+    """Run EzVoice generation from CSV data.
+
+    Args:
+        parent: AppCallbacks instance
+        rows: list of row data (list of lists)
+        headers: list of column header names
+        runs: number of generation runs
+    """
+    if parent.state_ref.tts_engine.engine_name != EngineType.RVC.value:
+        datas = rows if rows is not None else []
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # Only get data from visible (not filtered out) rows
-        datas = []
-        for row in range(model.rowCount()):
-            if not table.isRowHidden(row):
-                datas.append(model.getData()[row])
+        # Sort data by voice_type to process all entries for the same character together
+        voice_type_col = 2  # default
+        if headers:
+            for i, h in enumerate(headers):
+                if h.upper() == 'VOICE_TYPE':
+                    voice_type_col = i
+                    break
 
-        # Sort data by voice_type (index 2) to process all entries for the same character together
-        datas.sort(key=lambda x: x[2] if x[2] is not None else "")
+        datas.sort(key=lambda x: x[voice_type_col] if len(x) > voice_type_col and x[voice_type_col] is not None else "")
 
         count = 0
         total = len(datas)
@@ -428,24 +438,24 @@ def ez_voice_creator_inference(parent, runs=1):
             for data in datas:
                 start = datetime.now()
                 try:
-                    file_name = data[0]  # FILE_NAME
-                    text = data[1]       # RESPONSE TEXT
-                    voice_type = data[2] # VOICE TYPE
-                    full_path = data[3]  # FULLPATH
-                    reference_voice = data[4]  # REFERENCE FILE
-                    plugin_name = data[5]  # PLUGIN
+                    file_name = data[0] if len(data) > 0 else ""      # FILE_NAME
+                    text = data[1] if len(data) > 1 else ""            # RESPONSE TEXT
+                    voice_type = data[2] if len(data) > 2 else ""      # VOICE TYPE
+                    full_path = data[3] if len(data) > 3 else ""       # FULLPATH
+                    reference_voice = data[4] if len(data) > 4 else "" # REFERENCE FILE
+                    plugin_name = data[5] if len(data) > 5 else ""     # PLUGIN
                     plugin_name = f"{plugin_name}_{timestamp}_run_{i}"
 
                     # Get character data
-                    character = parent.characters_data.get(voice_type)
+                    character = parent.state_ref.characters_data.get(voice_type)
                     if not character:
                         continue
 
-                    model = get_character_model(character['name'], parent.models, parent.custom_models)
-                    is_trained, has_rvc = get_trained_character(model, parent.tts_engine.engine_name)
-                    engine_type = next((e for e in EngineType if e.value == parent.tts_engine.engine_name), None)
+                    model = get_character_model(character['name'], parent.state_ref.models, parent.state_ref.custom_models)
+                    is_trained, has_rvc = get_trained_character(model, parent.state_ref.tts_engine.engine_name)
+                    engine_type = next((e for e in EngineType if e.value == parent.state_ref.tts_engine.engine_name), None)
                     if engine_type is None:
-                        raise ValueError(f"Invalid engine type: {parent.tts_engine.engine_name}")
+                        raise ValueError(f"Invalid engine type: {parent.state_ref.tts_engine.engine_name}")
 
                     # Construct the output path with plugin name
                     # Remove the plugin name from the full path if it exists
@@ -475,4 +485,4 @@ def ez_voice_creator_inference(parent, runs=1):
                 time_total += (end - start).total_seconds()
                 update_progress(parent, total * runs, time_total, count)
 
-    QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent))
+    parent.on_done()

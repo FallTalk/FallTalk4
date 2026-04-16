@@ -29,14 +29,14 @@ class QwenEngine(tts_engine):
     def load_model(self):
         selected_version = cfg.get(cfg.qwen_model_version)
         model_id = f"Qwen3TTS/Qwen3-TTS-12Hz-{selected_version}"
-        
-        if self.is_base:
-            base_path = os.path.join(get_app_root(), 'models', 'Qwen3TTS', f'Qwen3-TTS-12Hz-{selected_version}')
-            if os.path.exists(base_path):
-                model_id = str(os.path.abspath(base_path))
-        else:
-             if self.model_path and os.path.exists(self.model_path):
-                 model_id = str(os.path.abspath(self.model_path))
+        base_path = os.path.join(get_app_root(), 'models', 'Qwen3TTS', f'Qwen3-TTS-12Hz-{selected_version}')
+
+        if not self.is_base and self.model_path and os.path.exists(self.model_path):
+            # Per-character trained model
+            model_id = str(os.path.abspath(self.model_path))
+        elif os.path.exists(base_path):
+            # Base model (also used as fallback when no character-specific model exists)
+            model_id = str(os.path.abspath(base_path))
 
         dtype = torch_utils.get_compute_dtype()
         # Ensure it's bfloat16 or float16 as per typical LLM usage if supported

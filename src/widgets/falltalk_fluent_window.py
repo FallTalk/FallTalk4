@@ -64,7 +64,6 @@ class FallTalkFluentWindow(FluentWindowBase):
 
         self.rvc_action = Action(FallTalkIcons.VOICE_SQUARE.icon(stroke=True), self.tr('RVC\t\t0.5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.RVC.value)
         self.gpt_sovits_action = Action(FallTalkIcons.G.icon(), self.tr('GPT_SoVITS\t\t4 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.GPT_SOVITS.value)
-        self.xtts_action = Action(FallTalkIcons.FROG.icon(), self.tr('XTTSv2\t\t6 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.XTTS_V2.value)
         self.styletts2_action = Action(FallTalkIcons.STYLE.icon(), self.tr('StyleTTS2\t\t16 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.STYLE_TTS2.value)
         self.fish_action = Action(FallTalkIcons.FISH.icon(), self.tr('FishSpeech\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.FISH_SPEECH.value)
         self.f5_action = Action(FallTalkIcons.F5.icon(), self.tr('F5\t\t3 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.F5.value)
@@ -178,8 +177,6 @@ class FallTalkFluentWindow(FluentWindowBase):
             actions_to_add.append(self.fish_action)
         if EngineType.DMOSPEECH2.enabled:
             actions_to_add.append(self.dmo_speech2_action)
-        if EngineType.XTTS_V2.enabled:
-            actions_to_add.append(self.xtts_action)
         if EngineType.STYLE_TTS2.enabled:
             actions_to_add.append(self.styletts2_action)
 
@@ -221,9 +218,7 @@ class FallTalkFluentWindow(FluentWindowBase):
         return bar
 
     def __reset(self):
-        if cfg.get(cfg.engine) == EngineType.XTTS_V2.value:
-            cfg.resetXtts()
-        elif cfg.get(cfg.engine) == EngineType.GPT_SOVITS.value:
+        if cfg.get(cfg.engine) == EngineType.GPT_SOVITS.value:
             cfg.resetGPT()
         elif cfg.get(cfg.engine) == EngineType.STYLE_TTS2.value:
             cfg.resetStyleTTS()

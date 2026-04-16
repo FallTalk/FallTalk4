@@ -1,5 +1,4 @@
 import os
-import sys
 
 import torch
 
@@ -7,11 +6,9 @@ from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
-from src.utils.filesystem_utils import get_app_root, get_app_code_root
+from src.utils.filesystem_utils import get_app_root
 
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'chatterbox', 'src')))
-
-from third_party.chatterbox.src.chatterbox import ChatterboxTTS
+from chatterbox import ChatterboxTTS
 
 
 class ChatterboxEngine(tts_engine):

@@ -134,8 +134,6 @@ class tts_engine(ABC):
         if characters is None:
             characters = []
 
-        from src.tts_engines.rvc.infer.infer import RVCPipeline
-
         print(f"setup {selected_model} version {model_version} shared: {is_shared} shared_model_name: {shared_model_name}")
         self.rvc_model = rvc
         self.is_shared = is_shared
@@ -179,6 +177,7 @@ class tts_engine(ABC):
             if self.rvc_pipeline is not None:
                 self.rvc_pipeline.clean_up()
 
+            from src.tts_engines.rvc.infer.infer import RVCPipeline
             self.rvc_pipeline = RVCPipeline(cfg.get(cfg.device))
 
             # Handle RVC models for shared models
@@ -417,7 +416,7 @@ class tts_engine(ABC):
         params.rms_mix_rate = cfg.get(cfg.rvc_volume_envelope) / 100.0
         params.protect = cfg.get(cfg.rvc_protect) / 100.0
         params.hop_length = cfg.get(cfg.rvc_hop_length)
-        params.f0method = cfg.get(cfg.rvc_pitch_extraction).value
+        params.f0method = cfg.get(cfg.rvc_pitch_extraction)
         params.split_audio = cfg.get(cfg.rvc_split_audio)
         params.f0autotune = cfg.get(cfg.rvc_autotune)
         params.embedder_model = cfg.get(cfg.rvc_embedder_model)

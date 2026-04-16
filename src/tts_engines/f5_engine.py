@@ -1,6 +1,6 @@
 import math
 import os
-import sys
+from importlib.resources import files
 
 import librosa
 import numpy as np
@@ -15,15 +15,11 @@ from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
-from src.utils.filesystem_utils import get_app_root, get_app_code_root
+from src.utils.filesystem_utils import get_app_root
 
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5', 'src')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5','src','f5_tts')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'f5','src','f5_tts','model')))
-
-from third_party.f5.src.f5_tts.model import DiT, CFM
-from third_party.f5.src.f5_tts.infer import utils_infer
-from third_party.f5.src.f5_tts.model.utils import convert_char_to_pinyin, get_tokenizer
+from f5_tts.model import DiT, CFM
+from f5_tts.infer import utils_infer
+from f5_tts.model.utils import convert_char_to_pinyin, get_tokenizer
 
 
 class F5Engine(tts_engine):
@@ -77,14 +73,21 @@ class F5Engine(tts_engine):
         else:
             self.ckpt_path = str(os.path.abspath(self.model_path))
 
-        if cfg.get(cfg.f5_mode) == 'tts':
+        if cfg.get(cfg.f5_mode) != 'edit':
             self.model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
-            self.model = utils_infer.load_model(DiT, self.model_cfg, self.ckpt_path, device=self.device)
+            self.model = utils_infer.load_model(
+                DiT,
+                self.model_cfg,
+                self.ckpt_path,
+                vocab_file=self._get_vocab_file(),
+                device=self.device,
+            )
             self.mode = cfg.get(cfg.f5_mode)
         else:
             self.mode = cfg.get(cfg.f5_mode)
             ode_method = "euler"
-            self.model_cfg = OmegaConf.load(str(os.path.join(get_app_code_root(), 'third_party', 'f5', 'src', 'f5_tts', 'configs', 'F5TTS_v1_Base.yaml')))
+            import f5_tts
+            self.model_cfg = OmegaConf.load(str(os.path.join(os.path.dirname(f5_tts.__file__), 'configs', 'F5TTS_v1_Base.yaml')))
             model_cls = get_class(f"f5_tts.model.{self.model_cfg.model.backbone}")
             model_arc = self.model_cfg.model.arch
 
@@ -120,6 +123,23 @@ class F5Engine(tts_engine):
 
             self.model = utils_infer.load_checkpoint(self.cfm_model, self.ckpt_path, device=self.device, use_ema=True)
 
+    def _get_vocab_file(self):
+        candidates = [
+            os.path.join(os.path.dirname(self.ckpt_path), "vocab.txt"),
+            os.path.join(get_app_root(), "models", "F5", "F5TTS_v1_Base", "vocab.txt"),
+        ]
+
+        try:
+            candidates.append(str(files("f5_tts").joinpath("infer/examples/vocab.txt")))
+        except Exception:
+            pass
+
+        for path in candidates:
+            if path and os.path.isfile(path):
+                return str(os.path.abspath(path))
+
+        raise FileNotFoundError("Unable to locate F5 vocab.txt for inference.")
+
 
     def inference(self, text=None, transcript=None, voice=None, language='en', output_file=None, streaming=False, speaker=None, start_time=None, end_time=None):
         if self.mode != cfg.get(cfg.f5_mode) or self.model is None:
@@ -139,8 +159,8 @@ class F5Engine(tts_engine):
         if self.mode == 'tts':
             # Use temp_voice here instead of voice
             return self._inference(text, transcript['transcript'] if isinstance(transcript, dict) else transcript,
-                                   temp_voice, language, output_file, streaming, speed=cfg.get(cfg.f5_speed) / 10,
-                                   nfe_step=cfg.get(cfg.f5_nfe), cross_fade_duration=cfg.get(cfg.f5_crossfade) / 100)
+                                   temp_voice, language, output_file, streaming, speed=cfg.get(cfg.f5_speed),
+                                   nfe_step=cfg.get(cfg.f5_nfe_step), cross_fade_duration=cfg.get(cfg.f5_crossfade))
         else:
             # Use temp_voice here instead of voice
             return self._edit_inference(text, transcript, temp_voice, language, output_file, streaming,
@@ -239,7 +259,7 @@ class F5Engine(tts_engine):
         # Audio editing logic
         parts_to_edit = [[start_time, end_time]]
 
-        speed_factor = (cfg.get(cfg.f5_speed) / 10.0)
+        speed_factor = cfg.get(cfg.f5_speed)
 
         fix_duration = [math.ceil(end_time - start_time) * speed_factor]
 

@@ -1,5 +1,4 @@
 import os
-import sys
 from typing import Optional
 
 import librosa
@@ -9,11 +8,9 @@ from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
-from src.utils.filesystem_utils import get_app_root, get_app_code_root
+from src.utils.filesystem_utils import get_app_root
 
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'dia/dia')))
-
-from third_party.dia.dia.model import DEFAULT_SAMPLE_RATE
+from dia.model import DEFAULT_SAMPLE_RATE
 from transformers import AutoProcessor, DiaForConditionalGeneration, DiaProcessor
 
 

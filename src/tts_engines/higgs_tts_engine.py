@@ -1,5 +1,4 @@
 import os
-import sys
 
 import torch
 
@@ -7,17 +6,14 @@ from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
-from src.utils.filesystem_utils import get_app_code_root, get_app_root
+from src.utils.filesystem_utils import get_app_root
 
-# Add Higgs paths to sys.path
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'higgs')))
-
-from third_party.higgs.boson_multimodal.data_types import Message, ChatMLSample, AudioContent
-from third_party.higgs.boson_multimodal.model.higgs_audio import HiggsAudioModel
-from third_party.higgs.boson_multimodal.audio_processing.higgs_audio_tokenizer import load_higgs_audio_tokenizer
-from third_party.higgs.boson_multimodal.data_collator.higgs_audio_collator import HiggsAudioSampleCollator
-from third_party.higgs.boson_multimodal.dataset.chatml_dataset import ChatMLDatasetSample, prepare_chatml_sample
-from third_party.higgs.boson_multimodal.model.higgs_audio.utils import revert_delay_pattern
+from boson_multimodal.data_types import Message, ChatMLSample, AudioContent
+from boson_multimodal.model.higgs_audio import HiggsAudioModel
+from boson_multimodal.audio_processing.higgs_audio_tokenizer import load_higgs_audio_tokenizer
+from boson_multimodal.data_collator.higgs_audio_collator import HiggsAudioSampleCollator
+from boson_multimodal.dataset.chatml_dataset import ChatMLDatasetSample, prepare_chatml_sample
+from boson_multimodal.model.higgs_audio.utils import revert_delay_pattern
 from transformers import AutoConfig, AutoTokenizer
 from dataclasses import asdict
 

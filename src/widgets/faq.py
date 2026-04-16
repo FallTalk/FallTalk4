@@ -56,7 +56,6 @@ class FAQPage(ScrollArea):
                 <li>F5: Lightweight, fast, and can do both TSS and Audio Editing. Overall, a great all around model with speed and efficiency.</li>
                 <li>RVC: Voice Cloning using your own voice! This allows you to achieve better results in some cases, as you can mimic the original cadence and speech patterns. Works really well with Robots like Mr Handy.</li>
                 <li>GPT SoVITs: Extremely fast and easy to train, making it a great all-rounder. The default engine for version 1.0</li>
-                <li>XTTSv2: Offers decent quality, though it may sometimes lack emotion. It excels at generating large amounts of text, making it ideal for narration or long speeches.</li>
                 <li>StyleTTS2: Incredibly fast and, as the name suggests, is designed to mimic the tone and style of reference audio. It is often considered the best in the text-to-speech space, but requires a high-end GPU like the RTX 4090 (or two) for fine-tuning a voice.</li>
                 <li>Orpheus: Excels at producing highly musical and expressive speech with natural prosody. Particularly effective for generating speech with emotional depth and nuanced intonation.</li>
                 <li>FishSpeech: A versatile model offering good performance across various speaking styles and content types. Optimized for efficiency while maintaining high-quality output.</li>
@@ -85,7 +84,7 @@ class FAQPage(ScrollArea):
             FallTalkIcons.GPU.icon(),
             self.tr("GPU or CPU?"),
             text="""
-            The GPU will always be faster, but some engines like GPT-SoVITS and RVC see great performance on CPU. Other models like XTTSv2 really struggle with CPU only mode.
+            The GPU will always be faster, but some engines like GPT-SoVITS and RVC see great performance on CPU.
 
             Try the different settings to see if the CPU speed is acceptable for you.
             """
@@ -160,7 +159,6 @@ class FAQPage(ScrollArea):
             </p>
             <ul>
                 <li><a href="https://github.com/IAHispano/Applio">RVC</a> : Very easy for anyone to train, with a simple .exe download install</li>
-                <li><a href="https://github.com/erew123/alltalk_tts">XTTSv2 via AllTalk</a>: The creators of XTTS have closed, so this is currently the best repository for training.</li>
                 <li><a href="https://github.com/RVC-Boss/GPT-SoVITS">GPT So-VITS</a>: They have a super easy training UI that does all the work for you.</li>
                 <li><a href="https://github.com/yl4579/StyleTTS2">StyleTTS2</a>: A monster for training, needs a 90 series card (3090, 4090) </li>
             </ul>  

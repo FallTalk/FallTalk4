@@ -39,7 +39,7 @@ from src.utils.inference_utils import (
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
-    load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc, load_spark,
+    load_model, load_gpt_sovits, load_dia, load_rvc, load_spark,
     load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_upscaler, load_csm,
     load_higgs, load_chatterbox, load_dmo_speech2, load_vibe, load_qwen
 )
@@ -97,7 +97,6 @@ class FallTalkApp(FallTalkFluentWindow):
         self.engine_actions = {}
         # Dictionary to store engine load functions
         self.engine_load_functions = {
-            EngineType.XTTS_V2: load_xtts,
             EngineType.GPT_SOVITS: load_gpt_sovits,
             EngineType.STYLE_TTS2: load_style_tts2,
             EngineType.DIA: load_dia,
@@ -352,7 +351,6 @@ class FallTalkApp(FallTalkFluentWindow):
         # Connect engine actions
         self.engine_actions[EngineType.RVC] = self.rvc_action
         self.engine_actions[EngineType.GPT_SOVITS] = self.gpt_sovits_action
-        self.engine_actions[EngineType.XTTS_V2] = self.xtts_action
         self.engine_actions[EngineType.STYLE_TTS2] = self.styletts2_action
         self.engine_actions[EngineType.FISH_SPEECH] = self.fish_action
         self.engine_actions[EngineType.F5] = self.f5_action

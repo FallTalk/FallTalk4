@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 
 import numpy as np
@@ -10,15 +9,11 @@ from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils import torch_utils
-from src.utils.filesystem_utils import get_app_code_root, get_app_root
+from src.utils.filesystem_utils import get_app_root
 from src.utils.logging_utils import logger
 
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'fish')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'fish', 'fish_speech')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'fish', 'fish_speech', 'models')))
-
-from third_party.fish.fish_speech.models.text2semantic.inference import init_model as fish_load, generate_long
-from third_party.fish.fish_speech.models.dac.inference import load_model as load_dac
+from fish_speech.models.text2semantic.inference import init_model as fish_load, generate_long
+from fish_speech.models.dac.inference import load_model as load_dac
 
 class FishSpeechEngine(tts_engine):
 

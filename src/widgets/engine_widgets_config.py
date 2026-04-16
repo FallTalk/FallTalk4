@@ -17,7 +17,6 @@ from src.help.qwen_help import QwenHelp
 from src.help.spark_help import SparkHelp
 from src.help.styletts2_help import StyleTTS2Help
 from src.help.vibe_help import VibeHelp
-from src.help.xtts_help import XTTSHelp
 from src.settings.chatterbox_settings import ChatterboxSettings
 from src.settings.csm_settings import CSMSettings
 from src.settings.dia_settings import DIASettings
@@ -32,7 +31,6 @@ from src.settings.qwen_settings import QwenSettings
 from src.settings.spark_settings import SparkSettings
 from src.settings.styletts2_settings import StyleTTS2Settings
 from src.settings.vibe_settings import VibeSettings
-from src.settings.xtts_settings import XTTSSettings
 
 # Mapping of engine types to their settings widgets
 SETTINGS_WIDGETS: Dict[EngineType, Type] = {
@@ -46,7 +44,6 @@ SETTINGS_WIDGETS: Dict[EngineType, Type] = {
     EngineType.DIA: DIASettings,
     EngineType.CSM: CSMSettings,
     EngineType.CHATTERBOX: ChatterboxSettings,
-    EngineType.XTTS_V2: XTTSSettings,
     EngineType.STYLE_TTS2: StyleTTS2Settings,
     EngineType.F5: F5Settings,
     EngineType.DMOSPEECH2: DMSpeech2Settings,
@@ -65,7 +62,6 @@ HELP_WIDGETS: Dict[EngineType, Type] = {
     EngineType.DIA: DIAHelp,
     EngineType.CSM: CSMHelp,
     EngineType.CHATTERBOX: ChatterboxHelp,
-    EngineType.XTTS_V2: XTTSHelp,
     EngineType.STYLE_TTS2: StyleTTS2Help,
     EngineType.F5: F5Help,
     EngineType.DMOSPEECH2: DMSpeech2Help,

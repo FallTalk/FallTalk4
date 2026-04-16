@@ -123,7 +123,7 @@ class VibeEngine(tts_engine):
         start_time = time.time()
 
         cfg_scale = cfg.get(cfg.vibe_cfg_scale) / 10
-        do_sample = cfg.get(cfg.vibe_dosmaple)
+        do_sample = cfg.get(cfg.vibe_do_sample)
         temperature = cfg.get(cfg.vibe_temperature) / 100
         top_p = cfg.get(cfg.vibe_top_p) / 100
         # Generate audio

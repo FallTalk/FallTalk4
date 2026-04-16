@@ -1,14 +1,18 @@
+from __future__ import annotations
+
 import json
 import os.path
 import shutil
 import threading
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import uvicorn
-from PySide6.QtCore import Qt, QMetaObject, Q_ARG
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, FileResponse
+
+if TYPE_CHECKING:
+    from src.ui_imgui.state import AppState
 
 from src.config.config import cfg, VERSION
 from src.enums.engine_type import EngineType
@@ -20,11 +24,11 @@ from src.utils.inference_utils import (
 )
 from src.utils.logging_utils import logger
 from src.utils.model_utils import (
-    load_model, load_xtts, load_gpt_sovits, load_dia, load_rvc, load_spark,
+    load_model, load_gpt_sovits, load_dia, load_rvc, load_spark,
     load_fish, load_f5, load_llasa, load_orpheus, load_style_tts2, load_csm,
     load_higgs, load_chatterbox, load_dmo_speech2, load_vibe, load_qwen
 )
-from tts_engines.whisper_engine import Whisper_Engine
+from src.tts_engines.whisper_engine import Whisper_Engine
 
 app = FastAPI()
 
@@ -43,10 +47,11 @@ class FastAPIServer(threading.Thread):
         self.shared_models = None
         self.custom_models = None
         self.default_references = None
+        self._callbacks = None
+        self._state = None
 
         # Dictionary to store engine load functions
         self.engine_load_functions = {
-            EngineType.XTTS_V2: load_xtts,
             EngineType.GPT_SOVITS: load_gpt_sovits,
             EngineType.STYLE_TTS2: load_style_tts2,
             EngineType.DIA: load_dia,
@@ -66,6 +71,36 @@ class FastAPIServer(threading.Thread):
 
         # Load static JSON data
         self._load_static_json_data()
+
+    def _ensure_callbacks(self):
+        """Ensure standalone callbacks exist for headless API mode."""
+        if self._callbacks is None:
+            from src.ui_imgui.state import AppCallbacks, AppState
+
+            state = AppState()
+            state.tts_engine = self.tts_engine
+            state.transcription_engine = self.transcription_engine
+            state.characters_data = self.characters_data or {}
+            state.models = self.models or {}
+            state.custom_models = self.custom_models
+            state.default_references = self.default_references
+
+            self._callbacks = AppCallbacks(
+                on_progress=lambda msg: logger.debug(f"Progress: {msg}"),
+                on_done=lambda: logger.debug("Operation complete"),
+                on_error=lambda title, msg: logger.error(f"{title}: {msg}"),
+                on_warn=lambda title, msg: logger.warning(f"{title}: {msg}"),
+                on_model_loaded=lambda: logger.debug(f"Model loaded"),
+                on_media_update=lambda path: logger.debug(f"Media updated: {path}"),
+                on_continue_load=lambda: logger.debug("Continue load"),
+                state_ref=state,
+            )
+            self._state = state
+
+        # Keep state in sync with server attributes
+        self._state.tts_engine = self.tts_engine
+        self._state.transcription_engine = self.transcription_engine
+        return self._callbacks
 
     def _load_static_json_data(self):
         """Load static JSON data from files and cache it in memory"""
@@ -142,37 +177,22 @@ class FastAPIServer(threading.Thread):
         if self.tts_engine is not None:
             self.tts_engine.clean()
 
+        callbacks = self._ensure_callbacks()
+
         if engine_type in self.engine_load_functions:
-            self.engine_load_functions[engine_type](self)
+            self.engine_load_functions[engine_type](callbacks)
+            # Sync engine back from state
+            self.tts_engine = self._state.tts_engine
             return True
         else:
             self.tts_engine = None
             return False
 
-    def after_engine_load(self, parent, engine):
-        """Callback after engine is loaded"""
-        logger.debug(f"Engine {engine} loaded")
-
-    def afterModelLoader(self, parent):
-        """Callback after model is loaded"""
-        logger.debug(f"Model {self.tts_engine.model_name} loaded")
-
-    def afterGen(self, parent):
-        """Callback after audio generation"""
-        logger.debug("Audio generation completed")
-
-    def onError(self, parent, title, text):
-        """Callback for errors"""
-        logger.error(f"{title}: {text}")
-
-    def onWarn(self, parent, title, text):
-        """Callback for warnings"""
-        logger.warning(f"{title}: {text}")
-
-    def load_model(self, character, rvc=None, display_name=None, base_model=False, model_engine_version=None):
-        """Load a model for a character"""
+    def load_model_standalone(self, character, rvc=None, display_name=None, base_model=False, model_engine_version=None):
+        """Load a model for a character (standalone mode)"""
+        callbacks = self._ensure_callbacks()
         if character:
-            load_model(self, character, rvc, display_name, base_model, model_engine_version)
+            load_model(callbacks, character, rvc, display_name, base_model, model_engine_version)
             return True
         return False
 
@@ -202,12 +222,10 @@ class FastAPIServer(threading.Thread):
 
 class FallTalkAPI:
 
-    def __init__(self, falltak_app=None):
-        self.falltak_app = falltak_app
+    def __init__(self, app_state: Optional[AppState] = None):
+        self.app_state = app_state
         self.server_thread = FastAPIServer()
         self.server_thread.start()
-        if falltak_app:
-            self.falltak_app.openapi = self.custom_openapi()
 
     def custom_openapi(self):
         if app.openapi_schema:
@@ -236,17 +254,17 @@ class FallTalkAPI:
         if 'engine' in data:
             engine_type = EngineType(data['engine'])
 
-            # If we have a FallTalk app instance, use it
-            if self.falltak_app:
-                QMetaObject.invokeMethod(self.falltak_app, "engine_change", Qt.QueuedConnection, Q_ARG(str, data['engine']))
+            # If we have an AppState (GUI mode), use the command queue
+            if self.app_state:
+                self.app_state.api_command_queue.put({"action": "engine_change", "engine": data['engine']})
                 return JSONResponse({"new_engine": data['engine'], "previous_engine": cfg.get(cfg.engine)})
 
-            # Otherwise use the server thread's engine loading
+            # Otherwise use the server thread's engine loading (standalone mode)
             else:
                 cfg.set(cfg.engine, data['engine'])
                 success = self.server_thread.load_engine(engine_type)
                 return JSONResponse({
-                    "new_engine": data['engine'], 
+                    "new_engine": data['engine'],
                     "previous_engine": cfg.get(cfg.engine),
                     "success": success
                 })
@@ -264,14 +282,21 @@ class FallTalkAPI:
         base_model = data.get('base_model', False)
         model_engine_version = data.get('model_engine_version', None)
 
-        # If we have a FallTalk app instance, use it
-        if self.falltak_app:
-            self.falltak_app.load_trained_model(character, None, rvc)
+        # If we have an AppState (GUI mode), use the command queue
+        if self.app_state:
+            self.app_state.api_command_queue.put({
+                "action": "load_model",
+                "character": character,
+                "rvc": rvc,
+                "display_name": display_name,
+                "base_model": base_model,
+                "model_engine_version": model_engine_version,
+            })
             return JSONResponse({"model_loaded": character})
 
-        # Otherwise use the server thread's model loading
+        # Otherwise use the server thread's model loading (standalone mode)
         else:
-            success = self.server_thread.load_model(character, rvc, display_name, base_model, model_engine_version)
+            success = self.server_thread.load_model_standalone(character, rvc, display_name, base_model, model_engine_version)
             return JSONResponse({
                 "model_loaded": character,
                 "success": success
@@ -283,12 +308,15 @@ class FallTalkAPI:
         if 'text' not in data and 'input_file' not in data:
             return JSONResponse({"error": "Either text or input_file must be provided"}, status_code=400)
 
+        # Get the callbacks to use
+        if self.app_state and self.app_state.callbacks:
+            callbacks = self.app_state.callbacks
+        else:
+            callbacks = self.server_thread._ensure_callbacks()
+
         # Get output file
         if 'output_file' not in data:
-            if self.falltak_app:
-                data['output_file'] = self.falltak_app.get_output_file_name(None)
-            else:
-                data['output_file'] = self.server_thread.get_output_file_name(None)
+            data['output_file'] = self.server_thread.get_output_file_name(None)
 
         # Get current engine
         engine = cfg.get(cfg.engine)
@@ -300,11 +328,7 @@ class FallTalkAPI:
                 return JSONResponse({"error": "input_file is required for RVC"}, status_code=400)
 
             shutil.copy(data['input_file'], data['output_file'])
-
-            if self.falltak_app:
-                rvc_inference(self.falltak_app, data['input_file'], None, True)
-            else:
-                rvc_inference(self.server_thread, data['input_file'], None, True)
+            rvc_inference(callbacks, data['input_file'], None, True)
 
         else:
             # For all other engines, use generic_inference
@@ -328,36 +352,22 @@ class FallTalkAPI:
 
             # Check if engine requires reference audio
             engine_type = EngineType(engine)
-            if (engine_type.needs_reference_when_trained or 
+            if (engine_type.needs_reference_when_trained or
                 (self.server_thread.tts_engine and self.server_thread.tts_engine.is_base)) and not reference_audio:
                 return JSONResponse({"error": "Reference audio is required for this engine"}, status_code=400)
 
-            if self.falltak_app:
-                generic_inference(
-                    self.falltak_app,
-                    data['output_file'],
-                    text,
-                    reference_audio,
-                    None,
-                    transcribe_state,
-                    start_time,
-                    end_time,
-                    True,
-                    speaker
-                )
-            else:
-                generic_inference(
-                    self.server_thread,
-                    data['output_file'],
-                    text,
-                    reference_audio,
-                    None,
-                    transcribe_state,
-                    start_time,
-                    end_time,
-                    True,
-                    speaker
-                )
+            generic_inference(
+                callbacks,
+                data['output_file'],
+                text,
+                reference_audio,
+                None,
+                transcribe_state,
+                start_time,
+                end_time,
+                True,
+                speaker
+            )
 
         # Return response
         if data.get('stream', False):
@@ -375,10 +385,12 @@ class FallTalkAPI:
         if not os.path.exists(audio_file):
             return JSONResponse({"error": f"File {audio_file} not found"}, status_code=404)
 
-        if self.falltak_app:
-            result = do_transcribe(self.falltak_app, audio_file, None, True)
+        if self.app_state and self.app_state.callbacks:
+            callbacks = self.app_state.callbacks
         else:
-            result = do_transcribe(self.server_thread, audio_file, None, True)
+            callbacks = self.server_thread._ensure_callbacks()
+
+        result = do_transcribe(callbacks, audio_file, None, True)
 
         return JSONResponse({"transcript": result})
 

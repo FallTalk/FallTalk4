@@ -1,3 +1,0 @@
-conda install -c conda-forge 'ffmpeg<7'
-conda install -y pytorch::faiss-cpu
-conda install -y conda-forge::pyinstaller

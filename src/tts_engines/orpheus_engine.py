@@ -1,13 +1,10 @@
 import os
-import sys
 
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
 from src.utils.audio_utils import load_audio
-from src.utils.filesystem_utils import get_app_root, get_app_code_root
-
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'orpheus', 'orpheus_tts_pypi', 'orpheus_tts')))
+from src.utils.filesystem_utils import get_app_root
 
 from snac import SNAC
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -171,12 +168,12 @@ class OrpheusEngine(tts_engine):
             generated_ids = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
-                max_new_tokens=cfg.get(cfg.orpehus_max_new_tokens),
+                max_new_tokens=cfg.get(cfg.orpheus_max_new_tokens),
                 do_sample=True,
-                temperature=float(cfg.get(cfg.orpehus_temperature) / 100.0),
+                temperature=float(cfg.get(cfg.orpheus_temperature) / 100.0),
                 # top_k=40,
-                top_p=(cfg.get(cfg.fish_top_p) / 100.0),
-                repetition_penalty=(cfg.get(cfg.orpehus_repetition) / 10.0),
+                top_p=(cfg.get(cfg.orpheus_top_p) / 100.0),
+                repetition_penalty=(cfg.get(cfg.orpheus_repetition) / 10.0),
                 num_return_sequences=1,
                 eos_token_id=128258,
             )

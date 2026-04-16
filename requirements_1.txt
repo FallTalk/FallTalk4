@@ -1,4 +1,0 @@
-whisperx==3.3.2
-coqui-tts>=0.24.1
-causal_conv1d @ https://huggingface.co/falltalk/falltalk4/resolve/main/wheels/causal_conv1d-1.5.0.post8-cp311-cp311-win_amd64.whl
-mamba-ssm @ https://huggingface.co/falltalk/falltalk4/resolve/main/wheels/mamba_ssm-2.2.4-cp311-cp311-win_amd64.whl

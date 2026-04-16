@@ -7,14 +7,11 @@ from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from src.FallTalk import FallTalkApp
+    from src.ui_imgui.state import AppCallbacks
 
 import logging
 import asyncio
 import re
-from PySide6.QtCore import QMetaObject, Qt, Q_ARG
-
-import PySide6
 
 from src.config.config import cfg
 from src.utils.audio_utils import create_lip_and_fuz, extra_audio_from_bsa, combine_wav_files
@@ -32,7 +29,7 @@ def get_default_reference(parent, character_name):
     """Get a default reference for a character from default_references.json and characters.json
 
     Args:
-        parent: The parent application instance
+        parent: The parent AppCallbacks instance
         character_name: The name of the character
 
     Returns:
@@ -40,38 +37,38 @@ def get_default_reference(parent, character_name):
 """
 
 
-    currentEgine = parent.tts_engine.engine_type
+    currentEgine = parent.state_ref.tts_engine.engine_type
     max_reference_length = currentEgine.max_reference_length
     min_reference_length = currentEgine.min_reference_length
 
 
     # First check if we have default references for this character
-    if hasattr(parent, 'default_references') and parent.default_references and character_name in parent.default_references:
+    if hasattr(parent.state_ref, 'default_references') and parent.state_ref.default_references and character_name in parent.state_ref.default_references:
         # Get all default references for this character
-        default_refs = parent.default_references[character_name]
+        default_refs = parent.state_ref.default_references[character_name]
         if default_refs:
             # Create a list to hold references that meet the duration requirement
             valid_references = []
             combined_transcript = ""
             total_duration = 0
-            
+
             # Keep track of selected references to avoid duplicates
             selected_refs = []
-            
+
             # Keep selecting references until we meet the minimum duration requirement
             while len(valid_references) < len(default_refs) and len(valid_references) < 5:  # Limit to 5 to prevent infinite loops
                 # Filter out already selected references
                 available_refs = [ref for ref in default_refs if ref not in selected_refs]
-                
+
                 # If no more references are available, break the loop
                 if not available_refs:
                     break
 
                 random.shuffle(available_refs)
-                    
+
                 # Select a random default reference from available ones
                 random_ref = random.choice(available_refs)
-                
+
                 # Add to selected references to avoid picking it again
                 selected_refs.append(random_ref)
 
@@ -85,8 +82,8 @@ def get_default_reference(parent, character_name):
                 fuz_filename = wav_filename.replace('.wav', '.fuz').lower()
 
                 # Now find the matching entry in characters.json to get BSA info
-                if character_name in parent.characters_data:
-                    character = parent.characters_data[character_name]
+                if character_name in parent.state_ref.characters_data:
+                    character = parent.state_ref.characters_data[character_name]
                     if character.get('voicefiles'):
                         # Find the matching voice file in characters.json
                         matching_voice_file = None
@@ -122,13 +119,13 @@ def get_default_reference(parent, character_name):
                                 except Exception as e:
                                     # If we can't read the file, use the stored duration
                                     actual_duration = ref_duration
-                                
+
                                 valid_references.append(temp_file)
                                 combined_transcript += " " + transcript if combined_transcript else transcript
-                                
+
                                 # Add to total duration using actual duration
                                 total_duration += actual_duration
-                                
+
                                 # Check if we have enough duration
                                 if total_duration >= min_reference_length:
                                     break
@@ -144,11 +141,11 @@ def get_default_reference(parent, character_name):
                     return valid_references[0], combined_transcript.strip(), os.path.basename(valid_references[0]), None
 
     # Fallback to using characters.json directly if default_references.json didn't work
-    if character_name not in parent.characters_data:
+    if character_name not in parent.state_ref.characters_data:
         logger.warning(f"Character {character_name} not found in characters data")
         return None, None, None, None
 
-    character = parent.characters_data[character_name]
+    character = parent.state_ref.characters_data[character_name]
     if not character.get('voicefiles'):
         logger.warning(f"No voice files found for character {character_name}")
         return None, None, None, None
@@ -198,7 +195,7 @@ def get_default_reference_and_transcript(parent, character_name):
     """Get a default reference audio and transcript for a character.
 
     Args:
-        parent: The parent application instance
+        parent: The parent AppCallbacks instance
         character_name: The name of the character
 
     Returns:
@@ -215,30 +212,27 @@ def get_default_reference_and_transcript(parent, character_name):
 
     return reference_path, transcribe_state
 
-def do_transcribe_before_gen(parent: 'FallTalkApp', selected_audio):
+def do_transcribe_before_gen(parent: 'AppCallbacks', selected_audio):
     try:
-        resp = parent.transcription_engine.transcribe(selected_audio)
+        resp = parent.state_ref.transcription_engine.transcribe(selected_audio)
         logger.debug("transcription complete {}",resp)
-        QMetaObject.invokeMethod(parent, "after_transcribe_gen", Qt.QueuedConnection,
-                                 Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, json.dumps(resp)))
+        # Store transcription result on state for the generation workspace to pick up
+        parent.state_ref._last_transcription = json.dumps(resp)
         return resp
     except Exception as e:
         logger.exception("Transcription failed")
-        QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent),
-                                 Q_ARG(str, "Unable to Transcribe Audio"), Q_ARG(str,
-                                                                                 "An Error Occured while attempting to transcribe audio. Please check your logs and report the issue if needed"))
+        parent.on_error("Unable to Transcribe Audio", "An Error Occured while attempting to transcribe audio. Please check your logs and report the issue if needed")
 
-def do_transcribe(parent: 'FallTalkApp', selected_audio, widget, api=False):
+def do_transcribe(parent: 'AppCallbacks', selected_audio, widget=None, api=False):
     try:
-        resp = parent.transcription_engine.transcribe(selected_audio)
-        if not api:
+        resp = parent.state_ref.transcription_engine.transcribe(selected_audio)
+        if not api and widget is not None:
             widget.transcribe_state = resp
-            QMetaObject.invokeMethod(parent, "after_transcribe", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(PySide6.QtCore.QObject, widget))
         return resp
     except Exception as e:
         logger.exception("Transcription failed")
         if not api:
-            QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Transcribe Audio"), Q_ARG(str, "An Error Occured while attempting to transcribe audio. Please check your logs and report the issue if needed"))
+            parent.on_error("Unable to Transcribe Audio", "An Error Occured while attempting to transcribe audio. Please check your logs and report the issue if needed")
 
 
 def ensure_sentence_punctuation(text):
@@ -304,7 +298,7 @@ def remove_emojis(text):
         "\U0001FA00-\U0001FA6F"  # Chess Symbols
         "\U0001FA70-\U0001FAFF"  # Symbols and Pictographs Extended-A
         "\U00002702-\U000027B0"  # Dingbats
-        "\U000024C2-\U0001F251" 
+        "\U000024C2-\U0001F251"
         "]+",
         flags=re.UNICODE,
     )
@@ -497,7 +491,7 @@ def get_edge_tts_voices():
     return [f"{v['ShortName']}-{v['Gender']}" for v in tts_voice_list if v['ShortName'].startswith('en-')]
 
 
-def eleven_labs_inference(parent: 'FallTalkApp', text, output_file, voice, panel, api=False):
+def eleven_labs_inference(parent: 'AppCallbacks', text, output_file, voice, panel=None, api=False):
     from elevenlabs.core import ApiError
     try:
         key = cfg.get(cfg.rvc_eleven_labs_key)
@@ -516,14 +510,14 @@ def eleven_labs_inference(parent: 'FallTalkApp', text, output_file, voice, panel
         rvc_inference(parent, output_file, panel, api)
     except ApiError as api_error:
         if not api:
-            QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Call Eleven Labs"), Q_ARG(str, str(api_error.body)))
+            parent.on_error("Unable to Call Eleven Labs", str(api_error.body))
     except Exception as e:
         logger.exception("Eleven Labs inference failed")
         if not api:
-            QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Call Eleven Labs"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
+            parent.on_error("Unable to Call Eleven Labs", "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed")
 
 
-def edge_tts_inference(parent: 'FallTalkApp', text, output_file, voice, panel, api=False):
+def edge_tts_inference(parent: 'AppCallbacks', text, output_file, voice, panel=None, api=False):
     try:
         import edge_tts
 
@@ -536,10 +530,10 @@ def edge_tts_inference(parent: 'FallTalkApp', text, output_file, voice, panel, a
     except Exception as e:
         logger.exception("Edge TTS inference failed")
         if not api:
-            QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, parent), Q_ARG(str, "Unable to Generate Audio"), Q_ARG(str, "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed"))
+            parent.on_error("Unable to Generate Audio", "An Error Occured while attempting to generate audio. Please check your logs and report the issue if needed")
 
 
-def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=None, panel=None, transcribe_state=None, start_time=None, end_time=None, api=False, speaker=None):
+def generic_inference(parent: 'AppCallbacks', output_file, text, selected_audio=None, panel=None, transcribe_state=None, start_time=None, end_time=None, api=False, speaker=None):
     try:
         # Common parameters for all engines
         kwargs = {
@@ -551,7 +545,7 @@ def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=N
 
         # Add optional parameters if they exist
         if transcribe_state is not None:
-            if isinstance(transcribe_state, dict) and parent.tts_engine.engine_type != EngineType.F5:
+            if isinstance(transcribe_state, dict) and parent.state_ref.tts_engine.engine_type != EngineType.F5:
                 kwargs['transcript'] = transcribe_state['transcript']
             else:
                 kwargs['transcript'] = transcribe_state
@@ -563,40 +557,28 @@ def generic_inference(parent: 'FallTalkApp', output_file, text, selected_audio=N
             kwargs['speaker'] = speaker
 
         # Generate audio with the engine
-        parent.tts_engine.generate_audio(**kwargs)
+        parent.state_ref.tts_engine.generate_audio(**kwargs)
 
         if not api:
-            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, 
-                                   Q_ARG(PySide6.QtCore.QObject, panel), 
-                                   Q_ARG(str, output_file))
+            parent.on_media_update(output_file)
             if cfg.get(cfg.xwm_enabled):
                 create_lip_and_fuz(parent, output_file)
-            QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, 
-                                   Q_ARG(PySide6.QtCore.QObject, parent))
+            parent.on_done()
     except Exception as e:
-        logger.exception(f"{parent.tts_engine.engine_name} inference failed")
+        logger.exception(f"{parent.state_ref.tts_engine.engine_name} inference failed")
         if not api:
-            QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, 
-                                   Q_ARG(PySide6.QtCore.QObject, parent), 
-                                   Q_ARG(str, "Unable to Generate Audio"), 
-                                   Q_ARG(str, "An Error Occurred while attempting to generate audio. Please check your logs and report the issue if needed"))
+            parent.on_error("Unable to Generate Audio", "An Error Occurred while attempting to generate audio. Please check your logs and report the issue if needed")
 
 
-def rvc_inference(parent: 'FallTalkApp', input_file, panel, api=False):
+def rvc_inference(parent: 'AppCallbacks', input_file, panel=None, api=False):
     try:
-        parent.tts_engine.run_rvc_file(input_file)
+        parent.state_ref.tts_engine.run_rvc_file(input_file)
         if not api:
-            QMetaObject.invokeMethod(parent, "updateMediaplayer", Qt.QueuedConnection, 
-                                   Q_ARG(PySide6.QtCore.QObject, panel), 
-                                   Q_ARG(str, input_file))
+            parent.on_media_update(input_file)
             if cfg.get(cfg.xwm_enabled):
                 create_lip_and_fuz(parent, input_file)
-            QMetaObject.invokeMethod(parent, "afterGen", Qt.QueuedConnection, 
-                                   Q_ARG(PySide6.QtCore.QObject, parent))
+            parent.on_done()
     except Exception as e:
         logger.exception("RVC inference failed")
         if not api:
-            QMetaObject.invokeMethod(parent, "onError", Qt.QueuedConnection, 
-                                   Q_ARG(PySide6.QtCore.QObject, parent), 
-                                   Q_ARG(str, "Unable to Generate Audio"), 
-                                   Q_ARG(str, "An Error Occurred while attempting to generate audio. Please check your logs and report the issue if needed"))
+            parent.on_error("Unable to Generate Audio", "An Error Occurred while attempting to generate audio. Please check your logs and report the issue if needed")

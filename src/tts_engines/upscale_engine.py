@@ -2,12 +2,10 @@ import glob
 import os
 import sys
 
-import PySide6
 import noisereduce as nr
 import numpy as np
 import soundfile as sf
 import torch
-from PySide6.QtCore import QMetaObject, Qt, Q_ARG
 from demucs.apply import apply_model
 from demucs.pretrained import get_model
 from pydub import AudioSegment
@@ -32,7 +30,8 @@ class UpscaleEngine:
         self.sr = 44100
         self.denoise = True
 
-    def upscale_dir(self, directory, replace=True, include_subdir=False, mode="denoise", sr=44100, ddim_steps=50, guidance_scale=3.5):
+    def upscale_dir(self, parent, directory, mode="denoise", sr=44100, include_subdir=False, replace=True, ddim_steps=50, guidance_scale=3.5):
+        """Enhanced upscale_dir that accepts AppCallbacks parent for progress updates."""
         try:
             self.sr = sr
             print(f'Starting Enhancement {mode}')
@@ -60,32 +59,32 @@ class UpscaleEngine:
             total = len(wav_files) + len(fuz_files) + len(xwm_files) + len(flac_files) + len(mp3_files)
             count = 0
 
-            QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Starting: {count}/{total}"))
+            parent.on_progress(f"Starting: {count}/{total}")
 
             for flac_file in flac_files:
                 self.do_flac(ddim_steps, guidance_scale,  replace, flac_file)
                 count += 1
-                QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
+                parent.on_progress(f"Enhancement: {count}/{total}")
 
             for mp3_file in mp3_files:
                 self.do_mp3(ddim_steps, guidance_scale,  replace, mp3_file)
                 count += 1
-                QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
+                parent.on_progress(f"Enhancement: {count}/{total}")
 
             for wav_file in wav_files:
                 self.do_wav(ddim_steps, guidance_scale,  replace, wav_file)
                 count += 1
-                QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
+                parent.on_progress(f"Enhancement: {count}/{total}")
 
             for xwm_file in xwm_files:
                 self.do_xwm(ddim_steps, guidance_scale,  replace, xwm_file)
                 count += 1
-                QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
+                parent.on_progress(f"Enhancement: {count}/{total}")
 
             for fuz_file in fuz_files:
                 self.do_fuz(ddim_steps, guidance_scale,  replace, fuz_file)
                 count += 1
-                QMetaObject.invokeMethod(self.parent, "update_loader", Qt.QueuedConnection, Q_ARG(str, f"Enhancement: {count}/{total}"))
+                parent.on_progress(f"Enhancement: {count}/{total}")
 
             if self.p:
                 self.p.audiosr.to('cpu')
@@ -101,10 +100,10 @@ class UpscaleEngine:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-            QMetaObject.invokeMethod(self.parent, "afterGen", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, self.parent))
+            parent.on_done()
         except Exception as e:
             logging_utils.logger.exception(f"Error: {e}")
-            QMetaObject.invokeMethod(self.parent, "onError", Qt.QueuedConnection, Q_ARG(PySide6.QtCore.QObject, self.parent), Q_ARG(str, "Error During Enhancement"), Q_ARG(str, "An Error Occured while loading the cleaner. Please check your logs and report the issue if needed"))
+            parent.on_error("Error During Enhancement", "An Error Occured while loading the cleaner. Please check your logs and report the issue if needed")
 
     def do_mp3(self, ddim_steps, guidance_scale,  replace, mp3_file):
         try:
