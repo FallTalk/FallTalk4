@@ -10,11 +10,14 @@ import os
 import shutil
 
 from src.enums.engine_type import EngineType
+from src.config.config import cfg
+from src.utils.filesystem_utils import get_app_root, check_files_in_directory
 
 from src.utils.huggingface_utils import (
     downloadXTTS, downloadRVC, downloadGPTSoVITS, downloadStyleTTS2, downloadDIA, downloadSpark,
     downloadFish, downloadF5, downloadLlasa, downloadOrpheus, download_rvc_models, downloadAPBWE, downloadCSM,
-    downloadHiggs, downloadChatterbox, downloadDMSpeech2, downloadVibe, downloadQwen
+    downloadHiggs, downloadChatterbox, downloadDMSpeech2, downloadVibe, downloadQwen, downloadOmniVoice,
+    downloadMossTTS, download_models
 )
 
 logger = logging.getLogger('falltalk')
@@ -24,8 +27,59 @@ logger.setLevel(logging.DEBUG)
 def load_model(parent: 'AppCallbacks', character=None, rvc=None, display_name=None, base_model=False, model_engine_version=None):
     logger.info(f"load_model character={character} display_name={display_name} base_model={base_model}")
     try:
-        if not character.startswith("custom_"):
-            if rvc is not None:
+        state_ref = getattr(parent, "state_ref", None)
+        model_registry = getattr(state_ref, "models", None) if state_ref is not None else None
+        current_engine = state_ref.tts_engine.engine_type.value if state_ref is not None and state_ref.tts_engine is not None else cfg.get(cfg.engine)
+        auto_downloaded = False
+
+        if (
+            not base_model
+            and character is not None
+            and not character.startswith("custom_")
+            and isinstance(model_registry, dict)
+        ):
+            character_models = model_registry.get(character)
+            if isinstance(character_models, dict):
+                model_info = character_models.get(current_engine)
+                if isinstance(model_info, dict):
+                    engine_type = EngineType(current_engine)
+                    engine_version = model_engine_version or model_info.get('engine_version', '1')
+                    if model_info.get('is_shared', False) and model_info.get('shared_model_name'):
+                        model_dir = os.path.join(
+                            get_app_root(),
+                            "models",
+                            "shared",
+                            engine_type.get_model_path(model_info['shared_model_name'], engine_version),
+                        )
+                    else:
+                        model_dir = os.path.join(
+                            get_app_root(),
+                            "models",
+                            engine_type.get_model_path(character, engine_version),
+                        )
+
+                    if not check_files_in_directory(model_dir):
+                        logger.info(
+                            "Character model files missing for %s (%s); downloading before load",
+                            character,
+                            current_engine,
+                        )
+                        if not download_models(parent, character, model_info, rvc, api=True):
+                            return
+                        if not check_files_in_directory(model_dir):
+                            logger.error(
+                                "Character model download completed but no files were found in %s",
+                                model_dir,
+                            )
+                            parent.on_error(
+                                "Unable to Load Model",
+                                f"Downloaded model files for {character} were not found in {model_dir}.",
+                            )
+                            return
+                        auto_downloaded = True
+
+        if not (character or "").startswith("custom_"):
+            if rvc is not None and not auto_downloaded:
                 download_rvc_models(parent, character, rvc)
                 downloadRVC(parent)
 
@@ -35,7 +89,7 @@ def load_model(parent: 'AppCallbacks', character=None, rvc=None, display_name=No
             shared_model_name = None
             characters = None
 
-            if not base_model and character in parent.state_ref.models:
+            if not base_model and character is not None and character in parent.state_ref.models:
                 engine_name = parent.state_ref.tts_engine.engine_type.value
                 if engine_name in parent.state_ref.models[character]:
                     model_info = parent.state_ref.models[character][engine_name]
@@ -244,6 +298,14 @@ def load_qwen(parent: 'AppCallbacks'):
     from src.tts_engines.qwen_engine import QwenEngine
     generic_engine_loader(parent, QwenEngine, downloadQwen, EngineType.QWEN3_TTS.value)
 
+def load_omnivoice(parent: 'AppCallbacks'):
+    from src.tts_engines.omnivoice_engine import OmniVoiceEngine
+    generic_engine_loader(parent, OmniVoiceEngine, downloadOmniVoice, EngineType.OMNIVOICE.value)
+
+def load_moss_tts(parent: 'AppCallbacks'):
+    from src.tts_engines.moss_tts_engine import MossTTSEngine
+    generic_engine_loader(parent, MossTTSEngine, downloadMossTTS, EngineType.MOSS_TTS.value)
+
 _ENGINE_LOADERS = None
 
 def _get_engine_loaders():
@@ -265,6 +327,8 @@ def _get_engine_loaders():
             EngineType.DMOSPEECH2: load_dmo_speech2,
             EngineType.VIBE: load_vibe,
             EngineType.QWEN3_TTS: load_qwen,
+            EngineType.OMNIVOICE: load_omnivoice,
+            EngineType.MOSS_TTS: load_moss_tts,
         }
     return _ENGINE_LOADERS
 

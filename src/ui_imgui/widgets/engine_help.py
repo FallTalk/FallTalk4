@@ -227,6 +227,32 @@ Tips:
 - Select the appropriate language for best results.
 """
 
+OMNIVOICE_HELP = """\
+OmniVoice
+
+About:
+- OmniVoice is a massively multilingual zero-shot TTS model with voice cloning and voice design.
+- It can clone from a short reference audio clip or generate from a descriptive voice prompt.
+
+Tips:
+- Use 3 to 10 seconds of clean reference audio for the best cloning results.
+- If no reference transcript is provided, the model can auto-transcribe the reference clip.
+- Lower diffusion step counts are faster; higher values can improve stability.
+"""
+
+MOSS_TTS_HELP = """\
+MOSS-TTS
+
+About:
+- MOSS-TTS is a high-fidelity TTS family from OpenMOSS and MOSI.AI.
+- It supports zero-shot voice cloning and works well with long-form speech.
+
+Tips:
+- Use a clean reference clip when cloning a voice.
+- Lower temperature and top-p values make the output more stable.
+- Max New Tokens controls the maximum generation window.
+"""
+
 RVC_HELP = """\
 RVC (Retrieval-based Voice Conversion)
 
@@ -289,6 +315,10 @@ def draw_engine_help(state: AppState):
             imgui.text_wrapped(VIBE_HELP)
         case EngineType.QWEN3_TTS:
             imgui.text_wrapped(QWEN_HELP)
+        case EngineType.OMNIVOICE:
+            imgui.text_wrapped(OMNIVOICE_HELP)
+        case EngineType.MOSS_TTS:
+            imgui.text_wrapped(MOSS_TTS_HELP)
         case EngineType.RVC:
             imgui.text_wrapped(RVC_HELP)
         case _:

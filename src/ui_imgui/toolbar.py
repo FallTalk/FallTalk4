@@ -98,5 +98,7 @@ class Toolbar:
 
         # Reset button
         if imgui.button("Reset All Settings##tb"):
+            nav_collapsed = self._state.nav_collapsed
             cfg.reset()
-            self._state.nav_collapsed = cfg.get(cfg.nav_collapsed)
+            cfg.set(cfg.nav_collapsed, nav_collapsed)
+            self._state.nav_collapsed = nav_collapsed

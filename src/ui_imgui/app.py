@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ctypes
 import json
+import logging
 import os
 import queue
 import sys
@@ -25,6 +27,88 @@ from src.utils.filesystem_utils import get_app_root
 
 def _darken(color: tuple[float, float, float, float], factor: float) -> tuple[float, float, float, float]:
     return (color[0] * factor, color[1] * factor, color[2] * factor, color[3])
+
+
+def _set_window_icon():
+    """Set the GLFW window icon without changing Hello ImGui asset lookup."""
+    try:
+        from PIL import Image
+
+        icon_candidates = [
+            os.path.join(get_app_root(), "resource", "app_settings", "icon.ico"),
+            os.path.join(get_app_root(), "resource", "falltalk.ico"),
+        ]
+        icon_path = next((path for path in icon_candidates if os.path.exists(path)), None)
+        if not icon_path:
+            return
+
+        window_address = hello_imgui.get_glfw_window_address()
+        if not window_address:
+            return
+
+        import imgui_bundle
+
+        glfw_dll = os.path.join(os.path.dirname(imgui_bundle.__file__), "glfw3.dll")
+        glfw = ctypes.CDLL(glfw_dll)
+
+        img = Image.open(icon_path).convert("RGBA")
+        width, height = img.size
+        pixels = img.tobytes()
+
+        class GLFWimage(ctypes.Structure):
+            _fields_ = [
+                ("width", ctypes.c_int),
+                ("height", ctypes.c_int),
+                ("pixels", ctypes.POINTER(ctypes.c_ubyte)),
+            ]
+
+        pixel_array = (ctypes.c_ubyte * len(pixels))(*pixels)
+        glfw_image = GLFWimage(width, height, pixel_array)
+        window_ptr = ctypes.cast(window_address, ctypes.c_void_p)
+        glfw.glfwSetWindowIcon(window_ptr, 1, ctypes.byref(glfw_image))
+    except Exception as exc:
+        logging.getLogger("falltalk").warning(f"Could not set window icon: {exc}")
+
+
+def _set_native_dark_title_bar():
+    """Request the native Windows title bar/menu chrome to use dark mode."""
+    if os.name != "nt":
+        return
+
+    try:
+        window_address = hello_imgui.get_glfw_window_address()
+        if not window_address:
+            return
+
+        import imgui_bundle
+
+        dwmapi = ctypes.WinDLL("dwmapi")
+        glfw_dll = os.path.join(os.path.dirname(imgui_bundle.__file__), "glfw3.dll")
+        glfw = ctypes.CDLL(glfw_dll)
+        glfw.glfwGetWin32Window.restype = ctypes.c_void_p
+        glfw.glfwGetWin32Window.argtypes = [ctypes.c_void_p]
+        hwnd = glfw.glfwGetWin32Window(ctypes.c_void_p(window_address))
+        if not hwnd:
+            return
+
+        value = ctypes.c_int(1)
+        size = ctypes.sizeof(value)
+
+        # Try the newer and older immersive dark mode attributes.
+        for attribute in (20, 19):
+            try:
+                hr = dwmapi.DwmSetWindowAttribute(
+                    ctypes.c_void_p(hwnd),
+                    ctypes.c_int(attribute),
+                    ctypes.byref(value),
+                    ctypes.c_int(size),
+                )
+                if hr == 0:
+                    break
+            except Exception:
+                continue
+    except Exception as exc:
+        logging.getLogger("falltalk").warning(f"Could not enable dark title bar: {exc}")
 
 
 def _apply_darcula_theme():
@@ -159,12 +243,15 @@ def run():
     active_page_id: list[str] = [pages[0].page_id]
 
     def switch_page(page_id: str):
+        if page_id == active_page_id[0]:
+            return
         for p in pages:
             if p.page_id == page_id:
                 p.on_activate()
             elif p.page_id == active_page_id[0]:
                 p.on_deactivate()
         active_page_id[0] = page_id
+        nav_panel.set_active(page_id)
 
     nav_panel = NavPanel(state, pages, switch_page)
 
@@ -204,6 +291,8 @@ def run():
         for p in pages:
             p.initialize()
         pages[0].on_activate()
+        _set_window_icon()
+        _set_native_dark_title_bar()
         _startup_checks(state)
         try:
             from src.api.falltalkapi import FallTalkAPI
@@ -300,7 +389,7 @@ def run():
         # Poll model_just_loaded flag
         if state.model_just_loaded:
             state.model_just_loaded = False
-            _on_model_loaded(state, pages)
+            _on_model_loaded(state, pages, switch_page)
 
     # Set up the main dockable window
     main_window = hello_imgui.DockableWindow()
@@ -416,8 +505,10 @@ def _continue_pending_load(state: AppState):
     ).start()
 
 
-def _on_model_loaded(state: AppState, pages: list):
+def _on_model_loaded(state: AppState, pages: list, switch_page):
     """Handle model_just_loaded flag -- notify all pages."""
+    target_page = "generation" if state.engine_type == EngineType.RVC else "references"
+    switch_page(target_page)
     for p in pages:
         if hasattr(p, 'on_model_loaded'):
             p.on_model_loaded()

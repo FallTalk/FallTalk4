@@ -82,8 +82,10 @@ class SettingsPage(Page):
         imgui.spacing()
         imgui.separator()
         if imgui.button("Reset All to Defaults", size=(200, 0)):
+            nav_collapsed = self._state.nav_collapsed
             cfg.reset()
-            self._state.nav_collapsed = cfg.get(cfg.nav_collapsed)
+            cfg.set(cfg.nav_collapsed, nav_collapsed)
+            self._state.nav_collapsed = nav_collapsed
 
     def _draw_general_section(self, imgui):
         _section_title("General")

@@ -131,7 +131,7 @@ class AudioPanel:
             self._playing = True
             self._play_start_offset = self._play_pos * self._duration
             self._play_start_time = time.time()
-            sd.play(play_data, self._sample_rate, device=sd_device)
+            sd.play(play_data, self._sample_rate, device=sd_device, blocksize=2048)
             logger.info(f"sd.play returned OK, sd.get_stream()={sd.get_stream()}")
         except Exception as e:
             logger.exception(f"_play FAILED: {e}")

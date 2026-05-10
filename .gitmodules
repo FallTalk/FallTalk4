@@ -1,9 +1,6 @@
 [submodule "GPT_SoVITS"]
 	path = third_party/GPT_SoVITS
 	url = https://github.com/RVC-Boss/GPT-SoVITS
-[submodule "third_party/spark"]
-	path = third_party/spark
-	url = https://github.com/SparkAudio/Spark-TTS
 [submodule "third_party/DMOSpeech2"]
 	path = third_party/DMOSpeech2
 	url = https://github.com/yl4579/DMOSpeech2

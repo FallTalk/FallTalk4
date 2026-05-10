@@ -149,6 +149,15 @@ class GPT_SoVITS_Engine(tts_engine):
 
     def get_config(self):
         configs: dict = {}
+        vits_weights_path = self.model_path or self.get_model(
+            self.engine_type,
+            self.model_type,
+            shared_model_name=self.shared_model_name if self.is_shared else None,
+        )
+        if not self.is_base and not vits_weights_path:
+            raise FileNotFoundError(
+                f"Missing GPT_SoVITS model files for {self.model_name} (engine version {self.model_engine_version})."
+            )
         if not self.is_base and (self.model_engine_version == '1' or self.model_engine_version == '2'  or self.model_engine_version == 'v1'):
             configs: dict = {
                 "version": "v2",
@@ -157,7 +166,7 @@ class GPT_SoVITS_Engine(tts_engine):
                     "is_half": self.is_half,
                     "version": "v2",
                     "t2s_weights_path": self.get_model(self.engine_type, "ckpt", shared_model_name=self.shared_model_name),
-                    "vits_weights_path": os.path.abspath(self.model_path),
+                    "vits_weights_path": os.path.abspath(vits_weights_path),
                     "cnhuhbert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-hubert-base"),
                     "bert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
                     "languages": ["auto", "auto_yue", "en", "zh", "ja", "yue", "ko", "all_zh", "all_ja", "all_yue", "all_ko"]
@@ -171,7 +180,7 @@ class GPT_SoVITS_Engine(tts_engine):
                     "is_half": self.is_half,
                     "version": "v2ProPlus",
                     "t2s_weights_path": self.get_model(self.engine_type, "ckpt",  shared_model_name=self.shared_model_name),
-                    "vits_weights_path": os.path.abspath(self.model_path),
+                    "vits_weights_path": os.path.abspath(vits_weights_path),
                     "cnhuhbert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-hubert-base"),
                     "bert_base_path": os.path.join(get_app_root(), "models/GPT_SoVITS/chinese-roberta-wwm-ext-large"),
                     "languages": ["auto", "auto_yue", "en", "zh", "ja", "yue", "ko", "all_zh", "all_ja", "all_yue", "all_ko"]

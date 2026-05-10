@@ -8,13 +8,24 @@ from src.tts_engines.tts_engine import tts_engine
 from src.utils import logging_utils
 from src.utils.filesystem_utils import get_app_root
 
+from transformers import AutoConfig, AutoTokenizer
+from transformers.models.llama import modeling_llama
+
+# boson_multimodal still expects the old pre-5.x Llama attention registry.
+# Keep the latest transformers release and provide the compatibility alias locally.
+if not hasattr(modeling_llama, "LLAMA_ATTENTION_CLASSES"):
+    modeling_llama.LLAMA_ATTENTION_CLASSES = {
+        "eager": modeling_llama.LlamaAttention,
+        "sdpa": modeling_llama.LlamaAttention,
+        "flash_attention_2": modeling_llama.LlamaAttention,
+    }
+
 from boson_multimodal.data_types import Message, ChatMLSample, AudioContent
 from boson_multimodal.model.higgs_audio import HiggsAudioModel
 from boson_multimodal.audio_processing.higgs_audio_tokenizer import load_higgs_audio_tokenizer
 from boson_multimodal.data_collator.higgs_audio_collator import HiggsAudioSampleCollator
 from boson_multimodal.dataset.chatml_dataset import ChatMLDatasetSample, prepare_chatml_sample
 from boson_multimodal.model.higgs_audio.utils import revert_delay_pattern
-from transformers import AutoConfig, AutoTokenizer
 from dataclasses import asdict
 
 class HiggsTtsEngine(tts_engine):

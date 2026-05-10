@@ -184,13 +184,15 @@ class tts_engine(ABC):
             if self.is_shared and shared_model_name:
                 self.rvc_pth_path = os.path.join(get_app_root(), "models", "shared", "RVC", shared_model_name, "model.pth")
                 self.rvc_index_path = os.path.join(get_app_root(), "models", "shared", "RVC", shared_model_name, "model.index")
-            else:
+            elif self.model_name:
                 self.rvc_pth_path = self.get_model(EngineType.RVC, "pth", "1")
                 self.rvc_index_path = self.get_model(EngineType.RVC, "index", "1")
 
-            if os.path.isfile(self.rvc_pth_path) and os.path.isfile(self.rvc_index_path):
+            if self.rvc_pth_path and self.rvc_index_path and os.path.isfile(self.rvc_pth_path) and os.path.isfile(self.rvc_index_path):
                 self.rvc_pipeline.load_person(self.rvc_pth_path)
                 self.rvc_pipeline.load_index_file(self.rvc_index_path, cfg.get(cfg.rvc_training_data_size))
+            else:
+                logging_utils.logger.warning(f"RVC model files not found for '{self.model_name}' (pth: {self.rvc_pth_path}, index: {self.rvc_index_path}). RVC will be disabled.")
 
 
     def handle_lowvram_change(self):
@@ -472,7 +474,7 @@ class tts_engine(ABC):
         else:
             params = self.get_rvc_params()
 
-        if not os.path.isfile(params.pth_path) or not os.path.isfile(params.index_path):
+        if not params.pth_path or not params.index_path or not os.path.isfile(params.pth_path) or not os.path.isfile(params.index_path):
             print(f"Model file {params.pth_path} or {params.index_path} does not exist. Exiting.")
             return audio_data, sample_rate
 

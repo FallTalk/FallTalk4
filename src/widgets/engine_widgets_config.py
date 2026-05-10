@@ -12,7 +12,9 @@ from src.help.fish_help import FishHelp
 from src.help.gpt_sovits_help import GPTSoVITSHelp
 from src.help.higgs_help import HiggsHelp
 from src.help.llasa_help import LlasaHelp
+from src.help.moss_tts_help import MossTTSHelp
 from src.help.orpheus_help import OrpheusHelp
+from src.help.omnivoice_help import OmniVoiceHelp
 from src.help.qwen_help import QwenHelp
 from src.help.spark_help import SparkHelp
 from src.help.styletts2_help import StyleTTS2Help
@@ -26,6 +28,8 @@ from src.settings.fish_speech_settings import FishSpeechSettings
 from src.settings.gpt_sovits_settings import GPTSoVITSSettings
 from src.settings.higgs_settings import HiggsSettings
 from src.settings.llasa_settings import LlasaSettings
+from src.settings.moss_tts_settings import MossTTSSettings
+from src.settings.omnivoice_settings import OmniVoiceSettings
 from src.settings.orpheus_settings import OrpheusSettings
 from src.settings.qwen_settings import QwenSettings
 from src.settings.spark_settings import SparkSettings
@@ -41,6 +45,8 @@ SETTINGS_WIDGETS: Dict[EngineType, Type] = {
     EngineType.SPARK: SparkSettings,
     EngineType.ORPHEUS: OrpheusSettings,
     EngineType.QWEN3_TTS: QwenSettings,
+    EngineType.OMNIVOICE: OmniVoiceSettings,
+    EngineType.MOSS_TTS: MossTTSSettings,
     EngineType.DIA: DIASettings,
     EngineType.CSM: CSMSettings,
     EngineType.CHATTERBOX: ChatterboxSettings,
@@ -59,6 +65,8 @@ HELP_WIDGETS: Dict[EngineType, Type] = {
     EngineType.SPARK: SparkHelp,
     EngineType.ORPHEUS: OrpheusHelp,
     EngineType.QWEN3_TTS: QwenHelp,
+    EngineType.OMNIVOICE: OmniVoiceHelp,
+    EngineType.MOSS_TTS: MossTTSHelp,
     EngineType.DIA: DIAHelp,
     EngineType.CSM: CSMHelp,
     EngineType.CHATTERBOX: ChatterboxHelp,

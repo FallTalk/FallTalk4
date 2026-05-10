@@ -65,10 +65,13 @@ class NavPanel:
             if bottom_pages:
                 # Calculate space needed for bottom items
                 item_h = imgui.get_frame_height() + imgui.get_style().item_spacing.y + 4
-                bottom_h = len(bottom_pages) * item_h + item_h  # extra for separator
+                bottom_h = len(bottom_pages) * item_h
                 # Check groups in bottom pages for additional separators
                 groups = sorted(set(p.nav_group for p in bottom_pages))
-                bottom_h += (len(groups) - 1) * (imgui.get_style().item_spacing.y + 2) if len(groups) > 1 else 0
+                if len(groups) > 1:
+                    bottom_h += (len(groups) - 1) * (imgui.get_style().item_spacing.y + 2)
+                if top_pages and not collapsed:
+                    bottom_h += imgui.get_frame_height() + imgui.get_style().item_spacing.y
 
                 current_y = imgui.get_cursor_pos_y()
                 target_y = avail_h - bottom_h - imgui.get_style().window_padding.y

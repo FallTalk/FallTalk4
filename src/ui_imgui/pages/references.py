@@ -10,11 +10,7 @@ if TYPE_CHECKING:
 
 from src.enums.engine_type import EngineType
 from src.ui_imgui.page import Page
-from src.ui_imgui.widgets.common import (
-    get_accent_color,
-    pop_accent_button_style,
-    push_accent_button_style,
-)
+from src.ui_imgui.widgets.common import get_accent_color
 from src.utils.filesystem_utils import get_app_root
 
 logger = logging.getLogger("falltalk.references")
@@ -69,9 +65,13 @@ def _resolve_reference_path(ref) -> str:
             if os.path.exists(path):
                 os.remove(path)
     except Exception:
+        logger.exception("_resolve_reference_path failed for %r", ref)
         return ""
 
-    return wav_path if os.path.exists(wav_path) else ""
+    if not os.path.exists(wav_path):
+        logger.warning("_resolve_reference_path: wav not found after extraction for %r (expected %s)", ref, wav_path)
+        return ""
+    return wav_path
 
 
 class ReferencesPage(Page):
@@ -88,7 +88,6 @@ class ReferencesPage(Page):
         self._show_selected_only = [False]
         self._active_tab = "Fallout 4"
         self._focused_reference: int | None = None
-        self._duration_cache: dict[str, str] = {}
 
     def _select_reference(self, idx: int, ref):
         self._focused_reference = idx
@@ -159,7 +158,7 @@ class ReferencesPage(Page):
         text = self._ref_filter[0].strip().lower()
         if not text:
             return True
-        filename, dialogue, plugin, folder, _duration = self._reference_fields(ref)
+        filename, dialogue, plugin, folder = self._reference_fields(ref)
         haystack = " ".join(part for part in (filename, dialogue, plugin, folder) if part).lower()
         return text in haystack
 
@@ -170,7 +169,6 @@ class ReferencesPage(Page):
                 "",
                 "Custom",
                 os.path.dirname(ref),
-                self._get_duration_text(ref),
             )
         if isinstance(ref, dict):
             return (
@@ -178,24 +176,8 @@ class ReferencesPage(Page):
                 ref.get("dialogue", ""),
                 ref.get("plugin", ""),
                 ref.get("folder", ""),
-                f"{ref.get('duration', 0):.1f}s" if ref.get("duration") else "",
             )
-        return "", "", "", "", ""
-
-    def _get_duration_text(self, path: str) -> str:
-        if path in self._duration_cache:
-            return self._duration_cache[path]
-        duration_text = ""
-        try:
-            import soundfile as sf
-
-            info = sf.info(path)
-            if info.duration:
-                duration_text = f"{float(info.duration):.1f}s"
-        except Exception:
-            duration_text = ""
-        self._duration_cache[path] = duration_text
-        return duration_text
+        return "", "", "", ""
 
     def _focused_entry(self):
         idx = self._focused_reference
@@ -234,57 +216,6 @@ class ReferencesPage(Page):
         imgui.text(f"Total Duration: {total_dur:.1f}s")
         imgui.text_colored(status_color, status_text)
 
-    def _draw_focus_panel(self):
-        from imgui_bundle import imgui
-
-        entry = self._focused_entry()
-        imgui.text_disabled("Focused Reference")
-        imgui.separator()
-
-        if not entry:
-            imgui.text_wrapped(
-                "Pick a row from Fallout 4 or Custom references to preview it, then use Select or Remove here."
-            )
-            return
-
-        idx, ref = entry
-        filename, dialogue, plugin, folder, duration = self._reference_fields(ref)
-        is_selected = idx in self._state.selected_references
-
-        imgui.text(filename or "Unnamed Reference")
-        source = plugin or folder or "Custom Reference"
-        if duration:
-            imgui.same_line()
-            imgui.text_disabled(duration)
-        imgui.text_disabled(source)
-        if dialogue:
-            imgui.text_wrapped(dialogue)
-
-        if is_selected:
-            if imgui.button("Remove Focused Reference##ref_focus_remove"):
-                self._deselect_reference(idx, ref)
-        else:
-            push_accent_button_style()
-            try:
-                if imgui.button("Select Focused Reference##ref_focus_select"):
-                    self._select_reference(idx, ref)
-            finally:
-                pop_accent_button_style()
-
-        imgui.same_line()
-        if idx in self._extracting:
-            imgui.text_disabled("Resolving preview...")
-        elif imgui.button("Preview##ref_focus_preview"):
-            self._extracting.add(idx)
-            threading.Thread(target=self._play_reference, args=(idx, ref), daemon=True).start()
-
-        if self._is_custom_reference(ref):
-            parent_dir = os.path.dirname(_resolve_reference_path(ref) or "")
-            if parent_dir and hasattr(os, "startfile"):
-                imgui.same_line()
-                if imgui.button("Open Folder##ref_focus_folder"):
-                    os.startfile(parent_dir)
-
     def _draw_toolbar(self, custom_only: bool):
         from imgui_bundle import imgui
         from src.ui_imgui.widgets.tables import search_filter
@@ -303,12 +234,12 @@ class ReferencesPage(Page):
         from imgui_bundle import imgui
         from src.ui_imgui.widgets.tables import begin_table, end_table
 
-        cols = ["Action", "Preview", "Filename", "Dialogue", "Plugin", "Folder", "Duration"]
+        cols = ["Action", "Preview", "Filename", "Dialogue", "Plugin", "Folder"]
         if begin_table(f"ref_table_{table_id}", cols):
             accent_row = imgui.get_color_u32(imgui.ImVec4(*get_accent_color(0.18)))
             focused_row = imgui.get_color_u32(imgui.ImVec4(*get_accent_color(0.08)))
             for idx, ref in refs:
-                filename, dialogue, plugin, folder, duration = self._reference_fields(ref)
+                filename, dialogue, plugin, folder = self._reference_fields(ref)
                 if not filename:
                     continue
 
@@ -337,8 +268,7 @@ class ReferencesPage(Page):
                     threading.Thread(target=self._play_reference, args=(idx, ref), daemon=True).start()
 
                 imgui.table_set_column_index(2)
-                if imgui.small_button(f"{filename}##ref_focus_{idx}"):
-                    self._focused_reference = idx
+                imgui.text(filename)
                 if imgui.is_item_hovered() and filename:
                     imgui.set_tooltip(filename)
 
@@ -360,12 +290,6 @@ class ReferencesPage(Page):
                 imgui.text(folder or "")
                 if folder and imgui.is_item_hovered():
                     imgui.set_tooltip(folder)
-
-                imgui.table_set_column_index(6)
-                if duration:
-                    imgui.text(duration)
-                else:
-                    imgui.text_disabled("--")
             end_table()
 
     def draw(self):
@@ -384,8 +308,6 @@ class ReferencesPage(Page):
         custom_refs = list(self._iter_filtered_references(custom_only=True))
 
         self._draw_summary()
-        imgui.spacing()
-        self._draw_focus_panel()
         imgui.spacing()
 
         current_tab_is_custom = self._active_tab == "Custom"

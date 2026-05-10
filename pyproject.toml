@@ -1,6 +1,6 @@
 [project]
 name = "falltalk"
-version = "4.0.0"
+version = "3.0.0"
 description = "Multi-engine text-to-speech application"
 requires-python = ">=3.11,<3.12"
 dependencies = [
@@ -25,7 +25,7 @@ dependencies = [
     "faiss-cpu",
 
     # --- ML / Transformers ---
-    "transformers>=4.55.0",
+    "transformers==5.5.4",
     "transformers_stream_generator",
     "diffusers",
     "safetensors",
@@ -46,6 +46,7 @@ dependencies = [
     # --- TTS Engines (formerly submodules) ---
     "f5-tts>=1.1.17",
     "chatterbox-tts>=0.1.6",
+    "spark-tts-lib==0.2.1",
     "nari-tts @ git+https://github.com/nari-labs/dia.git",
     "orpheus-speech>=0.1.0",
     "fish-speech @ git+https://github.com/fishaudio/fish-speech.git",
@@ -74,6 +75,7 @@ dependencies = [
     "edge-tts==7.2.1",
     "elevenlabs",
     "qwen-tts",
+    "omnivoice>=0.1.5",
     "sox",
     "resemble-perth",
     "s3tokenizer",
@@ -193,8 +195,8 @@ override-dependencies = [
     "vllm; sys_platform != 'win32'",
     # fish-speech pins pydantic==2.9.2, we need 2.11.3
     "pydantic==2.11.3",
-    # chatterbox-tts pins transformers==4.46.3, we need >=4.55.0
-    "transformers>=4.55.0",
+    # chatterbox-tts pins transformers==4.46.3, we need a newer release
+    "transformers>=5.5.4",
     # chatterbox-tts/f5-tts pull in conflicting gradio versions; we don't use the web UI
     "gradio; python_version == '0'",
     # Lock versions being downgraded by TTS engine deps (f5-tts, chatterbox, fish-speech, modelscope)

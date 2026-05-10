@@ -50,6 +50,10 @@ def draw_engine_settings(state: AppState):
             _draw_vibe_settings()
         case EngineType.QWEN3_TTS:
             _draw_qwen_settings()
+        case EngineType.OMNIVOICE:
+            _draw_omnivoice_settings()
+        case EngineType.MOSS_TTS:
+            _draw_moss_tts_settings()
         case EngineType.RVC:
             _draw_rvc_settings()
         case _:
@@ -151,6 +155,17 @@ def draw_engine_quick_tuning(state: AppState):
             _combo("Language##quick_qwen", cfg.qwen_language, ["Auto", "Chinese", "English", "Japanese", "Korean"])
             _combo("Model Version##quick_qwen", cfg.qwen_model_version, ["1.7B-Base", "0.6B-Base"])
             _text_input("Instruct##quick_qwen", cfg.qwen_instruct)
+            drew_any = True
+        case EngineType.OMNIVOICE:
+            _int_slider("Diffusion Steps##quick_omni", cfg.omnivoice_num_step, 1, 64)
+            _scaled_slider("Speed##quick_omni", cfg.omnivoice_speed, 10, 200)
+            _text_input("Voice Design##quick_omni", cfg.omnivoice_instruct)
+            drew_any = True
+        case EngineType.MOSS_TTS:
+            _scaled_slider("Temperature##quick_moss", cfg.moss_temperature, 0, 200)
+            _scaled_slider("Top P##quick_moss", cfg.moss_top_p, 0, 100)
+            _int_slider("Top K##quick_moss", cfg.moss_top_k, 1, 100)
+            _int_slider("Max New Tokens##quick_moss", cfg.moss_max_new_tokens, 128, 8192)
             drew_any = True
         case EngineType.RVC:
             _combo(
@@ -369,6 +384,26 @@ def _draw_qwen_settings():
     _combo("Language##qwen", cfg.qwen_language, ["Auto", "Chinese", "English", "Japanese", "Korean"])
     imgui.text("Instruct:")
     _text_input("##qwen_instruct", cfg.qwen_instruct)
+
+
+def _draw_omnivoice_settings():
+    from imgui_bundle import imgui
+    imgui.text("OmniVoice Settings")
+    imgui.separator()
+    _int_slider("Diffusion Steps##omni", cfg.omnivoice_num_step, 1, 64)
+    _scaled_slider("Speed##omni", cfg.omnivoice_speed, 10, 200)
+    imgui.text("Voice Design:")
+    _text_input("##omni_instruct", cfg.omnivoice_instruct)
+
+
+def _draw_moss_tts_settings():
+    from imgui_bundle import imgui
+    imgui.text("MOSS-TTS Settings")
+    imgui.separator()
+    _scaled_slider("Temperature##moss", cfg.moss_temperature, 0, 200)
+    _scaled_slider("Top P##moss", cfg.moss_top_p, 0, 100)
+    _int_slider("Top K##moss", cfg.moss_top_k, 1, 100)
+    _int_slider("Max New Tokens##moss", cfg.moss_max_new_tokens, 128, 8192)
 
 
 def _draw_rvc_settings():

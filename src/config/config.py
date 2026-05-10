@@ -2,11 +2,13 @@
 import configparser
 import json
 import os
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+from src.enums.engine_type import EngineType
 from src.utils.filesystem_utils import get_app_root
 
 
@@ -210,6 +212,17 @@ class Config:
     qwen_language = ConfigKey("qwen_language", "English", str)
     qwen_model_version = ConfigKey("qwen_model_version", "1.7B-Base", str)
 
+    # --- OmniVoice ---
+    omnivoice_num_step = ConfigKey("omnivoice_num_step", 32, int)
+    omnivoice_speed = ConfigKey("omnivoice_speed", 100, int)
+    omnivoice_instruct = ConfigKey("omnivoice_instruct", "", str)
+
+    # --- MOSS-TTS ---
+    moss_temperature = ConfigKey("moss_temperature", 110, int)
+    moss_top_p = ConfigKey("moss_top_p", 90, int)
+    moss_top_k = ConfigKey("moss_top_k", 50, int)
+    moss_max_new_tokens = ConfigKey("moss_max_new_tokens", 4096, int)
+
     # --- CSM ---
     csm_temperature = ConfigKey("csm_temperature", 80, int)
     csm_top_k = ConfigKey("csm_top_k", 50, int)
@@ -252,6 +265,8 @@ class Config:
             val = float(val) / 100.0
         elif key.key == "vibe_mode" and val == "generate":
             val = "1.5B"
+        elif key.key == "engine":
+            val = self._normalize_engine_value(val)
         if key.type_ is not None and val is not None:
             try:
                 return key.type_(val)
@@ -260,6 +275,8 @@ class Config:
         return val
 
     def set(self, key: ConfigKey, value):
+        if key.key == "engine":
+            value = self._normalize_engine_value(value)
         self._data[key.key] = value
         self.save()
 
@@ -276,6 +293,12 @@ class Config:
                 # Migrate nested sections from old Qt config if present
                 if self._migrate_nested_sections():
                     self.save()
+                # Back-fill any keys that still hold their default value from configv2.json
+                old_path = os.path.join(os.path.dirname(self._path), "configv2.json")
+                if self._backfill_from_v2(old_path):
+                    self.save()
+                if self._normalize_engine_setting():
+                    self.save()
                 return
             except (json.JSONDecodeError, OSError):
                 pass
@@ -286,7 +309,23 @@ class Config:
             self._migrate_from_ini(old_path)
         else:
             self._data = dict(self._defaults)
+        if self._normalize_engine_setting():
+            self.save()
         self.save()
+
+    def _normalize_engine_value(self, value):
+        try:
+            return EngineType(value).value
+        except (ValueError, TypeError):
+            return self.engine.default
+
+    def _normalize_engine_setting(self) -> bool:
+        current = self._data.get(self.engine.key, self.engine.default)
+        normalized = self._normalize_engine_value(current)
+        if current != normalized:
+            self._data[self.engine.key] = normalized
+            return True
+        return False
 
     # Map from old nested (section, key) → new flat key
     _NESTED_KEY_MAP = {
@@ -389,6 +428,13 @@ class Config:
         ("Qwen3TTS", "instruct"): "qwen_instruct",
         ("Qwen3TTS", "language"): "qwen_language",
         ("Qwen3TTS", "model_version"): "qwen_model_version",
+        ("OmniVoice", "num_step"): "omnivoice_num_step",
+        ("OmniVoice", "speed"): "omnivoice_speed",
+        ("OmniVoice", "instruct"): "omnivoice_instruct",
+        ("MOSS-TTS", "temperature"): "moss_temperature",
+        ("MOSS-TTS", "top_p"): "moss_top_p",
+        ("MOSS-TTS", "top_k"): "moss_top_k",
+        ("MOSS-TTS", "max_new_tokens"): "moss_max_new_tokens",
         ("DMSpeech2", "model_temperature"): "dmo_temperature",
         ("DMSpeech2", "teacher_steps"): "dmo_teacher_steps",
         ("DMSpeech2", "teacher_stopping_time"): "dmo_teacher_stopping_time",
@@ -429,6 +475,38 @@ class Config:
             for section in nested_sections:
                 del self._data[section]
 
+        return migrated
+
+    def _backfill_from_v2(self, v2_path: str) -> bool:
+        """Back-fill keys that still hold their default value using configv2.json.
+
+        Handles both flat keys and the old Qt nested-section format (e.g. {"App": {...}}).
+        """
+        if not os.path.exists(v2_path):
+            return False
+        try:
+            with open(v2_path, 'r', encoding='utf-8') as f:
+                v2_data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return False
+        migrated = False
+        # Flat keys
+        for key, default in self._defaults.items():
+            if self._data.get(key) == default and key in v2_data and v2_data[key] != default:
+                self._data[key] = v2_data[key]
+                migrated = True
+        # Nested section keys (old Qt format: {"App": {"fallout_4_directory": ...}})
+        nested_sections = {k: v for k, v in v2_data.items() if isinstance(v, dict)}
+        for (section, old_key), flat_key in self._NESTED_KEY_MAP.items():
+            if section not in nested_sections:
+                continue
+            if old_key not in nested_sections[section]:
+                continue
+            v2_val = nested_sections[section][old_key]
+            default = self._defaults.get(flat_key)
+            if self._data.get(flat_key) == default and v2_val != default:
+                self._data[flat_key] = v2_val
+                migrated = True
         return migrated
 
     def _migrate_from_ini(self, ini_path: str):
@@ -474,9 +552,29 @@ class Config:
 cfg = Config()
 
 
+def _read_version() -> str:
+    candidates = []
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(sys.executable).resolve().parent / "VERSION")
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / "VERSION")
+    candidates.append(Path(__file__).resolve().parents[2] / "VERSION")
+
+    for candidate in candidates:
+        try:
+            version = candidate.read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if version:
+            return version
+
+    return "3.0.0"
+
+
 YEAR = 2025
 AUTHOR = "Bryant21"
-VERSION = '2.2.0'
+VERSION = _read_version()
 NEXUS_URL = "https://www.nexusmods.com/fallout4/mods/86525"
 HELP_URL = "https://github.com/falltalk/falltalk4"
 FEEDBACK_URL = "https://github.com/falltalk/falltalk4/issues"

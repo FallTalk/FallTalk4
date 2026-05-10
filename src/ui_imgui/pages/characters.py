@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from src.ui_imgui.state import AppState
 
 from src.ui_imgui.page import Page
+from src.ui_imgui.widgets.common import draw_icon_button
 
 
 class CharactersPage(Page):
@@ -78,26 +79,18 @@ class CharactersPage(Page):
                 imgui.align_text_to_frame_padding()
                 imgui.text(name)
                 imgui.table_set_column_index(1)
-                if imgui.small_button(f"{fa.ICON_FA_PLAY}##{name}"):
+                if draw_icon_button(fa.ICON_FA_PLAY, f"char_load_{name}", "Load"):
                     self._load_character(char)
-                if imgui.is_item_hovered():
-                    imgui.set_tooltip("Load")
                 imgui.table_set_column_index(2)
-                if imgui.small_button(f"{fa.ICON_FA_DOWNLOAD}##{name}"):
+                if draw_icon_button(fa.ICON_FA_DOWNLOAD, f"char_download_{name}", "Download"):
                     self._download_character(char)
-                if imgui.is_item_hovered():
-                    imgui.set_tooltip("Download")
                 imgui.table_set_column_index(3)
-                if imgui.small_button(f"{fa.ICON_FA_ARROWS_ROTATE}##{name}"):
+                if draw_icon_button(fa.ICON_FA_ARROWS_ROTATE, f"char_update_{name}", "Update"):
                     self._update_character(char)
-                if imgui.is_item_hovered():
-                    imgui.set_tooltip("Update")
                 imgui.table_set_column_index(4)
-                if imgui.small_button(f"{fa.ICON_FA_TRASH}##{name}"):
+                if draw_icon_button(fa.ICON_FA_TRASH, f"char_delete_{name}", "Delete"):
                     self._confirm_delete = char
                     imgui.open_popup("Delete Character?")
-                if imgui.is_item_hovered():
-                    imgui.set_tooltip("Delete")
                 imgui.table_set_column_index(5)
                 has_rvc = char.get('RVC') is not None
                 if has_rvc:
@@ -209,7 +202,16 @@ class CharactersPage(Page):
 
     def _download_character(self, char: dict):
         from src.utils.huggingface_utils import download_models
+        from src.config.config import cfg
+        from src.enums.engine_type import EngineType
+
         model = self._state.models.get(char['name'], {})
+        engine_type = EngineType(cfg.get(cfg.engine))
+        model = model.get(engine_type.value) if isinstance(model, dict) else None
+        if not isinstance(model, dict):
+            self._state.error_queue.put(("Unable to Download", f"No {engine_type.value} model metadata found for {char['name']}"))
+            return
+
         rvc = model.get('RVC')
         self._state.loading = True
         self._state.loading_message = f"Downloading {char.get('display_name', char['name'])}..."

@@ -77,6 +77,8 @@ class FallTalkFluentWindow(FluentWindowBase):
         self.dmo_speech2_action = Action(FallTalkIcons.DMO2.icon(stroke=True), self.tr('DMO\t\t5 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.DMOSPEECH2.value)
         self.vibe_action = Action(FallTalkIcons.MICROSOFT.icon(stroke=True), self.tr('MS Vibe\t\t7 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.VIBE.value)
         self.qwen_action = Action(FallTalkIcons.QWEN.icon(stroke=True), self.tr('Qwen3\t\t8 GB VRAM'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.QWEN3_TTS.value)
+        self.omnivoice_action = Action(FallTalkIcons.HUGGING_FACE.icon(stroke=True), self.tr('OmniVoice'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.OMNIVOICE.value)
+        self.moss_tts_action = Action(FallTalkIcons.GROUP.icon(stroke=True), self.tr('MOSS-TTS'), checkable=True, checked=cfg.get(cfg.engine) == EngineType.MOSS_TTS.value)
 
         self.cpu_action = Action(FallTalkIcons.CPU.icon(), self.tr('CPU'), checkable=True, checked=cfg.get(cfg.device) == 'cpu')
         self.gpu_action = Action(FallTalkIcons.GPU.icon(), self.tr('GPU'), checkable=True, checked=cfg.get(cfg.device) == 'cuda')
@@ -155,6 +157,10 @@ class FallTalkFluentWindow(FluentWindowBase):
             actions_to_add.append(self.vibe_action)
         if EngineType.QWEN3_TTS.enabled:
             actions_to_add.append(self.qwen_action)
+        if EngineType.OMNIVOICE.enabled:
+            actions_to_add.append(self.omnivoice_action)
+        if EngineType.MOSS_TTS.enabled:
+            actions_to_add.append(self.moss_tts_action)
         if EngineType.HIGGS.enabled:
             actions_to_add.append(self.higgs_action)
         if EngineType.GPT_SOVITS.enabled:

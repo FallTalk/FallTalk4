@@ -1,18 +1,11 @@
 import os
-import sys
 
 import numpy as np
 
 from src.config.config import cfg
 from src.enums.engine_type import EngineType
 from src.tts_engines.tts_engine import tts_engine
-from src.utils.filesystem_utils import get_app_code_root, get_app_root
-
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark', 'sparktts')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark', 'sparktts', 'utils')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark', 'sparktts', 'models')))
-sys.path.append(os.path.abspath(os.path.join(get_app_code_root(), 'third_party', 'spark', 'sparktts', 'modules')))
+from src.utils.filesystem_utils import get_app_root
 
 import re
 import torch
@@ -20,7 +13,7 @@ from typing import Tuple
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-from third_party.spark.sparktts.models.audio_tokenizer import BiCodecTokenizer
+from spark_tts_lib.models.audio_tokenizer import BiCodecTokenizer
 
 class SparkEngine(tts_engine):
     def __init__(self):
@@ -34,14 +27,16 @@ class SparkEngine(tts_engine):
         self.audio_tokenizer = None
         
     def load_model(self):
+        spark_model_root = Path(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B')))
         if self.is_base:
-            self.tokenizer = AutoTokenizer.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B', "LLM"))))
-            self.model = AutoModelForCausalLM.from_pretrained(str(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B', "LLM"))))
+            llm_dir = spark_model_root / "LLM"
+            self.tokenizer = AutoTokenizer.from_pretrained(str(llm_dir))
+            self.model = AutoModelForCausalLM.from_pretrained(str(llm_dir))
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
             self.model = AutoModelForCausalLM.from_pretrained(self.model_path)
 
-        self.audio_tokenizer = BiCodecTokenizer(Path(os.path.abspath(os.path.join(get_app_root(), 'models', 'Spark', '0.5B' ))), device=self.device)
+        self.audio_tokenizer = BiCodecTokenizer(spark_model_root, device=self.device)
         self.audio_tokenizer.model.to(self.device)
         self.model.to(self.device)
 

@@ -302,6 +302,30 @@ def downloadQwen(parent: 'AppCallbacks'):
         tqdm_class=FallTalkTqdm,
     )
 
+def downloadOmniVoice(parent: 'AppCallbacks'):
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
+
+    os.makedirs(os.path.join(get_app_root(), "models", "OmniVoice"), exist_ok=True)
+    snapshot_download(
+        repo_id="k2-fsa/OmniVoice",
+        local_dir=os.path.join(get_app_root(), "models", "OmniVoice"),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
+
+def downloadMossTTS(parent: 'AppCallbacks'):
+    # Set the parent for the tqdm class
+    FallTalkTqdm.set_parent(parent)
+
+    os.makedirs(os.path.join(get_app_root(), "models", "MOSS-TTS"), exist_ok=True)
+    snapshot_download(
+        repo_id="OpenMOSS-Team/MOSS-TTS",
+        local_dir=os.path.join(get_app_root(), "models", "MOSS-TTS"),
+        local_dir_use_symlinks=False,
+        tqdm_class=FallTalkTqdm,
+    )
+
 def downloadStyleTTS2(parent: 'AppCallbacks'):
     # Set the parent for the tqdm class
     FallTalkTqdm.set_parent(parent)
@@ -333,9 +357,11 @@ def download_models(parent: 'AppCallbacks', character, model, rvc, api=False):
 
         if not api:
             parent.on_done()
+        return True
     except Exception as e:
         logger.exception("Unable to download model")
         parent.on_error("Unable to Download Model", "An Error Occured while downloading the model from huggingface. Please check your logs and report the issue if needed")
+        return False
 
 # Additional functions that might be needed for backward compatibility
 def get_latest_release():

@@ -50,6 +50,24 @@ class GenerationPage(Page):
         self._edge_error = ""
         self._eleven_error = ""
 
+    def _is_f5_edit_mode(self) -> bool:
+        return self._state.engine_type == EngineType.F5 and cfg.get(cfg.f5_mode) == "edit"
+
+    def _draw_f5_mode_selector(self):
+        from imgui_bundle import imgui
+
+        mode_options = ["Edit", "TTS"]
+        current_mode = "Edit" if cfg.get(cfg.f5_mode) == "edit" else "TTS"
+        current_idx = mode_options.index(current_mode)
+
+        imgui.text_disabled("F5 Mode")
+        imgui.set_next_item_width(180)
+        changed, new_idx = imgui.combo("##f5_mode", current_idx, mode_options)
+        if changed:
+            cfg.set(cfg.f5_mode, "edit" if new_idx == 0 else "tts")
+        if cfg.get(cfg.f5_mode) == "edit":
+            imgui.text_disabled("Edit mode transcribes one reference clip and edits that clip.")
+
     def draw(self):
         from imgui_bundle import icons_fontawesome_6 as fa, imgui
 
@@ -77,27 +95,11 @@ class GenerationPage(Page):
         from imgui_bundle import imgui
 
         engine_loaded = self._state.tts_engine is not None
-        selected_refs = len(self._state.selected_references)
-        ref_duration = self._state.reference_audio_length
-        engine_name = self._state.engine_type.value if self._state.engine_type else "No Engine"
 
-        imgui.begin_child(
-            "##generation_overview",
-            size=imgui.ImVec2(0, 72),
-            child_flags=imgui.ChildFlags_.borders,
-        )
-        try:
-            imgui.text_disabled("Generation Overview")
-            imgui.separator()
-            imgui.text(f"Engine: {engine_name}")
-            imgui.same_line()
-            imgui.text(f"Selected References: {selected_refs}")
-            imgui.same_line()
-            imgui.text(f"Reference Duration: {ref_duration:.1f}s")
-        finally:
-            imgui.end_child()
+        if self._state.engine_type == EngineType.F5:
+            self._draw_f5_mode_selector()
+            imgui.spacing()
 
-        imgui.spacing()
         imgui.text_disabled("Input")
         imgui.separator()
         imgui.text("Text to Generate")
@@ -138,7 +140,8 @@ class GenerationPage(Page):
         else:
             push_accent_button_style()
             try:
-                if imgui.button("Generate Audio", size=(170, 0)):
+                button_label = "Edit Audio" if self._is_f5_edit_mode() else "Generate Audio"
+                if imgui.button(button_label, size=(170, 0)):
                     self._start_generation()
             finally:
                 pop_accent_button_style()
@@ -424,6 +427,63 @@ class GenerationPage(Page):
         from src.ui_imgui.pages.references import _resolve_reference_path
         from src.utils.audio_utils import combine_references
         from src.utils.inference_utils import generic_inference, get_default_reference_and_transcript, preprocess_text
+
+        if self._is_f5_edit_mode():
+            selected = [
+                self._state.reference_audio[i]
+                for i in sorted(self._state.selected_references)
+                if i < len(self._state.reference_audio)
+            ]
+            reference = next((path for path in (_resolve_reference_path(ref) for ref in selected) if path), "")
+
+            if not reference and self._state.tts_engine:
+                reference, _ = get_default_reference_and_transcript(
+                    self._state.callbacks,
+                    self._state.tts_engine.model_name,
+                )
+
+            if not reference:
+                self._state.error_queue.put(("Error", "Please select reference audio for F5 edit mode."))
+                return
+            if self._state.transcription_engine is None:
+                self._state.error_queue.put(("Error", "Load the transcription engine before using F5 edit mode."))
+                return
+
+            try:
+                transcript = self._state.transcription_engine.transcribe(reference)
+            except Exception:
+                self._state.error_queue.put(("Error", "Unable to transcribe the selected reference for F5 edit mode."))
+                return
+
+            words_info = transcript.get("words_info", []) if isinstance(transcript, dict) else []
+            if not words_info:
+                self._state.error_queue.put(("Error", "F5 edit mode needs a transcribed reference with word timings."))
+                return
+
+            start_time = float(words_info[0]["start"])
+            end_time = float(words_info[-1]["end"])
+            output_file = self._build_output_file(self._state.engine_type.value, default_name=None)
+            self._state.loading = True
+            self._state.loading_message = "Editing audio..."
+            threading.Thread(
+                target=generic_inference,
+                args=(
+                    self._state.callbacks,
+                    output_file,
+                    text,
+                    reference,
+                    None,
+                    transcript,
+                    start_time,
+                    end_time,
+                ),
+                kwargs={
+                    "speaker": self._state.tts_engine.model_name if self._state.tts_engine else None,
+                    "api": False,
+                },
+                daemon=True,
+            ).start()
+            return
 
         selected = [
             self._state.reference_audio[i]
